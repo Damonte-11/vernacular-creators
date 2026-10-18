@@ -105,7 +105,7 @@ export default function CampaignResultsPage() {
                   <tr key={r.id}>
                     <td className="px-4 py-3">
                       {c ? (
-                        <CreatorLink id={c.id} className="font-semibold text-accent hover:underline">
+                        <CreatorLink id={c.id} className="font-semibold text-accent-ink hover:underline">
                           {c.name}
                         </CreatorLink>
                       ) : (

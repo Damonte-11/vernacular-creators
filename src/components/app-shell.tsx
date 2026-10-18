@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BRAND } from "@config/brand";
 import { Icon, type IconName } from "./icons";
+import { Wordmark } from "./logo";
 import { cx } from "./ui";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
@@ -18,17 +19,9 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2">
-      {BRAND.logoPath ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={BRAND.logoPath} alt={BRAND.companyName} className="h-7 w-auto" />
-      ) : (
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-black text-brand-ink">V</span>
-      )}
-      <span className="leading-tight">
-        <span className="block text-sm font-bold">{BRAND.companyName}</span>
-        <span className="block text-xs text-muted">Creators</span>
-      </span>
+    <Link href="/" className="flex items-end gap-2 text-ink" aria-label={`${BRAND.companyName} Creators home`}>
+      <Wordmark className="h-6 w-auto" />
+      <span className="pb-0.5 text-xs font-semibold uppercase tracking-wide text-muted">Creators</span>
     </Link>
   );
 }

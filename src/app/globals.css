@@ -2,36 +2,39 @@
 
 /*
  * ── BRAND COLOURS ─────────────────────────────────────────────
- * Placeholder neutral palette until we have Vernacular's Figma colours.
+ * From the Vernacular Brand Identity Guidelines (Figma, "Colour Palette").
  * Change the values here and the whole app updates.
  */
 @theme {
-  --color-brand: #1f1b4d; /* main brand colour: buttons, active nav */
-  --color-brand-ink: #ffffff; /* text on top of the brand colour */
-  --color-accent: #5b4fe0; /* highlights, links, chart bars */
-  --color-accent-soft: #eeecfd; /* light background for highlights */
+  --color-brand: #171715; /* Eerie Black: buttons, active nav, report header */
+  --color-brand-ink: #ffffff; /* text on top of Eerie Black */
+  --color-accent: #f75115; /* Vernacular Orange: chart bars, highlights */
+  --color-accent-ink: #c64111; /* Orange 600: orange text on light backgrounds (readable contrast) */
+  --color-accent-soft: #feeee8; /* Orange 50: light orange backgrounds */
 
   --color-surface: #ffffff; /* cards */
-  --color-canvas: #f6f6f8; /* page background */
-  --color-line: #e4e4ea; /* borders */
-  --color-ink: #16161d; /* main text */
-  --color-ink-2: #4a4a57; /* secondary text */
-  --color-muted: #6e6e7c; /* hints, labels */
+  --color-canvas: #f2eee3; /* Alabaster: page background */
+  --color-line: #e3ded0; /* borders */
+  --color-ink: #171715; /* main text */
+  --color-ink-2: #45443f; /* secondary text */
+  --color-muted: #6c6a62; /* hints, labels */
 
-  /* Status colours: only for good / warning / bad states, always with a label. */
-  --color-good: #0f7a4f;
-  --color-good-soft: #e3f4ec;
-  --color-warn: #a35a00;
-  --color-warn-soft: #fdf0dc;
+  /* Status colours: only for good / warning / bad states, always with a label.
+     Good and warning use the brand Green and Golden Yellow ramps. Red isn't in
+     the brand palette; it's kept for warnings so it isn't confused with Orange. */
+  --color-good: #068116;
+  --color-good-soft: #d3fdd9;
+  --color-warn: #98750f;
+  --color-warn-soft: #fff3d1;
   --color-bad: #b42318;
   --color-bad-soft: #fde8e6;
 
-  --font-sans: "Raleway Variable", "Raleway", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
-  /* Raleway's default numbers have uneven heights; use even, aligned ones. */
-  font-feature-settings: "lnum" 1, "tnum" 1;
+  /* Same-width numbers so columns of figures line up. */
+  font-feature-settings: "tnum" 1;
 }
 
 body {

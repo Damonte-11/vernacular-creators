@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { BRAND } from "@config/brand";
 import { SampleBanner } from "@/components/app-shell";
 import { Icon } from "@/components/icons";
+import { Wordmark } from "@/components/logo";
 import { Avatar, buttonClass, EngagementChip, FlagList, PlatformBadge, ScoreBadge } from "@/components/ui";
 import { Loading } from "@/components/ui";
 import { NOW, useAnalyses } from "@/lib/data/creators";
@@ -58,8 +59,11 @@ export default function ReportPage() {
 
       <article className="mx-auto max-w-4xl px-4 py-6 print:max-w-none print:p-0">
         <header className="rounded-xl bg-brand p-6 text-brand-ink print:rounded-none" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
-          <p className="text-xs font-semibold uppercase tracking-widest opacity-80">{BRAND.companyName} · Creator shortlist</p>
-          <h1 className="mt-2 text-3xl font-bold">{list.name}</h1>
+          <div className="flex items-center justify-between gap-4">
+            <Wordmark className="h-7 w-auto" title={BRAND.companyName} />
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-80">Creator shortlist</p>
+          </div>
+          <h1 className="mt-8 text-3xl font-semibold tracking-tight sm:text-4xl">{list.name}</h1>
           <p className="mt-1 text-sm opacity-80">
             {list.client ? `Prepared for ${list.client} · ` : ""}
             {formatDate(new Date(NOW).toISOString())}
@@ -99,7 +103,7 @@ function Total({ label, value, hint, estimate }: { label: string; value: string;
     <div className="rounded-xl border border-line bg-surface p-4">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
         {label}
-        {estimate && <span className="ml-1 text-accent">(estimate)</span>}
+        {estimate && <span className="ml-1 text-accent-ink">(estimate)</span>}
       </p>
       <p className="mt-1 text-xl font-bold">{value}</p>
       {hint && <p className="text-[11px] text-muted">{hint}</p>}

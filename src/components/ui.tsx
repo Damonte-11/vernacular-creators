@@ -38,7 +38,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
-const AVATAR_COLOURS = ["#5b4fe0", "#0f7a4f", "#b4531d", "#1f6fb2", "#a3366f", "#5f6b16", "#7a3fbf", "#20716d"];
+// Darker steps of the brand palette ramps, so white initials stay readable.
+const AVATAR_COLOURS = ["#c64111", "#068116", "#0249b3", "#784acf", "#0a7d8d", "#98750f", "#171715", "#94310d"];
 
 export function Avatar({ name, photoUrl, size = 40 }: { name: string; photoUrl: string | null; size?: number }) {
   const initials = name
@@ -174,7 +175,7 @@ export function StatTile({ label, value, hint, estimate }: { label: string; valu
     <Card className="p-4">
       <div className="flex items-center gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-        {estimate && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent">Estimate</span>}
+        {estimate && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent-ink">Estimate</span>}
       </div>
       <p className="mt-1 text-2xl font-bold">{value}</p>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
@@ -196,7 +197,7 @@ export function VerifiedBadge({ verified }: { verified: boolean }) {
   if (!verified) return null;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent"
+      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-ink"
       title="The creator connected their own account (Stage 3). In this demo it's for show only."
     >
       <Icon name="shield" size={12} /> Verified

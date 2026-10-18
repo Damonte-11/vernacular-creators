@@ -110,7 +110,7 @@ function BulkAdd() {
                   </>
                 ) : (
                   <>
-                    <Link href={`/creators/${encodeURIComponent(r.creator.id)}`} className="font-semibold text-accent hover:underline">
+                    <Link href={`/creators/${encodeURIComponent(r.creator.id)}`} className="font-semibold text-accent-ink hover:underline">
                       @{r.creator.handle}
                     </Link>
                     <span className="text-muted">{r.status === "added" ? "Added" : "Already saved"}</span>

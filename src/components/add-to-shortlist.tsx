@@ -23,7 +23,7 @@ export function AddToShortlist({ creatorId, compact }: { creatorId: string; comp
   return (
     <div className="relative" ref={ref}>
       <button
-        className={compact ? cx(buttonClass.ghost, inCount > 0 && "text-accent") : buttonClass.secondary}
+        className={compact ? cx(buttonClass.ghost, inCount > 0 && "text-accent-ink") : buttonClass.secondary}
         onClick={() => setOpen((o) => !o)}
         aria-label="Add to shortlist"
         title="Add to shortlist"

@@ -142,7 +142,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           <Card className="p-5">
             <div className="flex items-center gap-2">
               <h2 className="font-bold">Estimated reach per post</h2>
-              <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent">Estimate</span>
+              <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent-ink">Estimate</span>
             </div>
             <p className="mt-2 text-3xl font-bold">
               {formatNumber(reach.low)} – {formatNumber(reach.high)}
@@ -255,7 +255,7 @@ function TeamFields({ creator: c }: { creator: Creator }) {
         <div className="-mt-2 flex flex-wrap items-center gap-1 text-xs">
           <span className="text-muted">Suggested from bio:</span>
           {suggestions.map((n) => (
-            <button key={n} className="rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent" onClick={() => actions.editCreator(c.id, { niche: n })}>
+            <button key={n} className="rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent-ink" onClick={() => actions.editCreator(c.id, { niche: n })}>
               {n}
             </button>
           ))}

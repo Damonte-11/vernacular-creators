@@ -81,9 +81,9 @@ All the adjustable numbers live in the `config` folder, with comments explaining
 | `config/flags.ts` | Thresholds for every warning flag |
 | `config/scoring.ts` | Default score weights |
 | `config/app.ts` | Posts used, refresh time, niche and city lists, niche keywords |
-| `config/brand.ts` + `src/app/globals.css` | Company name, logo and **brand colours** (look for "BRAND COLOURS") |
+| `config/brand.ts` + `src/app/globals.css` | Company name and **brand colours** (look for "BRAND COLOURS") |
 
-The colours are a neutral placeholder until we have access to the Vernacular Figma file.
+The look follows the **Vernacular Brand Identity Guidelines** in Figma: Eerie Black, Alabaster and Orange, the **Outfit** font, and the official wordmark (`src/components/logo.tsx`).
 
 ## For developers
 
@@ -94,7 +94,7 @@ The colours are a neutral placeholder until we have access to the Vernacular Fig
 | `npm test` | Maths tests (hand-checked examples in `tests/maths.test.ts`) |
 | `npm run check` | Typecheck + lint + tests |
 
-Stack: Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Recharts, Raleway (self-hosted via Fontsource). Stage 2 adds Supabase and Vercel.
+Stack: Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Recharts, Outfit (self-hosted via Fontsource). Stage 2 adds Supabase and Vercel.
 
 ```
 config/              all adjustable numbers and brand settings
