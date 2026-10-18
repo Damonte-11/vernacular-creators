@@ -1,0 +1,144 @@
+import type { SizeBandId } from "@config/size-bands";
+import type { ScoreFactor } from "@config/scoring";
+
+export type Platform = "instagram" | "youtube";
+export type PostType = "image" | "carousel" | "reel" | "video" | "short";
+
+export interface Post {
+  id: string;
+  platformPostId: string;
+  type: PostType;
+  postedAt: string; // ISO date
+  /** null = the creator hides like counts. */
+  likes: number | null;
+  comments: number;
+  /** null = no public view count for this post (e.g. Instagram photos). */
+  views: number | null;
+  url: string;
+  caption: string;
+}
+
+export interface Snapshot {
+  followers: number;
+  capturedAt: string; // ISO date
+}
+
+export interface Creator {
+  id: string;
+  platform: Platform;
+  platformId: string;
+  handle: string;
+  name: string;
+  photoUrl: string | null;
+  bio: string;
+  niche: string | null;
+  city: string | null;
+  country: string;
+  followers: number;
+  mediaCount: number;
+  accountType: "business" | "creator" | "channel";
+  /** Stage 3: the creator connected their own account. */
+  verified: boolean;
+  lastFetchedAt: string;
+  notes: string;
+  tags: string[];
+  posts: Post[];
+  snapshots: Snapshot[];
+  isSample: boolean;
+}
+
+export interface Settings {
+  weights: Record<ScoreFactor, number>;
+  recentPostCount: number;
+  minPostAgeHours: number;
+  refreshIntervalHours: number;
+}
+
+export type EngagementLabel = "poor" | "average" | "good" | "great";
+
+export interface Range {
+  low: number;
+  high: number;
+}
+
+export interface Metrics {
+  band: SizeBandId;
+  postsUsed: Post[];
+  avgLikes: number | null;
+  avgComments: number | null;
+  avgViews: number | null;
+  viewPostCount: number;
+  likesHidden: boolean;
+  engagementRate: number | null;
+  engagementLabel: EngagementLabel | null;
+  expectedEngagements: Range | null;
+}
+
+export interface ReachEstimate {
+  low: number;
+  high: number;
+  method: "views" | "benchmark" | "benchmark+campaigns";
+  note: string;
+}
+
+export type FlagSeverity = "low" | "medium" | "high";
+
+export interface Flag {
+  type:
+    | "low_engagement"
+    | "high_engagement"
+    | "engagement_swings"
+    | "follower_jump"
+    | "likes_comments_ratio"
+    | "posting_gap";
+  severity: FlagSeverity;
+  message: string;
+}
+
+export interface ScoreResult {
+  total: number | null;
+  breakdown: Partial<Record<ScoreFactor, number>>;
+  /** Weights actually applied, re-balanced to add up to 1. */
+  weightsUsed: Partial<Record<ScoreFactor, number>>;
+  missing: { factor: ScoreFactor; reason: string }[];
+}
+
+export interface CampaignResult {
+  id: string;
+  creatorId: string;
+  postUrl: string;
+  reach: number | null;
+  impressions: number | null;
+  views: number | null;
+  loggedBy: string;
+  loggedAt: string;
+}
+
+export interface CreatorAnalysis {
+  creator: Creator;
+  metrics: Metrics;
+  reach: ReachEstimate;
+  flags: Flag[];
+  score: ScoreResult;
+}
+
+export interface ShortlistItem {
+  creatorId: string;
+  addedAt: string;
+}
+
+export interface Shortlist {
+  id: string;
+  name: string;
+  client: string;
+  createdAt: string;
+  items: ShortlistItem[];
+}
+
+/** Fields the team edits by hand. */
+export interface CreatorEdits {
+  niche?: string | null;
+  city?: string | null;
+  notes?: string;
+  tags?: string[];
+}

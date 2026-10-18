@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+ * ── BRAND COLOURS ─────────────────────────────────────────────
+ * Placeholder neutral palette until we have Vernacular's Figma colours.
+ * Change the values here and the whole app updates.
+ */
+@theme {
+  --color-brand: #1f1b4d; /* main brand colour: buttons, active nav */
+  --color-brand-ink: #ffffff; /* text on top of the brand colour */
+  --color-accent: #5b4fe0; /* highlights, links, chart bars */
+  --color-accent-soft: #eeecfd; /* light background for highlights */
+
+  --color-surface: #ffffff; /* cards */
+  --color-canvas: #f6f6f8; /* page background */
+  --color-line: #e4e4ea; /* borders */
+  --color-ink: #16161d; /* main text */
+  --color-ink-2: #4a4a57; /* secondary text */
+  --color-muted: #6e6e7c; /* hints, labels */
+
+  /* Status colours: only for good / warning / bad states, always with a label. */
+  --color-good: #0f7a4f;
+  --color-good-soft: #e3f4ec;
+  --color-warn: #a35a00;
+  --color-warn-soft: #fdf0dc;
+  --color-bad: #b42318;
+  --color-bad-soft: #fde8e6;
+
+  --font-sans: "Raleway Variable", "Raleway", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  /* Raleway's default numbers have uneven heights; use even, aligned ones. */
+  font-feature-settings: "lnum" 1, "tnum" 1;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}

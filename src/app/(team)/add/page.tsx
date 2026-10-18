@@ -1,0 +1,126 @@
+"use client";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { Icon } from "@/components/icons";
+import { LookupForm, PlatformToggle } from "@/components/lookup-form";
+import { buttonClass, Card, cx, inputClass, PageHeader } from "@/components/ui";
+import { useCreators } from "@/lib/data/creators";
+import { lookupCreator, type LookupResult } from "@/lib/data/lookup";
+import type { Platform } from "@/lib/types";
+
+/** Most handles a single bulk add will take. */
+const BULK_LIMIT = 100;
+
+export default function AddPage() {
+  return (
+    <>
+      <PageHeader title="Add creators" subtitle="Every creator you look up is saved to the database." />
+      <Card className="mb-6 p-5">
+        <h2 className="mb-3 font-bold">One creator</h2>
+        <LookupForm />
+      </Card>
+      <BulkAdd />
+    </>
+  );
+}
+
+function BulkAdd() {
+  const creators = useCreators();
+  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [text, setText] = useState("");
+  const [results, setResults] = useState<LookupResult[]>([]);
+  const [total, setTotal] = useState(0);
+  const [running, setRunning] = useState(false);
+  const stop = useRef(false);
+
+  const handles = [...new Set(text.split(/[\s,;]+/).map((h) => h.trim()).filter(Boolean))];
+
+  async function run() {
+    const list = handles.slice(0, BULK_LIMIT);
+    setResults([]);
+    setTotal(list.length);
+    setRunning(true);
+    stop.current = false;
+    let known = creators;
+    for (const h of list) {
+      if (stop.current) break;
+      // One at a time, so we stay inside the platforms' rate limits.
+      const r = await lookupCreator(platform, h, known);
+      if (r.status === "added") known = [...known, r.creator];
+      setResults((prev) => [...prev, r]);
+    }
+    setRunning(false);
+  }
+
+  const done = results.length;
+  const added = results.filter((r) => r.status === "added").length;
+  const existing = results.filter((r) => r.status === "existing").length;
+  const failed = results.filter((r) => r.status === "error");
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-bold">Bulk add</h2>
+      <p className="mb-3 text-sm text-ink-2">
+        Paste a list of handles, one per line or separated by commas. We look them up one at a time to respect the platforms&apos; limits (up to {BULK_LIMIT} at once).
+      </p>
+      <div className="mb-3">
+        <PlatformToggle value={platform} onChange={setPlatform} />
+      </div>
+      <textarea
+        className={cx(inputClass, "min-h-36 font-mono")}
+        placeholder={"@first_creator\n@second_creator\nthird_creator"}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        disabled={running}
+        aria-label="Handles to add"
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {running ? (
+          <button className={buttonClass.secondary} onClick={() => (stop.current = true)}>
+            Stop
+          </button>
+        ) : (
+          <button className={buttonClass.primary} disabled={handles.length === 0} onClick={run}>
+            Add {handles.length > 0 ? Math.min(handles.length, BULK_LIMIT) : ""} {handles.length === 1 ? "creator" : "creators"}
+          </button>
+        )}
+        {handles.length > BULK_LIMIT && <p className="text-xs text-warn">Only the first {BULK_LIMIT} will be added.</p>}
+      </div>
+
+      {total > 0 && (
+        <div className="mt-5" aria-live="polite">
+          <div className="flex justify-between text-sm">
+            <span className="font-semibold">{running ? `Looking up ${done + 1} of ${total}…` : `Finished: ${done} of ${total} checked`}</span>
+            <span className="text-muted">
+              {added} added · {existing} already saved · {failed.length} failed
+            </span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-canvas">
+            <div className="h-2 rounded-full bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
+          </div>
+          <ul className="mt-4 divide-y divide-line text-sm">
+            {results.map((r, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 py-2">
+                {r.status === "error" ? (
+                  <>
+                    <span className="font-semibold">@{r.handle}</span>
+                    <span className="flex items-start gap-1 text-right text-bad">
+                      <Icon name="alert" size={14} className="mt-0.5 shrink-0" /> {r.error}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Link href={`/creators/${encodeURIComponent(r.creator.id)}`} className="font-semibold text-accent hover:underline">
+                      @{r.creator.handle}
+                    </Link>
+                    <span className="text-muted">{r.status === "added" ? "Added" : "Already saved"}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
