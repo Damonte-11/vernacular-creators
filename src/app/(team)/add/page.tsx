@@ -35,26 +35,40 @@ function BulkAdd() {
 
   const handles = [...new Set(text.split(/[\s,;]+/).map((h) => h.trim()).filter(Boolean))];
 
+  const [notice, setNotice] = useState<string | null>(null);
+
   async function run() {
     const list = handles.slice(0, BULK_LIMIT);
     setResults([]);
     setTotal(list.length);
     setRunning(true);
+    setNotice(null);
     stop.current = false;
     let known = creators;
     for (const h of list) {
       if (stop.current) break;
       // One at a time, so we stay inside the platforms' rate limits.
-      const r = await lookupCreator(platform, h, known);
+      let r = await lookupCreator(platform, h, known);
+      for (let tries = 0; r.status === "error" && r.code === "rate_limited" && tries < 3 && !stop.current; tries++) {
+        const wait = Math.max(10, r.retryAfterSeconds ?? 60);
+        setNotice(`${platform === "instagram" ? "Instagram" : "YouTube"} asked us to slow down. Resuming in ${wait} seconds…`);
+        await new Promise((res) => setTimeout(res, wait * 1000));
+        setNotice(null);
+        r = await lookupCreator(platform, h, known);
+      }
       if (r.status === "added") known = [...known, r.creator];
       setResults((prev) => [...prev, r]);
+      if (r.status === "error" && (r.code === "quota" || r.code === "auth" || r.code === "config" || r.code === "rate_limited")) {
+        setNotice(`Stopped: ${r.error}`);
+        break;
+      }
     }
     setRunning(false);
   }
 
   const done = results.length;
   const added = results.filter((r) => r.status === "added").length;
-  const existing = results.filter((r) => r.status === "existing").length;
+  const existing = results.filter((r) => r.status === "existing" || r.status === "refreshed").length;
   const failed = results.filter((r) => r.status === "error");
 
   return (
@@ -89,6 +103,7 @@ function BulkAdd() {
 
       {total > 0 && (
         <div className="mt-5" aria-live="polite">
+          {notice && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">{notice}</p>}
           <div className="flex justify-between text-sm">
             <span className="font-semibold">{running ? `Looking up ${done + 1} of ${total}…` : `Finished: ${done} of ${total} checked`}</span>
             <span className="text-muted">
@@ -113,7 +128,7 @@ function BulkAdd() {
                     <Link href={`/creators/${encodeURIComponent(r.creator.id)}`} className="font-semibold text-accent-ink hover:underline">
                       @{r.creator.handle}
                     </Link>
-                    <span className="text-muted">{r.status === "added" ? "Added" : "Already saved"}</span>
+                    <span className="text-muted">{r.status === "added" ? "Added" : r.status === "refreshed" ? "Updated" : "Already saved"}</span>
                   </>
                 )}
               </li>

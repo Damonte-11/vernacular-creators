@@ -5,6 +5,7 @@ import { useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
 import type { Platform } from "@/lib/types";
 import { Icon } from "./icons";
+import { IS_LIVE } from "@/lib/supabase/config";
 import { buttonClass, cx, inputClass } from "./ui";
 
 export function PlatformToggle({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
@@ -70,7 +71,9 @@ export function LookupForm() {
         </p>
       )}
       <p className="text-xs text-muted">
-        Demo: any new handle creates a made-up profile. Try one with &quot;personal&quot; or &quot;notfound&quot; in it to see the error messages.
+        {IS_LIVE
+          ? "Instagram works for business and creator accounts only. Creators already saved load instantly."
+          : "Demo: any new handle creates a made-up profile. Try one with \"personal\" or \"notfound\" in it to see the error messages."}
       </p>
     </form>
   );

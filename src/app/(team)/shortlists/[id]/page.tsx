@@ -57,7 +57,7 @@ export default function ShortlistPage() {
   const totals = shortlistTotals(rows);
 
   async function copyLink() {
-    const url = `${window.location.origin}/reports/${list!.id}`;
+    const url = list!.shareToken ? `${window.location.origin}/share/${list!.shareToken}` : `${window.location.origin}/reports/${list!.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -94,6 +94,11 @@ export default function ShortlistPage() {
         />
       )}
 
+      {list.shareToken && rows.length > 0 && (
+        <p className="-mt-3 mb-5 text-xs text-muted">
+          Anyone with the share link can view the client report without signing in. They can&apos;t see team notes or make changes.
+        </p>
+      )}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Creators" value={totals.creators} />
         <StatTile label="Combined followers" value={formatNumber(totals.followers)} />

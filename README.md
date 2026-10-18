@@ -8,7 +8,7 @@ A tool for the Vernacular team to **find, vet and rank Instagram and YouTube cre
 - rank creators with a Creator Score out of 100
 - build shortlists and share clean client reports
 
-> **Current stage: Stage 1 (clickable demo).** Every creator and number is **made-up sample data**. Real Instagram and YouTube data arrives in Stage 2.
+> **Current stage: Stage 2 (real data).** Once the accounts in **[docs/SETUP.md](docs/SETUP.md)** are connected, the app uses real Instagram and YouTube data, a shared database and team login. Until then it runs as a **demo on made-up sample data**, with no login.
 
 ---
 
@@ -53,7 +53,7 @@ To stop the app, go back to the terminal and press `Ctrl + C`.
 - Open **Obinna Ekwe** or **Blessing Ike** to see warning flags in action.
 - On **Settings**, drag "Views" up and "Engagement" down, and watch the scores change.
 
-In the demo, your changes (shortlists, notes, settings, added creators) are saved **in your browser only**. Someone else on another computer won't see them. Stage 2 moves everything into a shared database.
+In **demo mode**, your changes (shortlists, notes, settings, added creators) are saved in your browser only. In **live mode** (after setup), everything is saved in the shared database, and the whole team sees the same creators, shortlists and settings.
 
 ## How the numbers work
 
@@ -91,10 +91,10 @@ The look follows the **Vernacular Brand Identity Guidelines** in Figma: Eerie Bl
 |---|---|
 | `npm run dev` | Run locally at http://localhost:3000 |
 | `npm run build` / `npm start` | Production build / serve it |
-| `npm test` | Maths tests (hand-checked examples in `tests/maths.test.ts`) |
+| `npm test` | Tests: hand-checked maths, the API connections (with sample responses), and the database setup |
 | `npm run check` | Typecheck + lint + tests |
 
-Stack: Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Recharts, Outfit (self-hosted via Fontsource). Stage 2 adds Supabase and Vercel.
+Stack: Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Recharts, Outfit (self-hosted via Fontsource), Supabase (Postgres + Auth), Vercel (hosting + daily cron).
 
 ```
 config/              all adjustable numbers and brand settings
@@ -102,10 +102,15 @@ src/app/(team)/      team screens (behind login from Stage 2)
 src/app/reports/     view-only client report
 src/components/      shared UI pieces
 src/lib/             the maths: metrics, reach, flags, score, filters
-src/lib/data/        data layer: browser storage now, Supabase + APIs in Stage 2
+src/lib/data/        data layer: demo (browser storage) or live (Supabase), same hooks
+src/lib/server/      official API clients (Instagram, YouTube), saving, caching
+src/app/api/         lookup, refresh and the daily cron job
+src/app/share/       public view-only report links
+supabase/migrations/ database tables and security rules
 src/sample-data/     the 40 made-up creators (seeded, so always the same)
 tests/               maths tests
-docs/ROADMAP.md      plan for Stages 2 and 3
+docs/SETUP.md        step-by-step setup for Supabase, Vercel, Meta and Google
+docs/ROADMAP.md      what's done and the plan for Stage 3
 ```
 
 **Data rule:** this app only uses **official APIs** (Instagram Graph API Business Discovery, YouTube Data API v3, and later TikTok Login Kit). No scraping, no fake accounts, no getting around rate limits.

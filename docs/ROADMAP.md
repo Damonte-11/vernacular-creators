@@ -4,27 +4,20 @@
 
 All screens on made-up sample data. Score, flags and reach logic working and tested.
 
-## Stage 2: Version 1 with real data
+## Stage 2: Version 1 with real data (built; waiting for account setup)
 
-- **Supabase**: database tables (`creators`, `creator_snapshots`, `posts`, `scores`, `flags`, `shortlists`, `shortlist_items`, `campaign_results`, `settings`) and email login for the team. Swap `src/lib/data/` from browser storage to Supabase.
-- **Instagram (Graph API, Business Discovery)**:
-  - Needs a Meta developer app.
-  - Needs Vernacular's own Instagram professional account, linked to a Facebook Page.
-  - Needs a long-lived access token.
-  - Business Discovery only returns business/creator accounts. Personal accounts → clear error message.
-  - Hidden like counts come back missing; they are already handled.
-  - Check the current docs to see whether Reel view counts are available, and report back.
-  - Respect Meta's hourly rate limits: bulk add already runs one at a time and will back off when told to slow down.
-- **YouTube (Data API v3)**:
-  - Look up channels by handle with `channels.list?forHandle=` (1 quota unit), never `search.list` (100 units).
-  - Recent videos come from the uploads playlist, then `videos.list` for their stats.
-  - Free daily allowance is 10,000 units.
-  - Note: channel IDs are case-sensitive, so stop lower-casing them in `normalizeHandle` when IDs are used.
-- **Caching**: only call an API when a creator's data is older than the refresh setting (default 24h).
-- **Follower snapshots**: save one at every refresh, so growth and the follower-jump flag start working.
-- **Refresh schedule**: a daily Vercel cron that refreshes stale creators within the quota.
-- **Share links**: public, view-only report links that don't need login (random, unguessable IDs).
-- **Deploy** to Vercel, with step-by-step setup guides for Meta, Google Cloud and Vercel.
+Set up the accounts with [SETUP.md](SETUP.md). Built:
+
+- **Supabase**: tables (`creators`, `creator_snapshots`, `posts`, `scores`, `flags`, `shortlists`, `shortlist_items`, `campaign_results`, `settings`) with row-level security; email + password login, invite-only. Without Supabase keys the app falls back to the demo.
+- **Instagram**: Graph API Business Discovery via Vernacular's own professional account. Returns followers, posts, likes and comments, plus **Reel view counts** (`view_count`, available since June 2025). Personal accounts and hidden likes are handled with clear messages.
+- **YouTube**: Data API v3 with `channels.list?forHandle=` / `id=`, then the uploads playlist and `videos.list`. About 3 quota units per creator; never `search.list`.
+- **Caching**: saved creators are reused until older than the refresh setting (default 24h). "Refresh data" forces a fetch.
+- **Follower snapshots** at every fetch, plus the score and flags at that moment.
+- **Daily refresh**: Vercel Cron at 04:00 UTC; up to 60 stale creators per run; stops early on rate limits or quota.
+- **Bulk add**: one at a time, pausing automatically when a platform asks us to slow down.
+- **Share links**: public, view-only report at `/share/<64-character token>`, computed on the server without notes, tags or campaign results.
+
+Still to do once accounts exist: test with real creators, tune benchmarks against real Nigerian data, and decide whether to track daily API usage on a dashboard.
 
 ## Stage 3: Version 2 (plan only)
 

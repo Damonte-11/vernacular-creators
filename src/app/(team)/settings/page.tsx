@@ -5,6 +5,7 @@ import { SCORE_FACTOR_LABELS, type ScoreFactor } from "@config/scoring";
 import { SIZE_BANDS } from "@config/size-bands";
 import { buttonClass, Card, inputClass, labelClass, PageHeader } from "@/components/ui";
 import { actions, useAppState } from "@/lib/data/store";
+import { IS_LIVE } from "@/lib/supabase/config";
 import { formatNumber, formatPercent } from "@/lib/format";
 
 export default function SettingsPage() {
@@ -13,7 +14,10 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Changes apply straight away to every score on the site." />
+      <PageHeader
+        title="Settings"
+        subtitle={IS_LIVE ? "Shared by the whole team. Changes apply straight away to every score." : "Changes apply straight away to every score on the site."}
+      />
 
       <Card className="mb-6 p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
@@ -76,7 +80,7 @@ export default function SettingsPage() {
           />
           <NumberSetting
             label="Refresh data after (hours)"
-            hint="Saves API allowance. Used from Stage 2."
+            hint="Saved creators are re-fetched after this long. Saves API allowance."
             value={settings.refreshIntervalHours}
             min={1}
             max={720}
@@ -140,7 +144,7 @@ export default function SettingsPage() {
         </ul>
       </Card>
 
-      <Card className="p-5">
+      {!IS_LIVE && <Card className="p-5">
         <h2 className="font-bold">Demo data</h2>
         <p className="mb-3 text-sm text-ink-2">Clear everything saved in this browser (added creators, notes, shortlists, settings) and start the demo fresh.</p>
         <button
@@ -149,7 +153,7 @@ export default function SettingsPage() {
         >
           Reset demo data
         </button>
-      </Card>
+      </Card>}
     </>
   );
 }

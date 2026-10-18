@@ -24,6 +24,8 @@ import {
 } from "@/components/ui";
 import { Loading } from "@/components/ui";
 import { NOW, useAnalysis } from "@/lib/data/creators";
+import { refreshCreator } from "@/lib/data/lookup";
+import { IS_LIVE } from "@/lib/supabase/config";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
 import { formatDate, formatFull, formatNumber, formatPercent, formatRange, timeAgo } from "@/lib/format";
 import { suggestNiches } from "@/lib/niche";
@@ -78,18 +80,16 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
               <PlatformBadge platform={c.platform} />
               <span>@{c.handle}</span>
               <span className="hidden text-muted sm:inline">·</span>
-              <span>{c.accountType === "channel" ? "YouTube channel" : c.accountType === "creator" ? "Creator account" : "Business account"}</span>
+              <span>{ACCOUNT_LABEL[c.accountType]}</span>
             </div>
             <p className="mt-3 max-w-2xl text-sm">{c.bio}</p>
             <p className="mt-2 text-xs text-muted">
-              Data updated {timeAgo(c.lastFetchedAt, NOW)} · refreshes when older than {settings.refreshIntervalHours} hours (Stage 2)
+              Data updated {timeAgo(c.lastFetchedAt, NOW)} · refreshes automatically when older than {settings.refreshIntervalHours} hours
             </p>
           </div>
           <div className="flex gap-2 sm:flex-col">
             <AddToShortlist creatorId={c.id} />
-            <button className={buttonClass.secondary} disabled title="Live refresh arrives in Stage 2">
-              Refresh data
-            </button>
+            <RefreshButton creatorId={c.id} />
           </div>
         </div>
       </Card>
@@ -225,14 +225,57 @@ function PostGrid({ posts, usedIds }: { posts: Post[]; usedIds: Set<string> }) {
             )}
           </dl>
           {!usedIds.has(p.id) && <p className="mt-2 text-[11px] text-muted">Not counted in averages</p>}
+          {p.url && (
+            <a href={p.url} target="_blank" rel="noreferrer noopener" className="mt-2 inline-block text-xs font-semibold text-accent-ink hover:underline">
+              View post ↗
+            </a>
+          )}
         </div>
       ))}
     </div>
   );
 }
 
+const ACCOUNT_LABEL: Record<Creator["accountType"], string> = {
+  channel: "YouTube channel",
+  creator: "Creator account",
+  business: "Business account",
+  professional: "Business or creator account",
+};
+
+function RefreshButton({ creatorId }: { creatorId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!IS_LIVE) {
+    return (
+      <button className={buttonClass.secondary} disabled title="Not available in demo mode">
+        Refresh data
+      </button>
+    );
+  }
+  return (
+    <div>
+      <button
+        className={buttonClass.secondary}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          const r = await refreshCreator(creatorId);
+          setBusy(false);
+          if (!r.ok) setError(r.error);
+        }}
+      >
+        {busy ? "Refreshing…" : "Refresh data"}
+      </button>
+      {error && <p className="mt-1 max-w-56 text-xs text-bad">{error}</p>}
+    </div>
+  );
+}
+
 function TeamFields({ creator: c }: { creator: Creator }) {
   const [notes, setNotes] = useState(c.notes);
+  const [country, setCountry] = useState(c.country);
   const [tag, setTag] = useState("");
   const suggestions = suggestNiches(c.bio).filter((n) => n !== c.niche);
 
@@ -269,6 +312,15 @@ function TeamFields({ creator: c }: { creator: Creator }) {
             <option key={n}>{n}</option>
           ))}
         </select>
+      </label>
+      <label className="block">
+        <span className={labelClass}>Country</span>
+        <input
+          className={inputClass}
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          onBlur={() => country.trim() && country !== c.country && actions.editCreator(c.id, { country: country.trim() })}
+        />
       </label>
       <div>
         <span className={labelClass}>Tags</span>

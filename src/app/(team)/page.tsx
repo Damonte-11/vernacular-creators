@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { CreatorTable } from "@/components/creator-table";
 import { LookupForm } from "@/components/lookup-form";
-import { buttonClass, Card, PageHeader, StatTile } from "@/components/ui";
+import { buttonClass, Card, EmptyState, PageHeader, StatTile } from "@/components/ui";
 import { useAnalyses } from "@/lib/data/creators";
 import { useAppState } from "@/lib/data/store";
 import { sortAnalyses } from "@/lib/filter";
@@ -37,7 +37,11 @@ export default function HomePage() {
           See leaderboards →
         </Link>
       </div>
-      <CreatorTable rows={top} ranked />
+      {top.length === 0 ? (
+        <EmptyState title="No creators yet" body="Look up a creator above, or paste a list on the Add creators page. Everyone you look up is saved here." />
+      ) : (
+        <CreatorTable rows={top} ranked />
+      )}
     </>
   );
 }

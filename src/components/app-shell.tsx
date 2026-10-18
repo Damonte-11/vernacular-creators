@@ -1,11 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BRAND } from "@config/brand";
 import { Icon, type IconName } from "./icons";
 import { Wordmark } from "./logo";
-import { cx } from "./ui";
+import { cx, Loading } from "./ui";
+import { actions, useAppState } from "@/lib/data/store";
+import { IS_LIVE } from "@/lib/supabase/config";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/", label: "Home", icon: "home" },
@@ -56,6 +59,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-line bg-surface p-4 lg:flex">
         <Logo />
         {links}
+        <div className="mt-auto">
+          <AccountBox />
+        </div>
       </aside>
 
       {/* Mobile top bar */}
@@ -76,14 +82,67 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             {links}
+            <div className="mt-auto">
+              <AccountBox />
+            </div>
           </div>
         </div>
       )}
 
       <div className="min-w-0 flex-1">
-        <SampleBanner />
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">{children}</main>
+        {!IS_LIVE && <SampleBanner />}
+        <ErrorBanner />
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
+          <Ready>{children}</Ready>
+        </main>
       </div>
+    </div>
+  );
+}
+
+/** Shows the page once this browser has loaded the data. */
+function Ready({ children }: { children: React.ReactNode }) {
+  const { ready } = useAppState();
+  return ready ? <>{children}</> : <Loading />;
+}
+
+function ErrorBanner() {
+  const { error } = useAppState();
+  if (!error) return null;
+  return (
+    <div role="alert" className="no-print flex items-start justify-between gap-3 border-b border-bad/20 bg-bad-soft px-4 py-2 text-sm text-bad">
+      <span className="flex items-start gap-2">
+        <Icon name="alert" size={16} className="mt-0.5 shrink-0" /> {error}
+      </span>
+      <button className="shrink-0 font-semibold underline" onClick={() => actions.clearError()}>
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
+/** Live mode: who's signed in, and a sign-out button. */
+function AccountBox() {
+  const [email, setEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!IS_LIVE) return;
+    supabaseBrowser()
+      .auth.getUser()
+      .then(({ data }) => setEmail(data.user?.email ?? null));
+  }, []);
+  if (!IS_LIVE) return null;
+  return (
+    <div className="border-t border-line pt-3 text-xs text-muted">
+      {email && <p className="truncate">Signed in as {email}</p>}
+      <button
+        className="mt-1 font-semibold text-ink-2 hover:underline"
+        onClick={async () => {
+          await supabaseBrowser().auth.signOut();
+          window.location.href = "/login";
+        }}
+      >
+        Sign out
+      </button>
     </div>
   );
 }

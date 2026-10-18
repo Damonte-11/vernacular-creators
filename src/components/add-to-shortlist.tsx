@@ -45,11 +45,11 @@ export function AddToShortlist({ creatorId, compact }: { creatorId: string; comp
           })}
           <form
             className="mt-2 flex gap-1 border-t border-line pt-2"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (!newName.trim()) return;
-              const id = actions.createShortlist(newName.trim(), "");
-              actions.toggleInShortlist(id, creatorId);
+              const id = await actions.createShortlist(newName.trim(), "");
+              if (id) await actions.toggleInShortlist(id, creatorId);
               setNewName("");
             }}
           >

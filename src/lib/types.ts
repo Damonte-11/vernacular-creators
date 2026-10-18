@@ -36,7 +36,8 @@ export interface Creator {
   country: string;
   followers: number;
   mediaCount: number;
-  accountType: "business" | "creator" | "channel";
+  /** "professional" = an Instagram business or creator account (the API doesn't say which). */
+  accountType: "business" | "creator" | "professional" | "channel";
   /** Stage 3: the creator connected their own account. */
   verified: boolean;
   lastFetchedAt: string;
@@ -133,12 +134,15 @@ export interface Shortlist {
   client: string;
   createdAt: string;
   items: ShortlistItem[];
+  /** Secret part of the public view-only report link (live mode). */
+  shareToken?: string;
 }
 
 /** Fields the team edits by hand. */
 export interface CreatorEdits {
   niche?: string | null;
   city?: string | null;
+  country?: string;
   notes?: string;
   tags?: string[];
 }
