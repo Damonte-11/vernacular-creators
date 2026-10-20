@@ -68,9 +68,9 @@ export type SetAsideReason = "team" | "high_engagement" | "high_views";
 
 export interface Metrics {
   band: SizeBandId;
-  /** The recent posts looked at (newest first), before anything is set aside. */
+  /** Every recent post looked at (newest first), including any set aside. */
   postsUsed: Post[];
-  /** postsUsed minus posts set aside: what likes, comments and engagement are based on. */
+  /** The posts likes, comments and engagement are based on: the latest normal posts, with set-aside ones replaced by older posts. */
   typicalPosts: Post[];
   /** Posts left out, and why (team exclusion, or unusually high: possibly boosted). */
   setAside: { post: Post; reason: SetAsideReason }[];

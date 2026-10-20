@@ -1,7 +1,7 @@
-import { VIEWS_MAX_AGE_DAYS } from "@config/app";
+import { LOOKBACK_DAYS } from "@config/app";
 import { ENGAGEMENT_BENCHMARKS } from "@config/benchmarks";
 import { FLAG_THRESHOLDS } from "@config/flags";
-import type { Creator, EngagementLabel, Metrics, Post, Settings } from "./types";
+import type { Creator, EngagementLabel, Metrics, Post, SetAsideReason, Settings } from "./types";
 import { DAY_MS, median, percentile } from "./stats";
 import { sizeBandFor } from "./size-bands";
 
@@ -42,16 +42,53 @@ export function findOutliers(posts: Post[], value: (p: Post) => number): Set<str
   return new Set(posts.filter((p) => value(p) > typical * FLAG_THRESHOLDS.outlierFactor).map((p) => p.id));
 }
 
+interface Selection {
+  /** The posts the numbers are based on, newest first (up to `count`). */
+  chosen: Post[];
+  /** Posts passed over on the way, and why. */
+  setAside: { post: Post; reason: SetAsideReason }[];
+  /** Every post looked at, newest first. */
+  considered: Post[];
+}
+
+/**
+ * Pick the latest `count` normal posts. Posts the team excluded, and posts far
+ * above the creator's typical level (possibly boosted), are set aside and
+ * replaced by the next older post. Replacements must be newer than `cutoff`.
+ */
+export function selectPosts(
+  sorted: Post[],
+  count: number,
+  value: (p: Post) => number,
+  reason: SetAsideReason,
+  cutoff: number,
+): Selection {
+  const inRange = (p: Post, i: number) => i < count || new Date(p.postedAt).getTime() >= cutoff;
+  const candidates = sorted.filter(inRange);
+  // "Typical" is judged on a wider sample (up to twice the count) so it stays steady.
+  const outliers = findOutliers(candidates.filter((p) => !p.excluded).slice(0, count * 2), value);
+
+  const result: Selection = { chosen: [], setAside: [], considered: [] };
+  for (const p of candidates) {
+    if (result.chosen.length >= count) break;
+    result.considered.push(p);
+    if (p.excluded) result.setAside.push({ post: p, reason: "team" });
+    else if (outliers.has(p.id)) result.setAside.push({ post: p, reason });
+    else result.chosen.push(p);
+  }
+  return result;
+}
+
 export function computeMetrics(creator: Creator, settings: Settings, now: number): Metrics {
   const band = sizeBandFor(creator.followers);
-  const postsUsed = eligiblePosts(creator.posts, settings, now);
+  const cutoff = now - LOOKBACK_DAYS * DAY_MS;
+  const all = eligiblePosts(creator.posts, { ...settings, recentPostCount: Infinity }, now);
 
-  // Set aside: posts the team excluded, then unusually high ones (possibly boosted).
-  const setAside: Metrics["setAside"] = postsUsed.filter((p) => p.excluded).map((post) => ({ post, reason: "team" }));
-  const kept = postsUsed.filter((p) => !p.excluded);
-  const highEngagement = findOutliers(kept, postEngagement);
-  kept.filter((p) => highEngagement.has(p.id)).forEach((post) => setAside.push({ post, reason: "high_engagement" }));
-  const typicalPosts = kept.filter((p) => !highEngagement.has(p.id));
+  // Engagement: the latest normal posts, replacing any set aside with older ones.
+  const engagement = selectPosts(all, settings.recentPostCount, postEngagement, "high_engagement", cutoff);
+  const postsUsed = engagement.considered;
+  const typicalPosts = engagement.chosen;
+  const setAside = [...engagement.setAside];
 
   const withLikes = typicalPosts.filter((p) => p.likes !== null);
   const likesHidden = postsUsed.length > 0 && postsUsed.every((p) => p.likes === null);
@@ -59,18 +96,11 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
   const avgComments = median(typicalPosts.map((p) => p.comments));
 
   // Views: the latest posts that have views (Instagram only has them on Reels),
-  // looking further back than the engagement window if needed.
-  const viewCutoff = now - VIEWS_MAX_AGE_DAYS * DAY_MS;
-  const viewCandidates = eligiblePosts(
-    creator.posts.filter((p) => p.views !== null && !p.excluded && new Date(p.postedAt).getTime() >= viewCutoff),
-    settings,
-    now,
-  );
-  const highViews = findOutliers(viewCandidates, (p) => p.views as number);
-  viewCandidates
-    .filter((p) => highViews.has(p.id) && !setAside.some((x) => x.post.id === p.id))
-    .forEach((post) => setAside.push({ post, reason: "high_views" }));
-  const viewPosts = viewCandidates.filter((p) => !highViews.has(p.id));
+  // all within the look-back period.
+  const withViews = all.filter((p) => p.views !== null && new Date(p.postedAt).getTime() >= cutoff);
+  const views = selectPosts(withViews, settings.recentPostCount, (p) => p.views as number, "high_views", cutoff);
+  for (const x of views.setAside) if (!setAside.some((y) => y.post.id === x.post.id)) setAside.push(x);
+  const viewPosts = views.chosen;
   const avgViews = median(viewPosts.map((p) => p.views as number));
 
   let engagementRate: number | null = null;

@@ -9,11 +9,13 @@ export const APP_DEFAULTS = {
 };
 
 /**
- * Views: Instagram only shows views on Reels, so views look further back than
- * the engagement window: the latest `recentPostCount` posts that have views,
- * from posts no older than this.
+ * How far back the app may look for replacement posts, in days. When posts are
+ * set aside (possibly boosted, or excluded by the team), older posts take their
+ * place so the numbers still use `recentPostCount` posts, but never older than
+ * this. Views use the same limit when looking back for posts that have views
+ * (Instagram only shows views on Reels).
  */
-export const VIEWS_MAX_AGE_DAYS = 180;
+export const LOOKBACK_DAYS = 180;
 
 /** Fixed lists the team picks from. Add new ones here. */
 export const NICHES = [

@@ -303,3 +303,40 @@ describe("boosted and unusual posts", () => {
     expect(m.avgViews).toBe(8_000);
   });
 });
+
+describe("replacing set-aside posts", () => {
+  // 14 normal posts, one every 3 days, plus one boosted post that's the newest.
+  const normal = Array.from({ length: 14 }, (_, i) => ({ ...post(3 + i * 3, 500 + i, 20), id: `n${i}` }));
+  const boosted = { ...post(2, 9_000, 300), id: "boosted" };
+
+  it("replaces a set-aside post with the next older one, so 12 posts are still used", () => {
+    const m = computeMetrics(creator({ posts: [boosted, ...normal] }), SETTINGS, NOW);
+    expect(m.setAside.map((x) => x.post.id)).toEqual(["boosted"]);
+    expect(m.typicalPosts).toHaveLength(12);
+    // The 12 used are n0…n11: the boosted post's place went to n11 (the 13th post overall).
+    expect(m.typicalPosts.map((p) => p.id)).toEqual(normal.slice(0, 12).map((p) => p.id));
+    expect(m.postsUsed).toHaveLength(13); // 12 used + 1 set aside
+  });
+
+  it("replaces team-excluded posts too", () => {
+    const posts = normal.map((p, i) => (i === 0 ? { ...p, excluded: true } : p));
+    const m = computeMetrics(creator({ posts }), SETTINGS, NOW);
+    expect(m.typicalPosts).toHaveLength(12);
+    expect(m.typicalPosts[0].id).toBe("n1");
+    expect(m.typicalPosts[11].id).toBe("n12");
+  });
+
+  it("doesn't reach back more than 6 months for replacements", () => {
+    // 12 posts, the newest boosted; the only other post is 200 days old, so it can't stand in.
+    const twelve = [boosted, ...normal.slice(0, 11), { ...post(200, 500, 20), id: "ancient" }];
+    const m = computeMetrics(creator({ posts: twelve }), SETTINGS, NOW);
+    expect(m.typicalPosts).toHaveLength(11);
+    expect(m.typicalPosts.map((p) => p.id)).not.toContain("ancient");
+  });
+
+  it("still uses the normal last 12 even if some are older than 6 months", () => {
+    // A creator who rarely posts: 12 posts spread over two years all count, as before.
+    const rare = Array.from({ length: 12 }, (_, i) => ({ ...post(10 + i * 60, 500, 20), id: `r${i}` }));
+    expect(computeMetrics(creator({ posts: rare }), SETTINGS, NOW).typicalPosts).toHaveLength(12);
+  });
+});

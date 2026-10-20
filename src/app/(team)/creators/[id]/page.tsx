@@ -122,7 +122,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           <Card className="p-5">
             <h2 className="font-bold">Typical post</h2>
             <p className="mt-0.5 text-xs text-muted">
-              The middle value (median) of the last {m.postsUsed.length} posts, so one unusually big post can&apos;t inflate it. Posts under{" "}
+              The middle value (median) of the latest {m.typicalPosts.length} normal posts, so one unusually big post can&apos;t inflate it. Posts under{" "}
               {settings.minPostAgeHours} hours old are left out because their numbers are still growing.
             </p>
             <dl className="mt-4 grid grid-cols-3 gap-4">
@@ -138,7 +138,10 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
             {m.setAside.length > 0 && (
               <p className="mt-4 rounded-lg bg-canvas px-3 py-2 text-xs text-ink-2">
                 <span className="font-semibold">{m.setAside.length} {m.setAside.length === 1 ? "post" : "posts"} set aside</span> and not counted:{" "}
-                {summariseSetAside(m.setAside)}. They&apos;re marked in Recent posts below.
+                {summariseSetAside(m.setAside)}. Older posts took their place
+                {m.typicalPosts.length < settings.recentPostCount &&
+                  ` where possible (only ${m.typicalPosts.length} normal posts in the last 6 months)`}
+                . They&apos;re marked in Recent posts below.
               </p>
             )}
           </Card>
