@@ -144,6 +144,13 @@ Add these in Vercel (as in Part 2), then redeploy:
 
 ---
 
+## Database updates
+
+When the app gains a feature that needs a database change, there's a new numbered file in `supabase/migrations/`. Run each one once, in order, in **Supabase → SQL Editor → New query → paste → Run**:
+
+- `0001_init.sql`: the tables (Part 1)
+- `0002_post_exclusions.sql`: lets the team exclude individual posts (e.g. known ads)
+
 ## What happens after setup
 
 - **Lookups:** creators you look up are saved. Looking them up again within 24 hours (the "Refresh data after" setting) uses the saved copy and costs no API allowance. **Refresh data** on a profile fetches fresh numbers straight away.

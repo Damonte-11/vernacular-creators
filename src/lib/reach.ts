@@ -18,13 +18,13 @@ export function estimateReach(
   campaignResults: CampaignResult[] = [],
   allCreators: Creator[] = [],
 ): ReachEstimate {
-  const views = metrics.postsUsed.filter((p) => p.views !== null).map((p) => p.views as number);
+  const views = metrics.viewPosts.map((p) => p.views as number);
   if (views.length >= MIN_VIEW_POSTS) {
     return {
       low: Math.round(percentile(views, 0.25)!),
       high: Math.round(percentile(views, 0.75)!),
       method: "views",
-      note: `Based on public view counts of ${views.length} recent posts (middle 50%). Views can include repeat views by the same person, so true reach may be a little lower.`,
+      note: `Based on public view counts of ${views.length} recent ${creator.platform === "instagram" ? "Reels" : "videos"} (middle 50%), leaving out any unusually high, possibly boosted ones. Views can include repeat views by the same person, so true reach may be a little lower.`,
     };
   }
 

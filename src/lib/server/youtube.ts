@@ -8,7 +8,7 @@ import type { PostType } from "../types";
 import { LookupError } from "./errors";
 import type { FetchedCreator, Fetcher } from "./fetched";
 
-export const YT_VIDEO_LIMIT = 20;
+export const YT_VIDEO_LIMIT = 25;
 /** Videos this short or shorter are counted as Shorts. */
 const SHORT_MAX_SECONDS = 60;
 const API = "https://www.googleapis.com/youtube/v3";

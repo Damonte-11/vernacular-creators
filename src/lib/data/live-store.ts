@@ -80,8 +80,11 @@ async function save(what: string, run: () => PromiseLike<{ error: unknown }>) {
 }
 
 function message(e: unknown): string {
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
-  return String(e);
+  const text = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : String(e);
+  if (/excluded/.test(text) && /column/.test(text)) {
+    return "the database needs a small update first. Run supabase/migrations/0002_post_exclusions.sql in Supabase's SQL Editor.";
+  }
+  return text;
 }
 
 let settingsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -120,6 +123,19 @@ export const liveBackend: Backend = {
       if (patch.notes !== undefined) row.notes = patch.notes;
       if (patch.tags !== undefined) row.tags = patch.tags;
       await save("the creator", () => db().from("creators").update(row).eq("id", id));
+    },
+    async setPostExcluded(creatorId, postId, excluded) {
+      const creator = state.creators.find((c) => c.id === creatorId);
+      const post = creator?.posts.find((p) => p.id === postId);
+      if (!creator || !post) return;
+      set({
+        creators: state.creators.map((c) =>
+          c.id === creatorId ? { ...c, posts: c.posts.map((p) => (p.id === postId ? { ...p, excluded } : p)) } : c,
+        ),
+      });
+      await save("the post", () =>
+        db().from("posts").update({ excluded }).eq("creator_id", creatorId).eq("platform_post_id", post.platformPostId),
+      );
     },
     upsertCreator(creator) {
       const exists = state.creators.some((c) => c.id === creator.id);

@@ -16,7 +16,7 @@ export type ScoreFactor = keyof typeof DEFAULT_SCORE_WEIGHTS;
 export const SCORE_FACTOR_LABELS: Record<ScoreFactor, { label: string; help: string }> = {
   engagement: {
     label: "Engagement",
-    help: "Engagement rate compared with creators of the same size.",
+    help: "Typical engagement rate compared with creators of the same size.",
   },
   authenticity: {
     label: "Authenticity",
@@ -24,7 +24,7 @@ export const SCORE_FACTOR_LABELS: Record<ScoreFactor, { label: string; help: str
   },
   views: {
     label: "Views",
-    help: "Average views per post compared with follower count. Only where views are public.",
+    help: "Typical views per post compared with follower count. Only where views are public.",
   },
   consistency: {
     label: "Consistency",

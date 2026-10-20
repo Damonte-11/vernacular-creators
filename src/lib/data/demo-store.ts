@@ -65,7 +65,12 @@ function toState(d: DemoData, ready: boolean): AppState {
     error: null,
     creators: [...SAMPLE, ...d.addedCreators].map((c) => {
       const e = d.edits[c.id];
-      return e ? { ...c, ...Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined)) } : c;
+      if (!e) return c;
+      const { excludedPostIds, ...fields } = e;
+      const edited = { ...c, ...Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) };
+      return excludedPostIds?.length
+        ? { ...edited, posts: c.posts.map((p) => (excludedPostIds.includes(p.id) ? { ...p, excluded: true } : p)) }
+        : edited;
     }),
     settings: d.settings,
     shortlists: d.shortlists,
@@ -128,6 +133,13 @@ export const demoBackend: Backend = {
     },
     async editCreator(id, patch) {
       set((d) => ({ ...d, edits: { ...d.edits, [id]: { ...d.edits[id], ...patch } } }));
+    },
+    async setPostExcluded(creatorId, postId, excluded) {
+      set((d) => {
+        const current = d.edits[creatorId]?.excludedPostIds ?? [];
+        const next = excluded ? [...new Set([...current, postId])] : current.filter((id) => id !== postId);
+        return { ...d, edits: { ...d.edits, [creatorId]: { ...d.edits[creatorId], excludedPostIds: next } } };
+      });
     },
     upsertCreator(creator) {
       set((d) => ({ ...d, addedCreators: [...d.addedCreators.filter((c) => c.id !== creator.id), creator] }));

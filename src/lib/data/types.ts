@@ -15,6 +15,8 @@ export interface Actions {
   updateSettings(patch: Partial<Settings>): void;
   resetSettings(): void;
   editCreator(id: string, patch: CreatorEdits): Promise<void>;
+  /** Set a post aside (e.g. a known paid ad) or bring it back. */
+  setPostExcluded(creatorId: string, postId: string, excluded: boolean): Promise<void>;
   /** Put a freshly looked-up creator into the list (replacing an older copy). */
   upsertCreator(creator: Creator): void;
   /** Returns the new shortlist's ID, or "" if it couldn't be saved. */

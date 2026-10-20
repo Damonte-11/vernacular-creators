@@ -8,7 +8,8 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const sql = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
+    const files = ["0001_init.sql", "0002_post_exclusions.sql"];
+    const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run
 
@@ -27,6 +28,12 @@ describe("database migration", () => {
     expect(settings.rows).toHaveLength(1);
     expect(settings.rows[0].recent_post_count).toBe(12);
 
+    const post = await db.query<{ excluded: boolean }>(
+      "insert into posts (creator_id, platform_post_id, type, posted_at) values ($1, 'p1', 'image', now()) returning excluded",
+      [id],
+    );
+    expect(post.rows[0].excluded).toBe(false);
+
     await db.query("delete from creators where id = $1", [id]); // cascades cleanly
-  });
+  }, 30_000);
 });

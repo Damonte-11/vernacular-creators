@@ -107,7 +107,8 @@ export function consistencyFactor(creator: Creator, metrics: Metrics, now: numbe
   const perMonth = (posts.length / spanDays) * 30;
   const frequency = Math.min(1, perMonth / POSTING_FREQUENCY_TARGET[creator.platform]) * 100;
 
-  const perPost = posts.map((p) => (p.likes ?? 0) + p.comments);
+  // Steadiness is judged on typical posts, so a boosted post isn't counted against them twice.
+  const perPost = metrics.typicalPosts.map((p) => (p.likes ?? 0) + p.comments);
   const cv = coefficientOfVariation(perPost) ?? 0;
   const steadiness = piecewise(cv, [
     [0.2, 100],

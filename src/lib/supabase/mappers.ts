@@ -12,6 +12,7 @@ export interface PostRow {
   views: number | null;
   url: string;
   caption: string;
+  excluded?: boolean;
 }
 
 export interface SnapshotRow {
@@ -42,8 +43,7 @@ export interface CreatorRow {
 }
 
 /** The select string that loads a creator with posts and follower history. */
-export const CREATOR_SELECT =
-  "*, posts(platform_post_id, type, posted_at, likes, comments, views, url, caption), creator_snapshots(followers, captured_at)";
+export const CREATOR_SELECT = "*, posts(*), creator_snapshots(followers, captured_at)";
 
 export function creatorFromRow(r: CreatorRow): Creator {
   return {
@@ -74,6 +74,7 @@ export function creatorFromRow(r: CreatorRow): Creator {
       views: p.views,
       url: p.url,
       caption: p.caption,
+      excluded: p.excluded === true,
     })),
     snapshots: (r.creator_snapshots ?? []).map((s): Snapshot => ({ followers: s.followers, capturedAt: s.captured_at })),
     isSample: false,

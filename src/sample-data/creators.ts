@@ -21,7 +21,8 @@ type Archetype =
   | "jump" // sudden follower jump
   | "hidden_likes" // hides like counts
   | "new" // only one follower snapshot so far
-  | "gap"; // a long gap between recent posts
+  | "gap" // a long gap between recent posts
+  | "boosted"; // two posts pushed with paid ads
 
 interface Spec {
   name: string;
@@ -47,7 +48,7 @@ const SPECS: Spec[] = [
   { name: "Zainab Musa", handle: "zainabeats_demo", platform: "instagram", niche: "Food", city: "Abuja", followers: 7_800, bio: "Abuja food spots and home cooking. Honest reviews only.", reels: 0.4, arch: ["new"] },
   { name: "Ifeanyi Nwosu", handle: "ifeanyiskits_demo", platform: "instagram", niche: "Comedy", city: "Port Harcourt", followers: 1_350_000, bio: "Skits • Comedy • PH to the world", reels: 0.9 },
   { name: "Funmi Alade", handle: "funmilives_demo", platform: "instagram", niche: "Lifestyle", city: "Lagos", followers: 52_000, bio: "Mum of two. Lifestyle, home and family vlog.", reels: 0.2, arch: ["hidden_likes"] },
-  { name: "Kelechi Obi", handle: "kelechibeats_demo", platform: "instagram", niche: "Music", city: "Lagos", followers: 210_000, bio: "Afrobeats singer & songwriter 🎶 New single out now", reels: 0.7 },
+  { name: "Kelechi Obi", handle: "kelechibeats_demo", platform: "instagram", niche: "Music", city: "Lagos", followers: 210_000, bio: "Afrobeats singer & songwriter 🎶 New single out now", reels: 0.7, arch: ["boosted"] },
   { name: "Hauwa Bello", handle: "hauwamodest_demo", platform: "instagram", niche: "Fashion", city: "Abuja", followers: 23_000, bio: "Modest fashion & outfit ideas 🧕", reels: 0.35 },
   { name: "Segun Afolabi", handle: "segunreviews_demo", platform: "instagram", niche: "Tech", city: "Ibadan", followers: 12_600, bio: "Tech reviews and gadget unboxing from Ibadan", reels: 0.5, arch: ["pods"] },
   { name: "Ngozi Umeh", handle: "ngozicooks_demo", platform: "instagram", niche: "Food", city: "Port Harcourt", followers: 64_000, bio: "Chef. Native soups, seafood and party trays 🦐", reels: 0.45 },
@@ -167,13 +168,14 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
       if (arch.has("fake_followers")) er = b.poor * 0.3;
       if (arch.has("bought_likes")) er = b.good * 2.6;
       if (type === "reel") er *= 1.3;
-      const engagements = spec.followers * er * noise();
+      const boost = arch.has("boosted") && (i === 2 || i === 6) ? 6 : 1; // paid promotion
+      const engagements = spec.followers * er * noise() * boost;
       likes = Math.round((engagements * likesPerComment) / (likesPerComment + 1));
       comments = Math.max(0, Math.round(engagements / (likesPerComment + 1)));
       if (type === "reel") {
         let vr = VIEWS_RATIO_TARGETS.instagram[band] * (0.6 + quality);
         if (arch.has("fake_followers")) vr *= 0.25;
-        views = Math.round(spec.followers * vr * noise());
+        views = Math.round(spec.followers * vr * noise() * boost);
       }
     } else {
       let vr = VIEWS_RATIO_TARGETS.youtube[band] * (0.6 + quality) * (type === "short" ? 1.8 : 1);

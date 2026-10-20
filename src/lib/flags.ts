@@ -68,6 +68,15 @@ export function computeFlags(creator: Creator, metrics: Metrics, now: number): F
     }
   }
 
+  const boosted = metrics.setAside.filter((x) => x.reason !== "team");
+  if (boosted.length >= T.minOutliersForFlag) {
+    flags.push({
+      type: "boosted_posts",
+      severity: "low",
+      message: `${boosted.length} recent posts did far better than this creator's usual level (over ${T.outlierFactor}× a typical post), so they may have been boosted with ads or gone viral; the numbers here are based on typical posts instead.`,
+    });
+  }
+
   const gap = longestPostingGap(creator, metrics, now);
   if (gap && gap.days > T.maxPostingGapDays) {
     flags.push({

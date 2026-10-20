@@ -239,3 +239,67 @@ describe("helpers", () => {
     expect(normalizeHandle("youtube.com/@channel_name")).toBe("channel_name");
   });
 });
+
+describe("boosted and unusual posts", () => {
+  // Six typical posts of 500 likes + 20 comments, plus one boosted post with 10×.
+  const typical = [2, 4, 6, 8, 10, 12].map((d) => post(d, 500, 20));
+  const boosted = { ...post(3, 5_000, 200), id: "boosted" };
+
+  it("sets aside a post far above the typical one and uses the median", () => {
+    // Median engagement of all 7 posts = 520; the boosted post (5,200) is over 3 × 520, so it's set aside.
+    // What's left: six posts of 520 → engagement rate 520 / 20,000 = 2.6%, not inflated by the ad.
+    const m = computeMetrics(creator({ posts: [...typical, boosted] }), SETTINGS, NOW);
+    expect(m.setAside).toEqual([{ post: expect.objectContaining({ id: "boosted" }), reason: "high_engagement" }]);
+    expect(m.typicalPosts).toHaveLength(6);
+    expect(m.avgLikes).toBe(500);
+    expect(m.engagementRate).toBeCloseTo(0.026);
+  });
+
+  it("would have been inflated by a plain average", () => {
+    // For comparison: the old average would be (6 × 520 + 5,200) / 7 = 1,188.6 → 5.9%.
+    const avg = (6 * 520 + 5_200) / 7 / 20_000;
+    expect(avg).toBeGreaterThan(0.059);
+  });
+
+  it("doesn't set anything aside for normal ups and downs", () => {
+    const posts = [400, 450, 500, 520, 600, 700, 900].map((l, i) => post(i + 2, l, 20));
+    expect(computeMetrics(creator({ posts }), SETTINGS, NOW).setAside).toEqual([]);
+  });
+
+  it("needs at least 5 posts before setting any aside", () => {
+    const posts = [post(2, 100, 5), post(4, 100, 5), post(6, 5_000, 5)];
+    expect(computeMetrics(creator({ posts }), SETTINGS, NOW).setAside).toEqual([]);
+  });
+
+  it("leaves out posts the team excluded", () => {
+    const m = computeMetrics(creator({ posts: [...typical, { ...post(3, 900, 30), id: "ad", excluded: true }] }), SETTINGS, NOW);
+    expect(m.setAside).toEqual([{ post: expect.objectContaining({ id: "ad" }), reason: "team" }]);
+    expect(m.avgLikes).toBe(500);
+  });
+
+  it("raises a 'possibly boosted' flag when 2 or more posts are set aside", () => {
+    const two = [boosted, { ...post(5, 6_000, 100), id: "boosted2" }];
+    const a = analyzeCreator(creator({ posts: [...typical, ...two] }), SETTINGS, NOW);
+    expect(a.flags.map((f) => f.type)).toContain("boosted_posts");
+    const one = analyzeCreator(creator({ posts: [...typical, boosted] }), SETTINGS, NOW);
+    expect(one.flags.map((f) => f.type)).not.toContain("boosted_posts");
+  });
+
+  it("looks further back for views when recent posts are photos", () => {
+    // 12 recent photos (no views) + 4 older Reels within 6 months: views come from those 4 Reels.
+    const photos = Array.from({ length: 12 }, (_, i) => post(i + 2, 500, 20));
+    const reels = [20, 30, 40, 50].map((d, i) => ({ ...post(d, 500, 20, 8_000 + i * 1_000), id: `reel${d}` }));
+    const old = { ...post(400, 500, 20, 99_000), id: "old" }; // over 6 months old: ignored
+    const m = computeMetrics(creator({ posts: [...photos, ...reels, old] }), SETTINGS, NOW);
+    expect(m.viewPostCount).toBe(4);
+    expect(m.avgViews).toBe(9_500); // median of 8,000 / 9,000 / 10,000 / 11,000
+    expect(estimateReach(creator(), m).method).toBe("views");
+  });
+
+  it("sets aside a boosted Reel from views", () => {
+    const reels = [6_000, 7_000, 8_000, 9_000, 10_000, 90_000].map((v, i) => ({ ...post(i + 2, 500, 20, v), id: `r${i}` }));
+    const m = computeMetrics(creator({ posts: reels }), SETTINGS, NOW);
+    expect(m.setAside.map((x) => x.reason)).toEqual(["high_views"]);
+    expect(m.avgViews).toBe(8_000);
+  });
+});

@@ -16,6 +16,8 @@ export interface Post {
   views: number | null;
   url: string;
   caption: string;
+  /** Set aside by the team (e.g. a known paid ad): left out of all averages. */
+  excluded?: boolean;
 }
 
 export interface Snapshot {
@@ -62,9 +64,19 @@ export interface Range {
   high: number;
 }
 
+export type SetAsideReason = "team" | "high_engagement" | "high_views";
+
 export interface Metrics {
   band: SizeBandId;
+  /** The recent posts looked at (newest first), before anything is set aside. */
   postsUsed: Post[];
+  /** postsUsed minus posts set aside: what likes, comments and engagement are based on. */
+  typicalPosts: Post[];
+  /** Posts left out, and why (team exclusion, or unusually high: possibly boosted). */
+  setAside: { post: Post; reason: SetAsideReason }[];
+  /** Posts the views numbers are based on (may reach further back than postsUsed). */
+  viewPosts: Post[];
+  /** Typical (median) values per post, after setting posts aside. */
   avgLikes: number | null;
   avgComments: number | null;
   avgViews: number | null;
@@ -91,7 +103,8 @@ export interface Flag {
     | "engagement_swings"
     | "follower_jump"
     | "likes_comments_ratio"
-    | "posting_gap";
+    | "posting_gap"
+    | "boosted_posts";
   severity: FlagSeverity;
   message: string;
 }
@@ -143,6 +156,8 @@ export interface CreatorEdits {
   niche?: string | null;
   city?: string | null;
   country?: string;
+  /** Demo only: posts the team has set aside (live mode saves this on the post). */
+  excludedPostIds?: string[];
   notes?: string;
   tags?: string[];
 }

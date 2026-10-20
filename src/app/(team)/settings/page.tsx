@@ -141,6 +141,10 @@ export default function SettingsPage() {
             {FLAG_THRESHOLDS.likesPerComment.youtube.min}–{FLAG_THRESHOLDS.likesPerComment.youtube.max} on YouTube.
           </li>
           <li>Posting gap: more than {FLAG_THRESHOLDS.maxPostingGapDays} days.</li>
+          <li>
+            Possibly boosted posts: a post with more than {FLAG_THRESHOLDS.outlierFactor}× a typical post&apos;s engagement or views is set aside and not
+            counted (needs at least {FLAG_THRESHOLDS.minPostsForOutliers} posts). The team can also exclude any post by hand.
+          </li>
         </ul>
       </Card>
 

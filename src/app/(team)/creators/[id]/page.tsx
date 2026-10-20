@@ -30,7 +30,7 @@ import { actions, useAppState, useHydrated } from "@/lib/data/store";
 import { formatDate, formatFull, formatNumber, formatPercent, formatRange, timeAgo } from "@/lib/format";
 import { suggestNiches } from "@/lib/niche";
 import { sizeBandLabel } from "@/lib/size-bands";
-import type { Creator, CreatorAnalysis, Post } from "@/lib/types";
+import type { Creator, CreatorAnalysis, Metrics, Post } from "@/lib/types";
 
 export default function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -58,7 +58,6 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
   const { creator: c, metrics: m, reach, flags, score } = analysis;
   const { settings } = useAppState();
   const bandName = sizeBandLabel(m.band);
-  const excluded = c.posts.length - m.postsUsed.length;
 
   return (
     <div className="space-y-6">
@@ -121,10 +120,9 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card className="p-5">
-            <h2 className="font-bold">Averages from recent posts</h2>
+            <h2 className="font-bold">Typical post</h2>
             <p className="mt-0.5 text-xs text-muted">
-              Last {m.postsUsed.length} posts
-              {excluded > 0 && ` (${excluded} ${excluded === 1 ? "post" : "posts"} left out: too new or older than the last ${settings.recentPostCount})`}. Posts under{" "}
+              The middle value (median) of the last {m.postsUsed.length} posts, so one unusually big post can&apos;t inflate it. Posts under{" "}
               {settings.minPostAgeHours} hours old are left out because their numbers are still growing.
             </p>
             <dl className="mt-4 grid grid-cols-3 gap-4">
@@ -133,10 +131,16 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
               <Avg
                 label="Views"
                 value={m.avgViews}
-                empty={c.platform === "instagram" ? "No Reels with views" : "—"}
-                hint={m.viewPostCount > 0 && m.viewPostCount < m.postsUsed.length ? `from ${m.viewPostCount} posts with views` : undefined}
+                empty={c.platform === "instagram" ? "No recent Reels" : "—"}
+                hint={m.viewPostCount > 0 ? `from the last ${m.viewPostCount} ${c.platform === "instagram" ? "Reels" : "videos"}` : undefined}
               />
             </dl>
+            {m.setAside.length > 0 && (
+              <p className="mt-4 rounded-lg bg-canvas px-3 py-2 text-xs text-ink-2">
+                <span className="font-semibold">{m.setAside.length} {m.setAside.length === 1 ? "post" : "posts"} set aside</span> and not counted:{" "}
+                {summariseSetAside(m.setAside)}. They&apos;re marked in Recent posts below.
+              </p>
+            )}
           </Card>
 
           <Card className="p-5">
@@ -170,7 +174,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
 
           <Card className="p-5">
             <h2 className="mb-3 font-bold">Recent posts</h2>
-            <PostGrid posts={[...c.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt))} usedIds={new Set(m.postsUsed.map((p) => p.id))} />
+            <PostGrid creatorId={c.id} posts={[...c.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt))} metrics={m} />
           </Card>
         </div>
 
@@ -198,40 +202,82 @@ function Avg({ label, value, empty = "—", hint }: { label: string; value: numb
 
 const TYPE_LABEL: Record<Post["type"], string> = { image: "Photo", carousel: "Carousel", reel: "Reel", video: "Video", short: "Short" };
 
-function PostGrid({ posts, usedIds }: { posts: Post[]; usedIds: Set<string> }) {
+function summariseSetAside(list: Metrics["setAside"]): string {
+  const team = list.filter((x) => x.reason === "team").length;
+  const high = list.length - team;
+  return [
+    high > 0 && `${high} far above the usual level (possibly boosted with ads, or viral)`,
+    team > 0 && `${team} excluded by the team`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function PostGrid({ creatorId, posts, metrics: m }: { creatorId: string; posts: Post[]; metrics: Metrics }) {
+  const typical = new Set(m.typicalPosts.map((p) => p.id));
+  const views = new Set(m.viewPosts.map((p) => p.id));
+  const reasons = new Map(m.setAside.map((x) => [x.post.id, x.reason]));
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {posts.map((p) => (
-        <div key={p.id} className={cx("rounded-lg border border-line p-3", !usedIds.has(p.id) && "opacity-60")}>
-          <div className="flex items-center justify-between text-xs">
-            <span className="rounded bg-canvas px-1.5 py-0.5 font-semibold text-ink-2">{TYPE_LABEL[p.type]}</span>
-            <span className="text-muted">{formatDate(p.postedAt)}</span>
-          </div>
-          <p className="mt-2 line-clamp-2 text-sm font-semibold">{p.caption}</p>
-          <dl className="mt-2 space-y-0.5 text-xs text-ink-2">
-            <div className="flex justify-between">
-              <dt>Likes</dt>
-              <dd className="font-semibold">{p.likes === null ? "Hidden" : formatFull(p.likes)}</dd>
+      {posts.map((p) => {
+        const reason = p.excluded ? "team" : reasons.get(p.id);
+        const counted = typical.has(p.id) || views.has(p.id);
+        return (
+          <div
+            key={p.id}
+            className={cx("flex flex-col rounded-lg border p-3", reason && reason !== "team" ? "border-warn/40" : "border-line", !counted && !reason && "opacity-60")}
+          >
+            <div className="flex items-center justify-between text-xs">
+              <span className="rounded bg-canvas px-1.5 py-0.5 font-semibold text-ink-2">{TYPE_LABEL[p.type]}</span>
+              <span className="text-muted">{formatDate(p.postedAt)}</span>
             </div>
-            <div className="flex justify-between">
-              <dt>Comments</dt>
-              <dd className="font-semibold">{formatFull(p.comments)}</dd>
-            </div>
-            {p.views !== null && (
+            <p className="mt-2 line-clamp-2 text-sm font-semibold">{p.caption}</p>
+            <dl className="mt-2 space-y-0.5 text-xs text-ink-2">
               <div className="flex justify-between">
-                <dt>Views</dt>
-                <dd className="font-semibold">{formatFull(p.views)}</dd>
+                <dt>Likes</dt>
+                <dd className="font-semibold">{p.likes === null ? "Hidden" : formatFull(p.likes)}</dd>
               </div>
-            )}
-          </dl>
-          {!usedIds.has(p.id) && <p className="mt-2 text-[11px] text-muted">Not counted in averages</p>}
-          {p.url && (
-            <a href={p.url} target="_blank" rel="noreferrer noopener" className="mt-2 inline-block text-xs font-semibold text-accent-ink hover:underline">
-              View post ↗
-            </a>
-          )}
-        </div>
-      ))}
+              <div className="flex justify-between">
+                <dt>Comments</dt>
+                <dd className="font-semibold">{formatFull(p.comments)}</dd>
+              </div>
+              {p.views !== null && (
+                <div className="flex justify-between">
+                  <dt>Views</dt>
+                  <dd className="font-semibold">{formatFull(p.views)}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="mt-auto pt-2">
+              {reason === "high_engagement" && (
+                <p className="text-[11px] font-semibold text-warn">Unusually high: possibly boosted. Not counted.</p>
+              )}
+              {reason === "high_views" && (
+                <p className="text-[11px] font-semibold text-warn">Views unusually high: possibly boosted. Views not counted.</p>
+              )}
+              {reason === "team" && <p className="text-[11px] font-semibold text-ink-2">Excluded by the team. Not counted.</p>}
+              {!reason && !counted && <p className="text-[11px] text-muted">Not counted (too new or older than the recent posts)</p>}
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-1">
+                {p.url ? (
+                  <a href={p.url} target="_blank" rel="noreferrer noopener" className="text-xs font-semibold text-accent-ink hover:underline">
+                    View post ↗
+                  </a>
+                ) : (
+                  <span />
+                )}
+                <button
+                  className="text-[11px] font-semibold text-muted underline hover:text-ink"
+                  onClick={() => actions.setPostExcluded(creatorId, p.id, !p.excluded)}
+                  title={p.excluded ? "Count this post again" : "Leave this post out, e.g. if you know it was a paid ad"}
+                >
+                  {p.excluded ? "Include again" : "Exclude (ad)"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

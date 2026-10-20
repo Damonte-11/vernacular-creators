@@ -29,6 +29,17 @@ export const FLAG_THRESHOLDS = {
 
   /** Posting gap: a gap between posts (or since the last post) longer than this. */
   maxPostingGapDays: 30,
+
+  /**
+   * Unusually high posts: a post with more than this many times the creator's
+   * typical (median) engagement or views is set aside as possibly boosted
+   * (paid ads) or a one-off viral hit, and left out of averages and scores.
+   */
+  outlierFactor: 3,
+  /** Need at least this many posts before setting any aside. */
+  minPostsForOutliers: 5,
+  /** Raise the "possibly boosted posts" flag when at least this many are set aside. */
+  minOutliersForFlag: 2,
 } as const;
 
 /** How many authenticity points (out of 100) each flag severity costs. */

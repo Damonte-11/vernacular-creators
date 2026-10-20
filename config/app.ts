@@ -8,6 +8,13 @@ export const APP_DEFAULTS = {
   refreshIntervalHours: 24,
 };
 
+/**
+ * Views: Instagram only shows views on Reels, so views look further back than
+ * the engagement window: the latest `recentPostCount` posts that have views,
+ * from posts no older than this.
+ */
+export const VIEWS_MAX_AGE_DAYS = 180;
+
 /** Fixed lists the team picks from. Add new ones here. */
 export const NICHES = [
   "Comedy",
