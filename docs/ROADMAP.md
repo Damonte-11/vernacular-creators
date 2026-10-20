@@ -4,9 +4,9 @@
 
 All screens on made-up sample data. Score, flags and reach logic working and tested.
 
-## Stage 2: Version 1 with real data (built; waiting for account setup)
+## Stage 2: Version 1 with real data (done)
 
-Set up the accounts with [SETUP.md](SETUP.md). Built:
+Live with Supabase, Instagram and YouTube connected (setup steps in [SETUP.md](SETUP.md)). Built:
 
 - **Supabase**: tables (`creators`, `creator_snapshots`, `posts`, `scores`, `flags`, `shortlists`, `shortlist_items`, `campaign_results`, `settings`) with row-level security; email + password login, invite-only. Without Supabase keys the app falls back to the demo.
 - **Instagram**: Graph API Business Discovery via Vernacular's own professional account. Returns followers, posts, likes and comments, plus **Reel view counts** (`view_count`, available since June 2025). Personal accounts and hidden likes are handled with clear messages.
@@ -17,7 +17,13 @@ Set up the accounts with [SETUP.md](SETUP.md). Built:
 - **Bulk add**: one at a time, pausing automatically when a platform asks us to slow down.
 - **Share links**: public, view-only report at `/share/<64-character token>`, computed on the server without notes, tags or campaign results.
 
-Still to do once accounts exist: test with real creators, tune benchmarks against real Nigerian data, and decide whether to track daily API usage on a dashboard.
+Since then, the engagement maths was reviewed against HypeAuditor:
+- Numbers use the last 30 posts (within 6 months, always the newest 12), with a "Recent trend" line for the newest 10.
+- Possibly boosted posts are set aside and replaced; the team can exclude posts by hand.
+- Engagement is shown by followers (trimmed average) and by views; views use the median post; reach = views × 60%.
+- Benchmarks blend smoothly between sizes; high engagement is only flagged with evidence; Authenticity only counts signs of faking; new inactive-followers flag.
+
+Next: tune benchmarks against real Nigerian creators as the database grows, rank against real peers once there are enough per size, and decide whether to track daily API usage on a dashboard.
 
 ## Stage 3: Version 2 (plan only)
 

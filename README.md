@@ -8,7 +8,7 @@ A tool for the Vernacular team to **find, vet and rank Instagram and YouTube cre
 - rank creators with a Creator Score out of 100
 - build shortlists and share clean client reports
 
-> **Current stage: Stage 2 (real data).** Once the accounts in **[docs/SETUP.md](docs/SETUP.md)** are connected, the app uses real Instagram and YouTube data, a shared database and team login. Until then it runs as a **demo on made-up sample data**, with no login.
+> **Current stage: Stage 2 (real data), live.** The app uses real Instagram and YouTube data, a shared database and team login (setup in **[docs/SETUP.md](docs/SETUP.md)**). Run without the keys, it falls back to a **demo on made-up sample data**, with no login.
 
 ---
 
