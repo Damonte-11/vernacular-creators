@@ -142,7 +142,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
                 label="Views"
                 value={m.avgViews}
                 empty={c.platform === "instagram" ? "No recent Reels" : "—"}
-                hint={m.viewPostCount > 0 ? `from the last ${m.viewPostCount} ${c.platform === "instagram" ? "Reels" : "videos"}` : undefined}
+                hint={m.viewPostCount > 0 ? `middle ${c.platform === "instagram" ? "Reel" : "video"} of the last ${m.viewPostCount}` : undefined}
               />
             </dl>
             {m.setAside.length > 0 && (

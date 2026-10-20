@@ -79,9 +79,10 @@ export interface Metrics {
   setAside: { post: Post; reason: SetAsideReason }[];
   /** Posts the views numbers are based on (may reach further back than postsUsed). */
   viewPosts: Post[];
-  /** Average values per post (trimmed: the most extreme posts dropped), after setting posts aside. */
+  /** Average likes / comments per post (trimmed: the most extreme posts dropped), after setting posts aside. */
   avgLikes: number | null;
   avgComments: number | null;
+  /** Views of the middle post (median), after setting posts aside. */
   avgViews: number | null;
   viewPostCount: number;
   likesHidden: boolean;

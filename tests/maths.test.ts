@@ -447,3 +447,12 @@ describe("engagement maths update", () => {
     expect(computeMetrics(c, SETTINGS, NOW).viewEngagementRate).toBeCloseTo(0.05);
   });
 });
+
+describe("views use the middle post", () => {
+  it("shows the median views, not the average", () => {
+    // Views 1,000 / 2,000 / 3,000 / 4,000 / 9,000 / 10,000 (none over 3× the median, so none set aside).
+    // Middle of six = (3,000 + 4,000) / 2 = 3,500. A trimmed average would say 4,500.
+    const reels = [1_000, 2_000, 3_000, 4_000, 9_000, 10_000].map((v, i) => ({ ...post(2 + i, 500, 20, v), id: `m${i}` }));
+    expect(computeMetrics(creator({ posts: reels }), SETTINGS, NOW).avgViews).toBe(3_500);
+  });
+});

@@ -117,7 +117,9 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
   const views = selectPosts(withViews, settings.recentPostCount, (p) => p.views as number, "high_views", cutoff);
   for (const x of views.setAside) if (!setAside.some((y) => y.post.id === x.post.id)) setAside.push(x);
   const viewPosts = views.chosen;
-  const avgViews = trimmedMean(viewPosts.map((p) => p.views as number));
+  // Views are more lopsided than likes (a few Reels take off), so use the middle
+  // post: the safer figure to promise a client.
+  const avgViews = median(viewPosts.map((p) => p.views as number));
 
   let engagementRate: number | null = null;
   let label: EngagementLabel | null = null;
