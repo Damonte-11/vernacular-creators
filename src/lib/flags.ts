@@ -1,30 +1,84 @@
-import { ENGAGEMENT_BENCHMARKS } from "@config/benchmarks";
+import { VIEWS_RATIO_TARGETS } from "@config/benchmarks";
 import { FLAG_THRESHOLDS as T } from "@config/flags";
 import type { Creator, Flag, Metrics } from "./types";
+import { smoothNumber } from "./benchmarks";
+import { engagementBenchmark } from "./metrics";
+import { MIN_VIEW_POSTS } from "./reach";
 import { coefficientOfVariation, DAY_MS } from "./stats";
-import { sizeBandLabel } from "./size-bands";
 import { formatNumber, formatPercent } from "./format";
 
 /** Warning signs based only on public numbers. Each explains itself in one sentence. */
 export function computeFlags(creator: Creator, metrics: Metrics, now: number): Flag[] {
   const flags: Flag[] = [];
-  const bench = ENGAGEMENT_BENCHMARKS[creator.platform][metrics.band];
-  const bandName = sizeBandLabel(metrics.band).toLowerCase();
+  const bench = engagementBenchmark(creator.platform, creator.followers);
   const er = metrics.engagementRate;
+  const normal = `${formatPercent(bench.poor)}–${formatPercent(bench.good)}`;
 
+  const jump = biggestFollowerJump(creator);
+  if (jump) {
+    flags.push({
+      type: "follower_jump",
+      severity: jump.growth > T.followerJumpPct * 2 ? "high" : "medium",
+      message: `Followers jumped by ${formatPercent(jump.growth, 0)} (+${formatNumber(jump.gained)}) in ${Math.max(1, Math.round(jump.days))} days, which is faster than normal growth and can mean bought followers.`,
+    });
+  }
+
+  let oddRatio = false;
+  if (metrics.avgLikes !== null && metrics.avgComments !== null && metrics.avgComments > 0) {
+    const ratio = metrics.avgLikes / metrics.avgComments;
+    const range = T.likesPerComment[creator.platform];
+    if (ratio < range.min) {
+      oddRatio = true;
+      flags.push({
+        type: "likes_comments_ratio",
+        severity: "low",
+        message: `Only ${ratio.toFixed(1)} likes per comment (normal is ${range.min}–${range.max}); this many comments can come from comment groups, giveaways or bought comments.`,
+      });
+    } else if (ratio > range.max) {
+      oddRatio = true;
+      flags.push({
+        type: "likes_comments_ratio",
+        severity: "low",
+        message: `${formatNumber(Math.round(ratio))} likes per comment (normal is ${range.min}–${range.max}); very few comments for the likes can mean bought likes.`,
+      });
+    }
+  }
+
+  const ver = metrics.viewEngagementRate;
   if (er !== null) {
-    const normal = `${formatPercent(bench.poor)}–${formatPercent(bench.good)}`;
     if (er < bench.poor * T.lowEngagementFactor) {
       flags.push({
         type: "low_engagement",
         severity: er < bench.poor * T.veryLowEngagementFactor ? "high" : "medium",
-        message: `Engagement rate of ${formatPercent(er)} is well below normal for a ${bandName} creator (usually ${normal}), which can mean many inactive or fake followers.`,
+        message: `Engagement rate of ${formatPercent(er)} is well below normal for creators of this size (usually ${normal}), so relatively few followers react to posts.`,
       });
     } else if (er > bench.good * T.highEngagementFactor) {
+      // Very high engagement is only suspicious when something else backs it up.
+      const evidence = [
+        oddRatio && "an unusual likes-to-comments ratio",
+        jump && "a sudden follower jump",
+        ver !== null && ver > T.maxViewEngagement && `more likes and comments per view than is realistic (${formatPercent(ver)})`,
+      ].filter(Boolean);
+      if (evidence.length > 0) {
+        flags.push({
+          type: "high_engagement",
+          severity: "medium",
+          message: `Engagement rate of ${formatPercent(er)} is unusually high for creators of this size (usually ${normal}), together with ${evidence.join(" and ")}; check that likes or comments aren't bought.`,
+        });
+      }
+    }
+  }
+
+  // Followers who never watch: low views for the follower count, while the
+  // people who do watch engage normally.
+  if (metrics.avgViews !== null && metrics.viewPostCount >= MIN_VIEW_POSTS && creator.followers > 0 && ver !== null) {
+    const target = smoothNumber(VIEWS_RATIO_TARGETS[creator.platform], creator.followers);
+    const viewShare = metrics.avgViews / creator.followers;
+    if (viewShare < target * T.inactiveFollowersViewShare && metrics.viewEngagementLabel !== "poor") {
       flags.push({
-        type: "high_engagement",
+        type: "inactive_followers",
         severity: "medium",
-        message: `Engagement rate of ${formatPercent(er)} is unusually high for a ${bandName} creator (usually ${normal}); check that likes or comments aren't bought.`,
+        message: `Posts typically reach views of only ${formatPercent(viewShare)} of followers (healthy is around ${formatPercent(target, 0)}), while people who do watch engage normally, so many followers may be inactive or bought.`,
       });
     }
   }
@@ -37,33 +91,6 @@ export function computeFlags(creator: Creator, metrics: Metrics, now: number): F
         type: "engagement_swings",
         severity: cv > T.maxEngagementVariation * 1.5 ? "medium" : "low",
         message: `Engagement swings a lot from post to post (from ${formatNumber(Math.min(...perPost))} to ${formatNumber(Math.max(...perPost))}), which can point to boosted or bought engagement on some posts.`,
-      });
-    }
-  }
-
-  const jump = biggestFollowerJump(creator);
-  if (jump) {
-    flags.push({
-      type: "follower_jump",
-      severity: jump.growth > T.followerJumpPct * 2 ? "high" : "medium",
-      message: `Followers jumped by ${formatPercent(jump.growth, 0)} (+${formatNumber(jump.gained)}) in ${Math.max(1, Math.round(jump.days))} days, which is faster than normal growth and can mean bought followers.`,
-    });
-  }
-
-  if (metrics.avgLikes !== null && metrics.avgComments !== null && metrics.avgComments > 0) {
-    const ratio = metrics.avgLikes / metrics.avgComments;
-    const range = T.likesPerComment[creator.platform];
-    if (ratio < range.min) {
-      flags.push({
-        type: "likes_comments_ratio",
-        severity: "low",
-        message: `Only ${ratio.toFixed(1)} likes per comment (normal is ${range.min}–${range.max}); this many comments can come from comment groups or bought comments.`,
-      });
-    } else if (ratio > range.max) {
-      flags.push({
-        type: "likes_comments_ratio",
-        severity: "low",
-        message: `${formatNumber(Math.round(ratio))} likes per comment (normal is ${range.min}–${range.max}); very few comments for the likes can mean bought likes.`,
       });
     }
   }

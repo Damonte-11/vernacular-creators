@@ -55,6 +55,9 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
                   <span className="block">
                     <EngagementChip label={a.metrics.engagementLabel} />
                   </span>
+                  {a.metrics.viewEngagementRate !== null && (
+                    <span className="block text-xs text-muted">{formatPercent(a.metrics.viewEngagementRate)} by views</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <FlagCount flags={a.flags} />
@@ -96,6 +99,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
               <div>
                 <p className="text-muted">Engagement</p>
                 <p className="font-semibold">{formatPercent(a.metrics.engagementRate)}</p>
+                {a.metrics.viewEngagementRate !== null && <p className="text-muted">{formatPercent(a.metrics.viewEngagementRate)} views</p>}
               </div>
               <div>
                 <p className="text-muted">Flags</p>

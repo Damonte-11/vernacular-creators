@@ -103,8 +103,17 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
             m.engagementRate === null ? (
               m.likesHidden ? "Likes are hidden, so we can't work this out." : "Not enough posts yet."
             ) : (
-              <span className="flex items-center gap-1">
-                <EngagementChip label={m.engagementLabel} /> for a {bandName.toLowerCase()} {c.platform === "instagram" ? "Instagram" : "YouTube"} creator
+              <span className="block space-y-1">
+                <span className="flex flex-wrap items-center gap-1">
+                  <EngagementChip label={m.engagementLabel} /> by followers, for creators of this size
+                </span>
+                {m.viewEngagementRate !== null && (
+                  <span className="flex flex-wrap items-center gap-1">
+                    <span className="font-semibold text-ink">{formatPercent(m.viewEngagementRate)}</span> by views
+                    <EngagementChip label={m.viewEngagementLabel} />
+                  </span>
+                )}
+                {m.lowConfidence && <LowConfidence count={m.typicalPosts.length} />}
               </span>
             )
           }
@@ -122,8 +131,9 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           <Card className="p-5">
             <h2 className="font-bold">Typical post</h2>
             <p className="mt-0.5 text-xs text-muted">
-              The middle value (median) of the latest {m.typicalPosts.length} normal posts, so one unusually big post can&apos;t inflate it. Posts under{" "}
-              {settings.minPostAgeHours} hours old are left out because their numbers are still growing.
+              Average of the latest {m.typicalPosts.length} normal posts, after dropping the most extreme, so one freak post can&apos;t swing it. Posts
+              newer than {c.platform === "youtube" ? `${Math.round(settings.minPostAgeHoursYoutube / 24)} days` : `${Math.round(settings.minPostAgeHours / 24)} days`}{" "}
+              are left out because their numbers are still growing.
             </p>
             <dl className="mt-4 grid grid-cols-3 gap-4">
               <Avg label="Likes" value={m.likesHidden ? null : m.avgLikes} empty={m.likesHidden ? "Hidden by creator" : "—"} />
@@ -190,6 +200,14 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function LowConfidence({ count }: { count: number }) {
+  return (
+    <span className="flex items-center gap-1 text-[11px] font-semibold text-warn" title="Based on few posts, so these numbers could move a lot as more posts come in.">
+      <Icon name="alert" size={11} /> Low confidence: only {count} {count === 1 ? "post" : "posts"}
+    </span>
   );
 }
 

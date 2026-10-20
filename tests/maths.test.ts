@@ -4,18 +4,19 @@
  */
 import { describe, expect, it } from "vitest";
 import { analyzeCreator } from "@/lib/analyze";
-import { computeMetrics } from "@/lib/metrics";
-import { estimateReach } from "@/lib/reach";
+import { computeMetrics, engagementBenchmark } from "@/lib/metrics";
+import { estimateReach, viewsToReach } from "@/lib/reach";
 import { growthFactor } from "@/lib/score";
-import { percentile } from "@/lib/stats";
+import { percentile, trimmedMean } from "@/lib/stats";
 import { sizeBandFor } from "@/lib/size-bands";
 import { applyFilters, EMPTY_FILTERS } from "@/lib/filter";
 import { shortlistTotals } from "@/lib/report";
 import { suggestNiches } from "@/lib/niche";
 import { normalizeHandle } from "@/lib/data/creators";
+import { APP_DEFAULTS } from "@config/app";
 import { creator, DAY, NOW, post, SETTINGS } from "./helpers";
 
-// A 20K-follower Instagram creator with 4 posts, 2/6/10/14 days old.
+// A 25K-follower Instagram creator with 4 posts, 2/6/10/14 days old.
 const basic = creator({
   posts: [post(2, 400, 10), post(6, 500, 20), post(10, 600, 30), post(14, 700, 40)],
 });
@@ -41,20 +42,31 @@ describe("engagement", () => {
   const m = computeMetrics(basic, SETTINGS, NOW);
 
   it("averages likes and comments", () => {
+    // Fewer than 5 posts, so nothing is trimmed: a plain average.
     expect(m.avgLikes).toBe(550); // (400+500+600+700)/4
     expect(m.avgComments).toBe(25); // (10+20+30+40)/4
   });
 
   it("works out engagement rate and label", () => {
-    // (550 + 25) / 20,000 = 2.875%. Micro Instagram: poor <1.5%, average <3% → "average"
-    expect(m.engagementRate).toBeCloseTo(0.02875);
+    // (550 + 25) / 25,000 = 2.3%. At 25K the micro numbers apply: poor <1.5%, average <3% → "average"
+    expect(m.engagementRate).toBeCloseTo(0.023);
     expect(m.engagementLabel).toBe("average");
   });
 
-  it("gives expected engagements as the middle 50% of posts", () => {
-    // Per post: 410, 520, 630, 740 → 492.5 to 657.5
-    expect(m.expectedEngagements!.low).toBeCloseTo(492.5);
-    expect(m.expectedEngagements!.high).toBeCloseTo(657.5);
+  it("marks few posts as low confidence and widens the expected range", () => {
+    // Only 4 posts (under 8), so the range is the 10th–90th percentile, not the middle 50%.
+    // Per post: 410, 520, 630, 740. 10th → 410 + 0.3 × 110 = 443; 90th → 630 + 0.7 × 110 = 707
+    expect(m.lowConfidence).toBe(true);
+    expect(m.expectedEngagements!.low).toBeCloseTo(443);
+    expect(m.expectedEngagements!.high).toBeCloseTo(707);
+  });
+
+  it("uses the middle 50% with enough posts", () => {
+    // 8 posts of 410, 420 … 480 engagements: middle 50% = 427.5 to 462.5
+    const eight = Array.from({ length: 8 }, (_, i) => ({ ...post(2 + i, 400 + i * 10, 10), id: `e${i}` }));
+    const m8 = computeMetrics(creator({ posts: eight }), SETTINGS, NOW);
+    expect(m8.lowConfidence).toBe(false);
+    expect(m8.expectedEngagements).toEqual({ low: 427.5, high: 462.5 });
   });
 
   it("leaves out posts under 24 hours old", () => {
@@ -78,23 +90,35 @@ describe("engagement", () => {
 
 describe("reach estimate", () => {
   it("uses benchmarks when there are no views", () => {
-    // Micro Instagram: 18%–35% of 20,000 = 3,600–7,000
+    // Micro Instagram: 18%–35% of 25,000 = 4,500–8,750
     const r = estimateReach(basic, computeMetrics(basic, SETTINGS, NOW));
-    expect(r).toMatchObject({ low: 3_600, high: 7_000, method: "benchmark" });
+    expect(r).toMatchObject({ low: 4_500, high: 8_750, method: "benchmark" });
   });
 
-  it("uses public views when at least 3 posts have them", () => {
-    // Views 1000/2000/3000/4000 → middle 50% = 1,750–3,250
+  it("uses public views × 0.6 when at least 3 posts have them", () => {
+    // Views 1000/2000/3000/4000 → middle 50% = 1,750–3,250. Views include repeat plays,
+    // so reach = 60% of that: 1,050–1,950
     const c = creator({ posts: [post(2, 400, 10, 1000), post(6, 500, 20, 2000), post(10, 600, 30, 3000), post(14, 700, 40, 4000)] });
     const r = estimateReach(c, computeMetrics(c, SETTINGS, NOW));
-    expect(r).toMatchObject({ low: 1_750, high: 3_250, method: "views" });
+    expect(r).toMatchObject({ low: 1_050, high: 1_950, method: "views" });
+  });
+
+  it("learns the views-to-reach factor from logged campaign results", () => {
+    // Two results reached 40% and 50% of their views → median 45%.
+    // Weight = 2 / (2 + 5) = 0.2857 → factor = 0.7143 × 60% + 0.2857 × 45% = 55.71%
+    const results = [
+      { id: "1", creatorId: "a", postUrl: "", reach: 4_000, impressions: null, views: 10_000, loggedBy: "", loggedAt: "" },
+      { id: "2", creatorId: "b", postUrl: "", reach: 5_000, impressions: null, views: 10_000, loggedBy: "", loggedAt: "" },
+    ];
+    expect(viewsToReach(results).factor).toBeCloseTo(0.5571, 4);
+    expect(viewsToReach([]).factor).toBe(0.6);
   });
 
   it("blends in logged campaign results for the same size band", () => {
     // Two other micro creators reached 30% and 40% of followers → median 35%.
     // Weight = 2 / (2 + 5) = 0.2857. Centre = 0.7143 × 26% + 0.2857 × 35% = 28.57%.
-    // Range shrinks by 1 − 0.2857/2 = 0.857: low = 28.57% − 8% × 0.857 = 21.71% → 4,343
-    //                                          high = 28.57% + 9% × 0.857 = 36.29% → 7,257
+    // Range shrinks by 1 − 0.2857/2 = 0.857: low = 28.57% − 8% × 0.857 = 21.71% × 25,000 → 5,429
+    //                                          high = 28.57% + 9% × 0.857 = 36.29% × 25,000 → 9,071
     const others = [creator({ id: "a", followers: 10_000 }), creator({ id: "b", followers: 40_000 })];
     const results = [
       { id: "1", creatorId: "a", postUrl: "", reach: 3_000, impressions: null, views: null, loggedBy: "", loggedAt: "" },
@@ -102,8 +126,8 @@ describe("reach estimate", () => {
     ];
     const r = estimateReach(basic, computeMetrics(basic, SETTINGS, NOW), results, [basic, ...others]);
     expect(r.method).toBe("benchmark+campaigns");
-    expect(r.low).toBe(4_343);
-    expect(r.high).toBe(7_257);
+    expect(r.low).toBe(5_429);
+    expect(r.high).toBe(9_071);
   });
 
   it("ignores campaign results from a different size band", () => {
@@ -115,18 +139,18 @@ describe("reach estimate", () => {
 
 describe("Creator Score", () => {
   it("matches the hand-worked example and re-balances missing factors", () => {
-    // Engagement: 2.875% is between poor (1.5% → 25) and average (3% → 50):
-    //   25 + 25 × (2.875 − 1.5) / 1.5 = 47.92
+    // Engagement (no views, so by followers only): 2.3% is between poor (1.5% → 25)
+    // and average (3% → 50): 25 + 25 × (2.3 − 1.5) / 1.5 = 38.33
     // Authenticity: no flags → 100
     // Consistency: 4 posts in 14 days = 8.6/month ≥ 8 → frequency 100.
     //   Spread of 410/520/630/740 = 0.2139 → steadiness 100 − 100 × 0.0139/0.8 = 98.26
     //   → (100 + 98.26) / 2 = 99.13
     // Views and growth have no data, so weights 30/25/15 are re-balanced over 70:
-    //   (30 × 47.92 + 25 × 100 + 15 × 99.13) / 70 = 77.49 → 77
+    //   (30 × 38.33 + 25 × 100 + 15 × 99.13) / 70 = 73.39 → 73
     const a = analyzeCreator(basic, SETTINGS, NOW);
     expect(a.flags).toEqual([]);
-    expect(a.score.breakdown).toEqual({ engagement: 48, authenticity: 100, consistency: 99 });
-    expect(a.score.total).toBe(77);
+    expect(a.score.breakdown).toEqual({ engagement: 38, authenticity: 100, consistency: 99 });
+    expect(a.score.total).toBe(73);
     expect(a.score.missing.map((x) => x.factor).sort()).toEqual(["growth", "views"]);
     expect(a.score.weightsUsed.engagement).toBeCloseTo(30 / 70);
   });
@@ -134,7 +158,7 @@ describe("Creator Score", () => {
   it("follows the team's weights", () => {
     // Only engagement counts → score = engagement score.
     const weights = { engagement: 10, authenticity: 0, views: 0, consistency: 0, growth: 0 };
-    expect(analyzeCreator(basic, { ...SETTINGS, weights }, NOW).score.total).toBe(48);
+    expect(analyzeCreator(basic, { ...SETTINGS, weights }, NOW).score.total).toBe(38);
   });
 
   it("scores growth from follower history", () => {
@@ -158,22 +182,50 @@ describe("Creator Score", () => {
     expect("missing" in growthFactor(c)).toBe(true);
   });
 
-  it("doesn't reward suspiciously high engagement", () => {
-    // 20% engagement on a micro account is 4× the "good" line: flagged, and engagement score drops below 100.
-    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 4_000, 5)) });
+  it("doesn't punish genuinely high engagement", () => {
+    // 4,100 / 25,000 = 16.4%: over 2× the "good" line, but with a normal 40 likes per comment
+    // and nothing else odd. That's just a great creator: full engagement marks, no flag.
+    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 4_000, 100)) });
     const a = analyzeCreator(c, SETTINGS, NOW);
-    expect(a.flags.map((f) => f.type)).toContain("high_engagement");
-    expect(a.score.breakdown.engagement).toBeLessThan(100);
+    expect(a.flags.map((f) => f.type)).not.toContain("high_engagement");
+    expect(a.score.breakdown.engagement).toBe(100);
+  });
+
+  it("flags very high engagement only when something else backs it up", () => {
+    // 16% engagement with 800 likes per comment (normal is up to 250): likely bought likes.
+    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 4_000, 5)) });
+    const flag = analyzeCreator(c, SETTINGS, NOW).flags.find((f) => f.type === "high_engagement");
+    expect(flag?.message).toMatch(/unusual likes-to-comments ratio/);
+  });
+
+  it("blends engagement by followers and by views", () => {
+    // 4 Reels, each 550 likes + 25 comments on 11,500 views.
+    // By followers: 575 / 25,000 = 2.3% → 38.33 (as above).
+    // By views: 575 / 11,500 = 5% → between poor (3% → 25) and average (6% → 50): 25 + 25 × 2/3 = 41.67
+    // Half and half: (38.33 + 41.67) / 2 = 40
+    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 550, 25, 11_500)) });
+    const a = analyzeCreator(c, SETTINGS, NOW);
+    expect(a.metrics.viewEngagementRate).toBeCloseTo(0.05);
+    expect(a.metrics.viewEngagementLabel).toBe("average");
+    expect(a.score.breakdown.engagement).toBe(40);
+  });
+
+  it("doesn't count weak engagement against Authenticity too", () => {
+    // Very low engagement shows a flag and lowers Engagement, but Authenticity stays 100.
+    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 95, 5)) });
+    const a = analyzeCreator(c, SETTINGS, NOW);
+    expect(a.flags.map((f) => f.type)).toContain("low_engagement");
+    expect(a.score.breakdown.authenticity).toBe(100);
   });
 });
 
 describe("warning flags", () => {
   it("flags very low engagement as high severity", () => {
-    // 0.5% on a micro account: below half of the 1.5% "poor" line
+    // 100 / 25,000 = 0.4%: below half of the 1.5% "poor" line
     const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 95, 5)) });
     const f = analyzeCreator(c, SETTINGS, NOW).flags.find((x) => x.type === "low_engagement");
     expect(f?.severity).toBe("high");
-    expect(f?.message).toMatch(/0\.5%/);
+    expect(f?.message).toMatch(/0\.4%/);
   });
 
   it("flags too few likes per comment", () => {
@@ -224,9 +276,9 @@ describe("helpers", () => {
   it("adds up shortlist totals", () => {
     const a = analyzeCreator(basic, SETTINGS, NOW);
     const t = shortlistTotals([a, a]);
-    expect(t.followers).toBe(40_000);
-    expect(t.reach).toEqual({ low: 7_200, high: 14_000 });
-    expect(t.averageScore).toBe(77);
+    expect(t.followers).toBe(50_000);
+    expect(t.reach).toEqual({ low: 9_000, high: 17_500 });
+    expect(t.averageScore).toBe(73);
   });
 
   it("suggests niches from a bio", () => {
@@ -245,20 +297,20 @@ describe("boosted and unusual posts", () => {
   const typical = [2, 4, 6, 8, 10, 12].map((d) => post(d, 500, 20));
   const boosted = { ...post(3, 5_000, 200), id: "boosted" };
 
-  it("sets aside a post far above the typical one and uses the median", () => {
+  it("sets aside a post far above the typical one", () => {
     // Median engagement of all 7 posts = 520; the boosted post (5,200) is over 3 × 520, so it's set aside.
-    // What's left: six posts of 520 → engagement rate 520 / 20,000 = 2.6%, not inflated by the ad.
+    // What's left: six posts of 520 → engagement rate 520 / 25,000 = 2.08%, not inflated by the ad.
     const m = computeMetrics(creator({ posts: [...typical, boosted] }), SETTINGS, NOW);
     expect(m.setAside).toEqual([{ post: expect.objectContaining({ id: "boosted" }), reason: "high_engagement" }]);
     expect(m.typicalPosts).toHaveLength(6);
     expect(m.avgLikes).toBe(500);
-    expect(m.engagementRate).toBeCloseTo(0.026);
+    expect(m.engagementRate).toBeCloseTo(0.0208);
   });
 
   it("would have been inflated by a plain average", () => {
-    // For comparison: the old average would be (6 × 520 + 5,200) / 7 = 1,188.6 → 5.9%.
-    const avg = (6 * 520 + 5_200) / 7 / 20_000;
-    expect(avg).toBeGreaterThan(0.059);
+    // For comparison: a plain average would be (6 × 520 + 5,200) / 7 = 1,188.6 → 4.75%.
+    const avg = (6 * 520 + 5_200) / 7 / 25_000;
+    expect(avg).toBeCloseTo(0.0475, 4);
   });
 
   it("doesn't set anything aside for normal ups and downs", () => {
@@ -338,5 +390,60 @@ describe("replacing set-aside posts", () => {
     // A creator who rarely posts: 12 posts spread over two years all count, as before.
     const rare = Array.from({ length: 12 }, (_, i) => ({ ...post(10 + i * 60, 500, 20), id: `r${i}` }));
     expect(computeMetrics(creator({ posts: rare }), SETTINGS, NOW).typicalPosts).toHaveLength(12);
+  });
+});
+
+describe("engagement maths update", () => {
+  it("has no cliff between size bands", () => {
+    // Old behaviour: "poor" jumped from 2% to 1.5% between 9,999 and 10,000 followers.
+    const a = engagementBenchmark("instagram", 9_999);
+    const b = engagementBenchmark("instagram", 10_000);
+    expect(Math.abs(a.poor - b.poor)).toBeLessThan(0.0001);
+    // Exactly at an anchor, that band's numbers apply as written.
+    expect(engagementBenchmark("instagram", 25_000)).toEqual({ poor: 0.015, average: 0.03, good: 0.05 });
+    // Halfway (on a log scale) between nano (5K) and micro (25K) ≈ 11,180: halfway between 2% and 1.5%.
+    expect(engagementBenchmark("instagram", Math.sqrt(5_000 * 25_000)).poor).toBeCloseTo(0.0175);
+  });
+
+  it("trims the most extreme posts from the average", () => {
+    // 5 values: drop the lowest (1) and highest (100), average the rest → 3
+    expect(trimmedMean([1, 2, 3, 4, 100])).toBe(3);
+    // Fewer than 5: plain average
+    expect(trimmedMean([1, 2, 3])).toBe(2);
+    // 12 values: drop 1 at each end
+    expect(trimmedMean([...Array(10).fill(10), 0, 1000])).toBe(10);
+  });
+
+  it("doesn't trim a creator who regularly goes viral", () => {
+    // 12 posts, 4 of them 5× the rest: a third of posts is their normal pattern, not boosting.
+    const posts = Array.from({ length: 12 }, (_, i) => ({ ...post(2 + i, i % 3 === 0 ? 2_500 : 500, 20), id: `v${i}` }));
+    const m = computeMetrics(creator({ posts }), SETTINGS, NOW);
+    expect(m.setAside).toEqual([]);
+    expect(m.typicalPosts).toHaveLength(12);
+  });
+
+  it("spots followers who never watch", () => {
+    // 25K followers, Reels get only 500 views (2% of followers; healthy for micro is ~35%),
+    // yet the people who watch engage well (45 / 500 = 9% per view) → inactive or bought followers.
+    const c = creator({ posts: [2, 6, 10, 14].map((d) => post(d, 40, 5, 500)) });
+    const a = analyzeCreator(c, SETTINGS, NOW);
+    const flag = a.flags.find((f) => f.type === "inactive_followers");
+    expect(flag?.severity).toBe("medium");
+    expect(a.score.breakdown.authenticity).toBe(80);
+  });
+
+  it("waits 3 days on Instagram and 7 days on YouTube by default", () => {
+    const defaults = { ...SETTINGS, minPostAgeHours: APP_DEFAULTS.minPostAgeHours, minPostAgeHoursYoutube: APP_DEFAULTS.minPostAgeHoursYoutube };
+    const posts = [post(2, 999, 9), post(4, 500, 20), post(8, 500, 20)];
+    // Instagram: the 2-day-old post is too new; 4- and 8-day-old posts count.
+    expect(computeMetrics(creator({ posts }), defaults, NOW).typicalPosts).toHaveLength(2);
+    // YouTube: only the 8-day-old video counts.
+    expect(computeMetrics(creator({ platform: "youtube", posts }), defaults, NOW).typicalPosts).toHaveLength(1);
+  });
+
+  it("works out engagement per view, ignoring posts without views", () => {
+    // Two Reels: 600/10,000 = 6% and 400/10,000 = 4% → average 5%. The photo (no views) is ignored.
+    const c = creator({ posts: [post(2, 580, 20, 10_000), post(4, 390, 10, 10_000), post(6, 900, 50)] });
+    expect(computeMetrics(c, SETTINGS, NOW).viewEngagementRate).toBeCloseTo(0.05);
   });
 });

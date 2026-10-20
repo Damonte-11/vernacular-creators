@@ -5,7 +5,20 @@ import type { Creator, Post, Settings } from "@/lib/types";
 export const NOW = Date.UTC(2026, 9, 18, 12);
 export const DAY = 86_400_000;
 
-export const SETTINGS: Settings = { weights: { ...DEFAULT_SCORE_WEIGHTS }, ...APP_DEFAULTS };
+/**
+ * The app defaults, except posts count once they're 24 hours old so the
+ * hand-worked examples can use recent posts (the 3-day / 7-day defaults have
+ * their own tests).
+ */
+export const SETTINGS: Settings = {
+  weights: { ...DEFAULT_SCORE_WEIGHTS },
+  ...APP_DEFAULTS,
+  minPostAgeHours: 24,
+  minPostAgeHoursYoutube: 24,
+};
+
+/** 25,000 followers: exactly at the "micro" anchor, so the micro benchmarks apply as written. */
+export const FOLLOWERS = 25_000;
 
 export function post(daysAgo: number, likes: number | null, comments: number, views: number | null = null): Post {
   return {
@@ -33,7 +46,7 @@ export function creator(overrides: Partial<Creator> = {}): Creator {
     niche: null,
     city: null,
     country: "Nigeria",
-    followers: 20_000,
+    followers: FOLLOWERS,
     mediaCount: 100,
     accountType: "creator",
     verified: false,
@@ -41,7 +54,7 @@ export function creator(overrides: Partial<Creator> = {}): Creator {
     notes: "",
     tags: [],
     posts: [],
-    snapshots: [{ followers: overrides.followers ?? 20_000, capturedAt: new Date(NOW).toISOString() }],
+    snapshots: [{ followers: overrides.followers ?? FOLLOWERS, capturedAt: new Date(NOW).toISOString() }],
     isSample: false,
     ...overrides,
   };

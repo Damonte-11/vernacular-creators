@@ -78,9 +78,10 @@ export function ReportView({
         <footer className="mt-8 border-t border-line pt-4 text-xs leading-relaxed text-muted print-avoid-break">
           <p className="font-semibold text-ink-2">How to read this report</p>
           <p className="mt-1">
-            Numbers come from each creator&apos;s public profile, using their recent posts. Engagement rate is average likes plus comments divided by followers.
-            Expected engagements and reach show the middle 50% of recent posts. Reach is an estimate: it uses public view counts where available, and typical
-            reach for creators of the same size otherwise. The Creator Score (out of 100) compares each creator with others of a similar size. Warning flags are
+            Numbers come from each creator&apos;s public profile, using their recent posts (unusually high, possibly boosted posts are set aside). Engagement
+            by followers is average likes plus comments per post divided by followers; engagement by views is likes plus comments divided by views, showing how
+            much the people who watch react. Expected engagements and reach show the middle 50% of recent posts. Reach is an estimate: about 60% of public
+            views where available (views include repeat plays), and typical reach for creators of the same size otherwise. The Creator Score (out of 100) compares each creator with others of a similar size. Warning flags are
             prompts to look closer, not proof of wrongdoing.
           </p>
         </footer>
@@ -121,14 +122,26 @@ function CreatorCard({ a }: { a: CreatorAnalysis }) {
           <p className="mt-1 text-[10px] font-semibold uppercase text-muted">Score</p>
         </div>
       </div>
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
         <Stat label="Followers" value={formatNumber(c.followers)} />
         <Stat
-          label="Engagement rate"
+          label="Engagement (followers)"
           value={
             <span className="flex items-center gap-1.5">
               {formatPercent(m.engagementRate)} <EngagementChip label={m.engagementLabel} />
             </span>
+          }
+        />
+        <Stat
+          label="Engagement by views"
+          value={
+            m.viewEngagementRate === null ? (
+              "—"
+            ) : (
+              <span className="flex items-center gap-1.5">
+                {formatPercent(m.viewEngagementRate)} <EngagementChip label={m.viewEngagementLabel} />
+              </span>
+            )
           }
         />
         <Stat label="Engagements / post" value={m.likesHidden ? "Likes hidden" : formatRange(m.expectedEngagements)} />

@@ -1,14 +1,16 @@
-import { CAMPAIGN_BLEND, REACH_RATIOS } from "@config/benchmarks";
+import { CAMPAIGN_BLEND, REACH_RATIOS, VIEWS_TO_REACH } from "@config/benchmarks";
+import { smoothByFollowers } from "./benchmarks";
 import type { CampaignResult, Creator, Metrics, ReachEstimate } from "./types";
 import { median, percentile } from "./stats";
-import { sizeBandFor, sizeBandLabel } from "./size-bands";
+import { sizeBandFor } from "./size-bands";
 
 /** Views need at least this many posts with public views to be trusted. */
 export const MIN_VIEW_POSTS = 3;
 
 /**
  * Estimated reach per post.
- * 1. If enough recent posts have public views → middle 50% of those views.
+ * 1. If enough recent posts have public views → middle 50% of those views,
+ *    × the views-to-reach factor (views include repeat plays).
  * 2. Otherwise → followers × benchmark reach ratio for the size band,
  *    blended with logged campaign results where we have them.
  */
@@ -20,16 +22,17 @@ export function estimateReach(
 ): ReachEstimate {
   const views = metrics.viewPosts.map((p) => p.views as number);
   if (views.length >= MIN_VIEW_POSTS) {
+    const f = viewsToReach(campaignResults);
+    const kind = creator.platform === "instagram" ? "Reels" : "videos";
     return {
-      low: Math.round(percentile(views, 0.25)!),
-      high: Math.round(percentile(views, 0.75)!),
+      low: Math.round(percentile(views, 0.25)! * f.factor),
+      high: Math.round(percentile(views, 0.75)! * f.factor),
       method: "views",
-      note: `Based on public view counts of ${views.length} recent ${creator.platform === "instagram" ? "Reels" : "videos"} (middle 50%), leaving out any unusually high, possibly boosted ones. Views can include repeat views by the same person, so true reach may be a little lower.`,
+      note: `Based on public view counts of ${views.length} recent ${kind} (middle 50%), leaving out any unusually high, possibly boosted ones. Views include repeat plays, so reach is taken as ${pct(f.factor)} of views${f.fromCampaigns ? `, learned from ${f.fromCampaigns} logged campaign results` : ""}.`,
     };
   }
 
-  const ratios = REACH_RATIOS[creator.platform][metrics.band];
-  const bandName = sizeBandLabel(metrics.band).toLowerCase();
+  const ratios = smoothByFollowers(REACH_RATIOS[creator.platform], creator.followers);
   const blend = campaignRatio(creator, campaignResults, allCreators);
 
   if (!blend) {
@@ -37,7 +40,7 @@ export function estimateReach(
       low: Math.round(creator.followers * ratios.low),
       high: Math.round(creator.followers * ratios.high),
       method: "benchmark",
-      note: `No public view counts, so this uses a typical reach of ${pct(ratios.low)}–${pct(ratios.high)} of followers for ${bandName} ${platformName(creator.platform)} creators. Treat it as a rough guide.`,
+      note: `No public view counts, so this uses a typical reach of ${pct(ratios.low)}–${pct(ratios.high)} of followers for ${platformName(creator.platform)} creators of this size. Treat it as a rough guide.`,
     };
   }
 
@@ -51,7 +54,7 @@ export function estimateReach(
     low: Math.round(creator.followers * low),
     high: Math.round(creator.followers * high),
     method: "benchmark+campaigns",
-    note: `No public view counts. Mixes the typical ${bandName} reach (${pct(ratios.low)}–${pct(ratios.high)} of followers) with ${blend.count} logged campaign results ${blend.scope} (median ${pct(blend.ratio)} of followers).`,
+    note: `No public view counts. Mixes the typical reach for this size (${pct(ratios.low)}–${pct(ratios.high)} of followers) with ${blend.count} logged campaign results ${blend.scope} (median ${pct(blend.ratio)} of followers).`,
   };
 }
 
@@ -76,6 +79,19 @@ function campaignRatio(
 
   const scope = chosen === sameNiche ? `from ${creator.niche} creators of this size` : "from creators of this size";
   return { ratio: median(chosen.map((x) => (x.r.reach as number) / x.c.followers))!, count: chosen.length, scope };
+}
+
+/**
+ * Share of views that are unique people reached. Starts at VIEWS_TO_REACH and
+ * moves towards what logged campaign results (with both reach and views) show.
+ */
+export function viewsToReach(results: CampaignResult[]): { factor: number; fromCampaigns: number } {
+  const ratios = results
+    .filter((r) => r.reach !== null && r.views !== null && r.views > 0)
+    .map((r) => Math.min(1, (r.reach as number) / (r.views as number)));
+  if (ratios.length < CAMPAIGN_BLEND.minResults) return { factor: VIEWS_TO_REACH, fromCampaigns: 0 };
+  const w = Math.min(ratios.length / (ratios.length + CAMPAIGN_BLEND.smoothing), CAMPAIGN_BLEND.maxWeight);
+  return { factor: (1 - w) * VIEWS_TO_REACH + w * median(ratios)!, fromCampaigns: ratios.length };
 }
 
 function pct(n: number): string {

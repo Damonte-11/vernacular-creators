@@ -2,8 +2,13 @@
 export const APP_DEFAULTS = {
   /** How many recent posts the averages are based on. */
   recentPostCount: 12,
-  /** Posts younger than this are left out (their numbers are still growing). */
-  minPostAgeHours: 24,
+  /**
+   * Posts younger than this are left out because their numbers are still
+   * growing. Instagram posts get most of their likes in the first ~3 days;
+   * YouTube videos keep growing for about a week.
+   */
+  minPostAgeHours: 72,
+  minPostAgeHoursYoutube: 168,
   /** Refresh a creator from the API when their data is older than this (Stage 2). */
   refreshIntervalHours: 24,
 };

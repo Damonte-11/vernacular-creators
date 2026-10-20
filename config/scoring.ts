@@ -16,11 +16,11 @@ export type ScoreFactor = keyof typeof DEFAULT_SCORE_WEIGHTS;
 export const SCORE_FACTOR_LABELS: Record<ScoreFactor, { label: string; help: string }> = {
   engagement: {
     label: "Engagement",
-    help: "Typical engagement rate compared with creators of the same size.",
+    help: "Engagement rate by followers (compared with creators of the same size) and, where posts have views, by views.",
   },
   authenticity: {
     label: "Authenticity",
-    help: "Starts at 100 and drops for each warning flag.",
+    help: "Starts at 100 and drops for each sign of fake or bought activity.",
   },
   views: {
     label: "Views",

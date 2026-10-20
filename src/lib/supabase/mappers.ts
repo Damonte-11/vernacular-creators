@@ -85,6 +85,8 @@ export interface SettingsRow {
   weights: Partial<Settings["weights"]>;
   recent_post_count: number;
   min_post_age_hours: number;
+  /** Added in migration 0003; missing until it's run. */
+  min_post_age_hours_youtube?: number;
   refresh_interval_hours: number;
 }
 
@@ -94,6 +96,7 @@ export function settingsFromRow(r: SettingsRow | null): Settings {
     weights: { ...DEFAULT_SCORE_WEIGHTS, ...r.weights },
     recentPostCount: r.recent_post_count,
     minPostAgeHours: r.min_post_age_hours,
+    minPostAgeHoursYoutube: r.min_post_age_hours_youtube ?? APP_DEFAULTS.minPostAgeHoursYoutube,
     refreshIntervalHours: r.refresh_interval_hours,
   };
 }
@@ -103,6 +106,7 @@ export function settingsToRow(s: Settings): SettingsRow {
     weights: s.weights,
     recent_post_count: s.recentPostCount,
     min_post_age_hours: s.minPostAgeHours,
+    min_post_age_hours_youtube: s.minPostAgeHoursYoutube,
     refresh_interval_hours: s.refreshIntervalHours,
   };
 }

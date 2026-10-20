@@ -39,3 +39,16 @@ export function piecewise(x: number, points: [number, number][]): number {
 }
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Average after dropping the most extreme values at both ends (10% each side,
+ * at least one, once there are 5 or more values). Close to what other tools
+ * report as "average", but one freak post can't swing it.
+ */
+export function trimmedMean(values: number[]): number | null {
+  if (values.length === 0) return null;
+  if (values.length < 5) return mean(values);
+  const sorted = [...values].sort((a, b) => a - b);
+  const cut = Math.max(1, Math.floor(values.length * 0.1));
+  return mean(sorted.slice(cut, sorted.length - cut));
+}

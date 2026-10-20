@@ -53,7 +53,10 @@ export interface Creator {
 export interface Settings {
   weights: Record<ScoreFactor, number>;
   recentPostCount: number;
+  /** Instagram: posts newer than this are left out (numbers still growing). */
   minPostAgeHours: number;
+  /** YouTube: videos newer than this are left out. */
+  minPostAgeHoursYoutube: number;
   refreshIntervalHours: number;
 }
 
@@ -76,14 +79,20 @@ export interface Metrics {
   setAside: { post: Post; reason: SetAsideReason }[];
   /** Posts the views numbers are based on (may reach further back than postsUsed). */
   viewPosts: Post[];
-  /** Typical (median) values per post, after setting posts aside. */
+  /** Average values per post (trimmed: the most extreme posts dropped), after setting posts aside. */
   avgLikes: number | null;
   avgComments: number | null;
   avgViews: number | null;
   viewPostCount: number;
   likesHidden: boolean;
+  /** (likes + comments) per post ÷ followers. */
   engagementRate: number | null;
   engagementLabel: EngagementLabel | null;
+  /** (likes + comments) ÷ views, on posts with views: how much the people who watch react. */
+  viewEngagementRate: number | null;
+  viewEngagementLabel: EngagementLabel | null;
+  /** Too few posts behind the numbers to be sure. */
+  lowConfidence: boolean;
   expectedEngagements: Range | null;
 }
 
@@ -104,7 +113,8 @@ export interface Flag {
     | "follower_jump"
     | "likes_comments_ratio"
     | "posting_gap"
-    | "boosted_posts";
+    | "boosted_posts"
+    | "inactive_followers";
   severity: FlagSeverity;
   message: string;
 }

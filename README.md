@@ -57,19 +57,23 @@ In **demo mode**, your changes (shortlists, notes, settings, added creators) are
 
 ## How the numbers work
 
-All calculations use a creator's **recent posts**: the last 12 by default, leaving out posts under 24 hours old because their numbers are still climbing.
+All calculations use a creator's **recent posts**: the last 12 by default. Posts newer than **3 days (Instagram)** or **7 days (YouTube)** are left out because their numbers are still climbing.
 
-- **Typical post, not the average:** likes, comments, views and engagement use the **median** (the middle post), so one big post can't inflate them.
-- **Possibly boosted posts are set aside:** a post with more than **3×** a typical post's engagement or views (likely paid ads, or a one-off viral hit) is left out and marked on the profile, and **the next older post takes its place** (up to 6 months back), so the numbers still use 12 normal posts. The team can also **exclude any post by hand**, for example a known ad. Two or more set-aside posts raise a "possibly boosted" flag. Instagram doesn't say which posts were promoted, and its Reel view counts include paid views, which is why this check exists.
-- **Views** come from the last 12 posts that **have** view counts (Instagram only has them on Reels), looking back up to 6 months.
-- **Engagement rate** = typical (likes + comments) per post ÷ followers. The label (poor / average / good / great) compares the creator with others of the **same size**.
-- **Expected engagements per post**: the middle 50% of recent posts (we ignore the best 25% and the worst 25%).
+- **Possibly boosted posts are set aside.** A post with more than **3×** a typical post's engagement or views (likely paid ads, or a one-off viral hit) is left out and marked on the profile, and the next older post takes its place (up to 6 months back). If more than a quarter of posts are that big, it's simply the creator's pattern and nothing is set aside. The team can also **exclude any post by hand**, for example a known ad. Instagram doesn't say which posts were promoted, and its Reel view counts include paid views, which is why this check exists.
+- **Averages are "trimmed":** the single most extreme post at each end is dropped (10% each side) before averaging. That lands close to what other tools report, but one freak post can't swing it.
+- **Engagement rate (by followers)** = average (likes + comments) per post ÷ followers. This is the classic measure most tools show.
+- **Engagement rate (by views)** = (likes + comments) ÷ views, on posts that have views (Instagram Reels, YouTube videos). It shows how much the people who actually watch react, and it isn't affected by fake or inactive followers. HypeAuditor's engagement rate for Reels-heavy creators works this way.
+- **Labels** (poor / average / good / great) compare each creator with others of the **same size**. Each size's benchmarks blend smoothly into the next, so there's no sudden jump between, say, 9,999 and 10,000 followers.
+- **Expected engagements per post**: the middle 50% of recent posts (widened to the 10th–90th percentile when there are few posts).
+- **Low confidence** is shown when fewer than 8 posts are behind the numbers.
 - **Estimated reach per post** (always marked *Estimate*):
-  - if at least 3 recent posts have public view counts (YouTube videos, Instagram Reels), we use the middle 50% of those views
-  - otherwise we use a typical reach ratio for creators of that size (e.g. 18–35% of followers for micro Instagram creators), which gives a wider range
-  - if you've logged campaign results for creators of that size, they're blended in
-- **Warning flags**: very low engagement, unusually high engagement, big swings between posts, sudden follower jumps, odd likes-to-comments ratios, and long gaps in posting. Each one explains itself in a sentence.
-- **Creator Score (0–100)**: a weighted mix of Engagement, Authenticity, Views, Consistency and Growth. Each is scored against creators of the **same size**. If a factor has no data (for example no public views), it's left out and the other weights are re-balanced. The profile shows which factors were used, and a **!** marks scores based on limited data.
+  - where at least 3 recent posts have views: the middle 50% of views × **60%**, because views include repeat plays. Logged campaign results with both reach and views adjust the 60% over time.
+  - otherwise: a typical reach ratio for creators of that size, blended with logged campaign results where available.
+- **Warning flags**: low engagement, very high engagement (only when backed by another sign, such as an odd likes-to-comments ratio, a follower jump, or an unrealistic engagement per view), **inactive followers** (very few views for the follower count while viewers engage normally), big swings between posts, sudden follower jumps, odd likes-to-comments ratios, possibly boosted posts, and long gaps in posting. Each one explains itself in a sentence.
+- **Creator Score (0–100)**: a weighted mix of Engagement, Authenticity, Views, Consistency and Growth, each scored against creators of the same size.
+  - **Engagement** uses both rates, half and half, where views exist.
+  - **Authenticity** only drops for signs of fake or bought activity. Weak engagement shows as a warning but isn't counted twice.
+  - If a factor has no data, it's left out and the other weights are re-balanced. The profile shows which factors were used, and a **!** marks scores based on limited data.
 
 **Size bands:** Nano (under 10K), Micro (10K–50K), Mid-tier (50K–250K), Macro (250K–1M), Mega (1M+).
 

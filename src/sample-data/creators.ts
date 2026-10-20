@@ -174,12 +174,12 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
       comments = Math.max(0, Math.round(engagements / (likesPerComment + 1)));
       if (type === "reel") {
         let vr = VIEWS_RATIO_TARGETS.instagram[band] * (0.6 + quality);
-        if (arch.has("fake_followers")) vr *= 0.25;
+        if (arch.has("fake_followers")) vr *= 0.1; // bought followers never watch
         views = Math.round(spec.followers * vr * noise() * boost);
       }
     } else {
       let vr = VIEWS_RATIO_TARGETS.youtube[band] * (0.6 + quality) * (type === "short" ? 1.8 : 1);
-      if (arch.has("fake_followers")) vr *= 0.15;
+      if (arch.has("fake_followers")) vr *= 0.08;
       views = Math.round(spec.followers * vr * noise());
       const likeRate = arch.has("bought_likes") ? 0.15 : 0.025 + r() * 0.025;
       likes = Math.round(views * likeRate);

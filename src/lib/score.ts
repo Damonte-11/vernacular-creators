@@ -1,9 +1,11 @@
-import { ENGAGEMENT_BENCHMARKS, POSTING_FREQUENCY_TARGET, VIEWS_RATIO_TARGETS } from "@config/benchmarks";
-import { FLAG_PENALTIES, FLAG_THRESHOLDS } from "@config/flags";
+import { POSTING_FREQUENCY_TARGET, VIEW_ENGAGEMENT_BENCHMARKS, VIEW_ENGAGEMENT_SCORE_SHARE, VIEWS_RATIO_TARGETS } from "@config/benchmarks";
+import { AUTHENTICITY_FLAGS, FLAG_PENALTIES } from "@config/flags";
 import { MIN_GROWTH_HISTORY_DAYS, type ScoreFactor } from "@config/scoring";
 import type { Creator, Flag, Metrics, ScoreResult, Settings } from "./types";
 import { coefficientOfVariation, DAY_MS, piecewise } from "./stats";
 import { MIN_VIEW_POSTS } from "./reach";
+import { smoothNumber } from "./benchmarks";
+import { engagementBenchmark } from "./metrics";
 
 /** Minimum posts needed to judge authenticity and consistency. */
 export const MIN_POSTS_FOR_SCORE = 4;
@@ -56,29 +58,37 @@ export function computeScore(
   return { total: Math.round(total), breakdown, weightsUsed, missing };
 }
 
+/** 0 at zero, 25 at "poor", 50 at "average", 75 at "good", 100 at 1.5 × "good" and above. */
+function rateScore(rate: number, b: { poor: number; average: number; good: number }): number {
+  return piecewise(rate, [
+    [0, 0],
+    [b.poor, 25],
+    [b.average, 50],
+    [b.good, 75],
+    [b.good * 1.5, 100],
+  ]);
+}
+
+/**
+ * Engagement: by followers (compared with creators of the same size) and, where
+ * posts have views, by views. High engagement is never marked down here;
+ * suspicious cases are handled by the Authenticity flags instead.
+ */
 export function engagementFactor(creator: Creator, metrics: Metrics): FactorResult {
   if (metrics.engagementRate === null) {
     return { missing: metrics.likesHidden ? "Likes are hidden on this account." : "Not enough recent posts." };
   }
-  const b = ENGAGEMENT_BENCHMARKS[creator.platform][metrics.band];
-  // Above the "suspiciously high" line, higher no longer means better.
-  const suspicious = b.good * FLAG_THRESHOLDS.highEngagementFactor;
-  return {
-    score: piecewise(metrics.engagementRate, [
-      [0, 0],
-      [b.poor, 25],
-      [b.average, 50],
-      [b.good, 75],
-      [b.good * 1.5, 100],
-      [suspicious, 100],
-      [suspicious * 1.5, 40],
-    ]),
-  };
+  const byFollowers = rateScore(metrics.engagementRate, engagementBenchmark(creator.platform, creator.followers));
+  if (metrics.viewEngagementRate === null || metrics.viewPostCount < MIN_VIEW_POSTS) return { score: byFollowers };
+  const byViews = rateScore(metrics.viewEngagementRate, VIEW_ENGAGEMENT_BENCHMARKS[creator.platform]);
+  return { score: (1 - VIEW_ENGAGEMENT_SCORE_SHARE) * byFollowers + VIEW_ENGAGEMENT_SCORE_SHARE * byViews };
 }
 
+/** Starts at 100 and drops for each sign of fake or bought activity (see AUTHENTICITY_FLAGS). */
 export function authenticityFactor(metrics: Metrics, flags: Flag[]): FactorResult {
   if (metrics.postsUsed.length < MIN_POSTS_FOR_SCORE) return { missing: "Not enough recent posts." };
-  const penalty = flags.reduce((sum, f) => sum + FLAG_PENALTIES[f.severity], 0);
+  const counted: readonly string[] = AUTHENTICITY_FLAGS;
+  const penalty = flags.filter((f) => counted.includes(f.type)).reduce((sum, f) => sum + FLAG_PENALTIES[f.severity], 0);
   return { score: Math.max(0, 100 - penalty) };
 }
 
@@ -86,7 +96,7 @@ export function viewsFactor(creator: Creator, metrics: Metrics): FactorResult {
   if (metrics.viewPostCount < MIN_VIEW_POSTS || metrics.avgViews === null || creator.followers <= 0) {
     return { missing: "No public view counts on recent posts." };
   }
-  const target = VIEWS_RATIO_TARGETS[creator.platform][metrics.band];
+  const target = smoothNumber(VIEWS_RATIO_TARGETS[creator.platform], creator.followers);
   const ratio = metrics.avgViews / creator.followers;
   return {
     score: piecewise(ratio, [

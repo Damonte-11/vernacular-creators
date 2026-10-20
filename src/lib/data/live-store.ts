@@ -81,8 +81,8 @@ async function save(what: string, run: () => PromiseLike<{ error: unknown }>) {
 
 function message(e: unknown): string {
   const text = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : String(e);
-  if (/excluded/.test(text) && /column/.test(text)) {
-    return "the database needs a small update first. Run supabase/migrations/0002_post_exclusions.sql in Supabase's SQL Editor.";
+  if (/column/i.test(text) && /excluded|min_post_age_hours_youtube/.test(text)) {
+    return "the database needs a small update first. Run the files 0002 and 0003 from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
   return text;
 }

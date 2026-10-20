@@ -13,6 +13,9 @@ export interface CreatorFilters {
   /** Percent, e.g. "2" = 2%. */
   erMin: string;
   erMax: string;
+  /** Engagement by views, percent. */
+  verMin: string;
+  verMax: string;
   scoreMin: string;
   scoreMax: string;
   verified: "" | "yes" | "no";
@@ -29,6 +32,8 @@ export const EMPTY_FILTERS: CreatorFilters = {
   followersMax: "",
   erMin: "",
   erMax: "",
+  verMin: "",
+  verMax: "",
   scoreMin: "",
   scoreMax: "",
   verified: "",
@@ -50,6 +55,8 @@ export function applyFilters(list: CreatorAnalysis[], f: CreatorFilters): Creato
   const fMax = num(f.followersMax);
   const erMin = num(f.erMin);
   const erMax = num(f.erMax);
+  const verMin = num(f.verMin);
+  const verMax = num(f.verMax);
   const sMin = num(f.scoreMin);
   const sMax = num(f.scoreMax);
 
@@ -64,6 +71,8 @@ export function applyFilters(list: CreatorAnalysis[], f: CreatorFilters): Creato
     if (fMax !== null && c.followers > fMax) return false;
     if (erMin !== null && (m.engagementRate === null || m.engagementRate * 100 < erMin)) return false;
     if (erMax !== null && (m.engagementRate === null || m.engagementRate * 100 > erMax)) return false;
+    if (verMin !== null && (m.viewEngagementRate === null || m.viewEngagementRate * 100 < verMin)) return false;
+    if (verMax !== null && (m.viewEngagementRate === null || m.viewEngagementRate * 100 > verMax)) return false;
     if (sMin !== null && (score.total === null || score.total < sMin)) return false;
     if (sMax !== null && (score.total === null || score.total > sMax)) return false;
     if (f.verified === "yes" && !c.verified) return false;

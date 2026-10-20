@@ -8,8 +8,21 @@ export const FLAG_THRESHOLDS = {
   /** …and "high" severity when below the "poor" line × this. */
   veryLowEngagementFactor: 0.5,
 
-  /** Unusually high engagement: above the band's "good" line × this. */
+  /**
+   * Unusually high engagement: above the "good" line × this, AND backed by
+   * another sign (odd likes-to-comments ratio, a follower jump, or more
+   * engagement per view than is realistic). High engagement alone is good.
+   */
   highEngagementFactor: 2,
+  /** More likes + comments per view than this is unrealistic (likely bought likes). */
+  maxViewEngagement: 0.3,
+
+  /**
+   * Inactive followers: views per post below this share of the healthy
+   * views-to-followers level, while people who do watch engage normally.
+   * Means most followers never see the posts (often bought or old followers).
+   */
+  inactiveFollowersViewShare: 0.25,
 
   /** Engagement swings: spread between posts (coefficient of variation) above this. */
   maxEngagementVariation: 0.9,
@@ -40,7 +53,29 @@ export const FLAG_THRESHOLDS = {
   minPostsForOutliers: 5,
   /** Raise the "possibly boosted posts" flag when at least this many are set aside. */
   minOutliersForFlag: 2,
+  /**
+   * If more than this share of posts would be set aside, big posts are simply
+   * this creator's normal pattern (e.g. regularly viral), so nothing is set aside.
+   */
+  maxOutlierShare: 0.25,
+
+  /** Fewer posts than this behind the numbers → marked "Low confidence". */
+  minPostsForConfidence: 8,
 } as const;
 
 /** How many authenticity points (out of 100) each flag severity costs. */
 export const FLAG_PENALTIES = { low: 10, medium: 20, high: 35 } as const;
+
+/**
+ * Only these flags lower the Authenticity score: signs of fake or bought
+ * activity. Others (low engagement, posting gaps, boosted posts) are shown as
+ * warnings but are already reflected in the other score factors, so they
+ * aren't counted twice.
+ */
+export const AUTHENTICITY_FLAGS = [
+  "high_engagement",
+  "follower_jump",
+  "likes_comments_ratio",
+  "engagement_swings",
+  "inactive_followers",
+] as const;

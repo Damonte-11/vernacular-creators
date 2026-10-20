@@ -1,5 +1,5 @@
 "use client";
-import { ENGAGEMENT_BENCHMARKS, REACH_RATIOS } from "@config/benchmarks";
+import { ENGAGEMENT_BENCHMARKS, REACH_RATIOS, VIEW_ENGAGEMENT_BENCHMARKS, VIEWS_TO_REACH } from "@config/benchmarks";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { SCORE_FACTOR_LABELS, type ScoreFactor } from "@config/scoring";
 import { SIZE_BANDS } from "@config/size-bands";
@@ -61,7 +61,7 @@ export default function SettingsPage() {
 
       <Card className="mb-6 p-5">
         <h2 className="mb-4 font-bold">Data</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <NumberSetting
             label="Recent posts to use"
             hint="Averages are based on this many recent posts."
@@ -71,12 +71,20 @@ export default function SettingsPage() {
             onChange={(v) => actions.updateSettings({ recentPostCount: v })}
           />
           <NumberSetting
-            label="Skip posts newer than (hours)"
-            hint="Brand-new posts are still gaining likes."
+            label="Instagram: skip posts newer than (hours)"
+            hint="New posts are still gaining likes. Default 72 (3 days)."
             value={settings.minPostAgeHours}
             min={0}
-            max={168}
+            max={336}
             onChange={(v) => actions.updateSettings({ minPostAgeHours: v })}
+          />
+          <NumberSetting
+            label="YouTube: skip videos newer than (hours)"
+            hint="Videos keep growing for about a week. Default 168 (7 days)."
+            value={settings.minPostAgeHoursYoutube}
+            min={0}
+            max={720}
+            onChange={(v) => actions.updateSettings({ minPostAgeHoursYoutube: v })}
           />
           <NumberSetting
             label="Refresh data after (hours)"
@@ -93,7 +101,7 @@ export default function SettingsPage() {
         <h2 className="font-bold">Benchmarks and thresholds</h2>
         <p className="mb-4 text-sm text-ink-2">
           These are kept in the <code className="rounded bg-canvas px-1">config</code> folder so they&apos;re easy to adjust. Tell me (or a developer) what to
-          change.
+          change. Each size&apos;s numbers apply at its typical follower count and blend smoothly in between, so there&apos;s no sudden jump between sizes.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -134,7 +142,22 @@ export default function SettingsPage() {
           </table>
         </div>
         <ul className="mt-4 space-y-1 text-sm text-ink-2">
-          <li>Unusually high engagement: more than {FLAG_THRESHOLDS.highEngagementFactor}× the &quot;good&quot; line.</li>
+          <li>
+            Engagement by views: poor below {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.poor, 0)}, good from{" "}
+            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.average, 0)}, great from {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.good, 0)} on Instagram (
+            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.poor, 1)} / {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.average, 0)} /{" "}
+            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.good, 0)} on YouTube). The Engagement score uses both rates half and half where views exist.
+          </li>
+          <li>Reach from views: {formatPercent(VIEWS_TO_REACH, 0)} of views (views include repeat plays), adjusted by logged campaign results.</li>
+          <li>
+            Unusually high engagement: more than {FLAG_THRESHOLDS.highEngagementFactor}× the &quot;good&quot; line, flagged only when backed by another sign
+            (odd likes-to-comments ratio, a follower jump, or over {formatPercent(FLAG_THRESHOLDS.maxViewEngagement, 0)} engagement per view).
+          </li>
+          <li>
+            Inactive followers: views under {formatPercent(FLAG_THRESHOLDS.inactiveFollowersViewShare, 0)} of the healthy level for the size, while viewers engage
+            normally.
+          </li>
+          <li>Only signs of fake or bought activity lower the Authenticity score; low engagement, gaps and boosted posts are shown as warnings only.</li>
           <li>Follower jump: more than {formatPercent(FLAG_THRESHOLDS.followerJumpPct, 0)} growth within {FLAG_THRESHOLDS.followerJumpWindowDays} days.</li>
           <li>
             Likes per comment: normal is {FLAG_THRESHOLDS.likesPerComment.instagram.min}–{FLAG_THRESHOLDS.likesPerComment.instagram.max} on Instagram,{" "}
@@ -143,7 +166,12 @@ export default function SettingsPage() {
           <li>Posting gap: more than {FLAG_THRESHOLDS.maxPostingGapDays} days.</li>
           <li>
             Possibly boosted posts: a post with more than {FLAG_THRESHOLDS.outlierFactor}× a typical post&apos;s engagement or views is set aside and not
-            counted (needs at least {FLAG_THRESHOLDS.minPostsForOutliers} posts). The team can also exclude any post by hand.
+            counted, and the next older post takes its place (needs at least {FLAG_THRESHOLDS.minPostsForOutliers} posts; if over{" "}
+            {formatPercent(FLAG_THRESHOLDS.maxOutlierShare, 0)} of posts qualify, that&apos;s the creator&apos;s normal pattern and none are set aside). The team can
+            also exclude any post by hand.
+          </li>
+          <li>
+            Low confidence: shown when fewer than {FLAG_THRESHOLDS.minPostsForConfidence} posts are behind the numbers.
           </li>
         </ul>
       </Card>

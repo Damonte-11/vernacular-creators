@@ -117,7 +117,8 @@ export function FilterPanel({
           <Select label="Country" value={filters.country} onChange={set("country")} options={countries.map((c) => ({ value: c, label: c }))} />
           <Select label="Size" value={filters.band} onChange={set("band")} options={bandOptions} />
           <RangeInputs label="Followers" min={filters.followersMin} max={filters.followersMax} onMin={set("followersMin")} onMax={set("followersMax")} placeholder={["e.g. 10k", "e.g. 500k"]} />
-          <RangeInputs label="Engagement rate (%)" min={filters.erMin} max={filters.erMax} onMin={set("erMin")} onMax={set("erMax")} placeholder={["e.g. 2", "e.g. 8"]} />
+          <RangeInputs label="Engagement by followers (%)" min={filters.erMin} max={filters.erMax} onMin={set("erMin")} onMax={set("erMax")} placeholder={["e.g. 2", "e.g. 8"]} />
+          <RangeInputs label="Engagement by views (%)" min={filters.verMin} max={filters.verMax} onMin={set("verMin")} onMax={set("verMax")} placeholder={["e.g. 4", "e.g. 15"]} />
           <RangeInputs label="Score" min={filters.scoreMin} max={filters.scoreMax} onMin={set("scoreMin")} onMax={set("scoreMax")} placeholder={["0", "100"]} />
           <Select
             label="Verified"

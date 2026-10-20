@@ -4,10 +4,23 @@ import type { SizeBandId } from "./size-bands";
  * "Normal" numbers per platform and size band. Starting points based on
  * public industry averages; adjust as Vernacular learns its own market.
  * All rates are fractions: 0.03 = 3%.
+ *
+ * Each band's numbers apply exactly at that band's "anchor" follower count
+ * (BAND_ANCHORS below). Between anchors the app blends smoothly, so there's no
+ * sudden jump when a creator crosses from one band into the next.
  */
 
+/** Follower count where each band's numbers apply exactly. */
+export const BAND_ANCHORS: Record<SizeBandId, number> = {
+  nano: 5_000,
+  micro: 25_000,
+  mid: 100_000,
+  macro: 500_000,
+  mega: 2_000_000,
+};
+
 /**
- * Engagement rate = (avg likes + avg comments) / followers.
+ * Engagement rate by followers = typical (likes + comments) per post / followers.
  * Below `poor` is labelled "poor", below `average` "average",
  * below `good` "good", and anything above that "great".
  */
@@ -84,3 +97,22 @@ export const CAMPAIGN_BLEND = {
   /** Logged data never gets more than this share of the weight. */
   maxWeight: 0.7,
 };
+
+/**
+ * Engagement rate by views = (likes + comments) / views, on posts that have
+ * views (Instagram Reels, YouTube videos). Barely depends on account size.
+ */
+export const VIEW_ENGAGEMENT_BENCHMARKS: Record<"instagram" | "youtube", { poor: number; average: number; good: number }> = {
+  instagram: { poor: 0.03, average: 0.06, good: 0.1 },
+  youtube: { poor: 0.015, average: 0.03, good: 0.05 },
+};
+
+/**
+ * Views count repeat plays, so fewer people are reached than there are views.
+ * Estimated reach = views × this. Logged campaign results that include both
+ * reach and views adjust it over time.
+ */
+export const VIEWS_TO_REACH = 0.6;
+
+/** Engagement score: share given to engagement by views (when available) vs by followers. */
+export const VIEW_ENGAGEMENT_SCORE_SHARE = 0.5;
