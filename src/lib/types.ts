@@ -71,6 +71,8 @@ export type SetAsideReason = "team" | "high_engagement" | "high_views";
 
 export interface Metrics {
   band: SizeBandId;
+  /** Latest posts vs the full set (e.g. +0.35 = 35% above usual). Null when there aren't enough posts. */
+  trend: { recentPosts: number; change: number } | null;
   /** Every recent post looked at (newest first), including any set aside. */
   postsUsed: Post[];
   /** The posts likes, comments and engagement are based on: the latest normal posts, with set-aside ones replaced by older posts. */

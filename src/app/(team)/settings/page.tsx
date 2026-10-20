@@ -64,7 +64,7 @@ export default function SettingsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberSetting
             label="Recent posts to use"
-            hint="Averages are based on this many recent posts."
+            hint="Numbers use this many recent posts (default 30, like HypeAuditor), from the last 6 months, always including the newest 12."
             value={settings.recentPostCount}
             min={3}
             max={50}

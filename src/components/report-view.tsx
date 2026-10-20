@@ -5,7 +5,7 @@ import { SampleBanner } from "./app-shell";
 import { Icon } from "./icons";
 import { Wordmark } from "./logo";
 import { isLimited } from "./score-breakdown";
-import { Avatar, buttonClass, EngagementChip, FlagList, PlatformBadge, ScoreBadge } from "./ui";
+import { Avatar, buttonClass, EngagementChip, FlagList, PlatformBadge, ScoreBadge, TrendLine } from "./ui";
 import { formatDate, formatNumber, formatPercent, formatRange } from "@/lib/format";
 import { shortlistTotals } from "@/lib/report";
 import { sizeBandLabel } from "@/lib/size-bands";
@@ -116,6 +116,11 @@ function CreatorCard({ a }: { a: CreatorAnalysis }) {
             <PlatformBadge platform={c.platform} /> @{c.handle}
           </p>
           <p className="mt-1 text-xs text-muted">{[c.niche, c.city, `${sizeBandLabel(m.band)} creator`].filter(Boolean).join(" · ")}</p>
+          {m.trend && (
+            <p className="mt-1">
+              <TrendLine trend={m.trend} />
+            </p>
+          )}
         </div>
         <div className="text-center">
           <ScoreBadge limited={isLimited(a.score)} score={a.score.total} />

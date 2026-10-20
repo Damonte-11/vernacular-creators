@@ -20,6 +20,7 @@ import {
   labelClass,
   PlatformBadge,
   StatTile,
+  TrendLine,
   VerifiedBadge,
 } from "@/components/ui";
 import { Loading } from "@/components/ui";
@@ -145,12 +146,17 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
                 hint={m.viewPostCount > 0 ? `middle ${c.platform === "instagram" ? "Reel" : "video"} of the last ${m.viewPostCount}` : undefined}
               />
             </dl>
+            {m.trend && (
+              <p className="mt-3">
+                <TrendLine trend={m.trend} />
+              </p>
+            )}
             {m.setAside.length > 0 && (
               <p className="mt-4 rounded-lg bg-canvas px-3 py-2 text-xs text-ink-2">
                 <span className="font-semibold">{m.setAside.length} {m.setAside.length === 1 ? "post" : "posts"} set aside</span> and not counted:{" "}
                 {summariseSetAside(m.setAside)}. Older posts took their place
                 {m.typicalPosts.length < settings.recentPostCount &&
-                  ` where possible (only ${m.typicalPosts.length} normal posts in the last 6 months)`}
+                  ` where possible (only ${m.typicalPosts.length} posts available in the last 6 months)`}
                 . They&apos;re marked in Recent posts below.
               </p>
             )}

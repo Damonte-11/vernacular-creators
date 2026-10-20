@@ -456,3 +456,45 @@ describe("views use the middle post", () => {
     expect(computeMetrics(creator({ posts: reels }), SETTINGS, NOW).avgViews).toBe(3_500);
   });
 });
+
+describe("30 posts and recent trend", () => {
+  const thirty = { ...SETTINGS, recentPostCount: 30 };
+
+  it("uses the last 30 posts within 6 months", () => {
+    // 40 posts, one every 3 days (3 … 120 days old): the newest 30 are used.
+    const posts = Array.from({ length: 40 }, (_, i) => ({ ...post(3 + i * 3, 500, 20), id: `t${i}` }));
+    const m = computeMetrics(creator({ posts }), thirty, NOW);
+    expect(m.typicalPosts).toHaveLength(30);
+    expect(m.typicalPosts[29].id).toBe("t29");
+  });
+
+  it("always uses the newest 12 for creators who rarely post, but nothing else older than 6 months", () => {
+    // 20 posts, one every 30 days (10 … 580 days old). Within 6 months: the 6 newest.
+    // The newest 12 always count, so 12 are used, not 6 and not all 20.
+    const posts = Array.from({ length: 20 }, (_, i) => ({ ...post(10 + i * 30, 500, 20), id: `r${i}` }));
+    const m = computeMetrics(creator({ posts }), thirty, NOW);
+    expect(m.typicalPosts).toHaveLength(12);
+  });
+
+  it("shows a recent hot streak without inflating the headline number", () => {
+    // 30 posts: the newest 10 got 900 likes, the older 20 got 400 (all + 20 comments).
+    // Not "boosted": no post is over 3× typical. Headline = trimmed average of all 30;
+    // recent = 920. All 30, trimmed (drop 3 at each end) → (7 × 920 + 17 × 420) / 24 = 565.8
+    // Trend = 920 / 565.8 − 1 = +62.6%
+    const posts = Array.from({ length: 30 }, (_, i) => ({ ...post(3 + i, i < 10 ? 900 : 400, 20), id: `h${i}` }));
+    const m = computeMetrics(creator({ posts }), thirty, NOW);
+    expect(m.setAside).toEqual([]);
+    expect(m.trend?.recentPosts).toBe(10);
+    expect(m.trend?.change).toBeCloseTo(920 / ((7 * 920 + 17 * 420) / 24) - 1, 4);
+    expect(m.engagementRate).toBeCloseTo((7 * 920 + 17 * 420) / 24 / 25_000, 6);
+  });
+
+  it("needs 20 posts before showing a trend", () => {
+    const posts = Array.from({ length: 15 }, (_, i) => ({ ...post(3 + i, 500, 20), id: `s${i}` }));
+    expect(computeMetrics(creator({ posts }), thirty, NOW).trend).toBeNull();
+  });
+
+  it("defaults to 30 posts", () => {
+    expect(APP_DEFAULTS.recentPostCount).toBe(30);
+  });
+});

@@ -57,7 +57,7 @@ In **demo mode**, your changes (shortlists, notes, settings, added creators) are
 
 ## How the numbers work
 
-All calculations use a creator's **recent posts**: the last 12 by default. Posts newer than **3 days (Instagram)** or **7 days (YouTube)** are left out because their numbers are still climbing.
+All calculations use a creator's **last 30 posts** (like HypeAuditor) from the past 6 months, and always at least their newest 12, so creators who rarely post still get a fair sample. Using 30 means a short hot streak or boost doesn't inflate the numbers. A **"Recent trend"** line shows separately how the newest 10 posts compare with the creator's usual level, e.g. "↑ Last 10 posts: +35% vs usual". Posts newer than **3 days (Instagram)** or **7 days (YouTube)** are left out because their numbers are still climbing.
 
 - **Possibly boosted posts are set aside.** A post with more than **3×** a typical post's engagement or views (likely paid ads, or a one-off viral hit) is left out and marked on the profile, and the next older post takes its place (up to 6 months back). If more than a quarter of posts are that big, it's simply the creator's pattern and nothing is set aside. The team can also **exclude any post by hand**, for example a known ad. Instagram doesn't say which posts were promoted, and its Reel view counts include paid views, which is why this check exists.
 - **Likes, comments and engagement use a "trimmed" average:** the single most extreme post at each end is dropped (10% each side) before averaging. That lands close to what other tools report, but one freak post can't swing it.

@@ -6,15 +6,16 @@ export const NOW = Date.UTC(2026, 9, 18, 12);
 export const DAY = 86_400_000;
 
 /**
- * The app defaults, except posts count once they're 24 hours old so the
- * hand-worked examples can use recent posts (the 3-day / 7-day defaults have
- * their own tests).
+ * The app defaults, except posts count once they're 24 hours old and 12 posts
+ * are used, so the hand-worked examples stay small (the 3-day / 7-day and
+ * 30-post defaults have their own tests).
  */
 export const SETTINGS: Settings = {
   weights: { ...DEFAULT_SCORE_WEIGHTS },
   ...APP_DEFAULTS,
   minPostAgeHours: 24,
   minPostAgeHoursYoutube: 24,
+  recentPostCount: 12,
 };
 
 /** 25,000 followers: exactly at the "micro" anchor, so the micro benchmarks apply as written. */

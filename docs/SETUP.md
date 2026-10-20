@@ -151,6 +151,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0001_init.sql`: the tables (Part 1)
 - `0002_post_exclusions.sql`: lets the team exclude individual posts (e.g. known ads)
 - `0003_engagement_update.sql`: per-platform post ages (3 days Instagram, 7 days YouTube)
+- `0004_thirty_posts.sql`: base the numbers on the last 30 posts (was 12)
 
 ## What happens after setup
 

@@ -8,8 +8,8 @@ import type { PostType } from "../types";
 import { LookupError } from "./errors";
 import type { FetchedCreator, Fetcher } from "./fetched";
 
-/** How many recent posts to fetch: the latest 12 for engagement, plus older Reels for views. */
-export const IG_MEDIA_LIMIT = 30;
+/** How many recent posts to fetch: the latest 30 used for the numbers, plus spares to replace set-aside posts. */
+export const IG_MEDIA_LIMIT = 45;
 
 const MEDIA_FIELDS = "id,caption,like_count,comments_count,view_count,media_type,media_product_type,timestamp,permalink";
 const USER_FIELDS = `id,username,name,biography,profile_picture_url,followers_count,media_count,media.limit(${IG_MEDIA_LIMIT}){${MEDIA_FIELDS}}`;

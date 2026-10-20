@@ -143,7 +143,7 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
 
   // Posting rhythm.
   const perMonth = isIG ? 6 + r() * 8 : 2 + r() * 4;
-  const count = 15;
+  const count = 36;
   const posts: Post[] = [];
   let t = now - (arch.has("dormant") ? 46 : 0.4) * DAY_MS; // most have a post from the last few hours
   for (let i = 0; i < count; i++) {

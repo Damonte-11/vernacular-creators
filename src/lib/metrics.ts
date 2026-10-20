@@ -1,4 +1,4 @@
-import { LOOKBACK_DAYS } from "@config/app";
+import { LOOKBACK_DAYS, MIN_POSTS_FOR_TREND, MIN_RECENT_POSTS, TREND_POSTS } from "@config/app";
 import { ENGAGEMENT_BENCHMARKS, VIEW_ENGAGEMENT_BENCHMARKS } from "@config/benchmarks";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { smoothByFollowers } from "./benchmarks";
@@ -70,7 +70,8 @@ interface Selection {
 /**
  * Pick the latest `count` normal posts. Posts the team excluded, and posts far
  * above the creator's typical level (possibly boosted), are set aside and
- * replaced by the next older post. Replacements must be newer than `cutoff`.
+ * replaced by the next older post. The newest MIN_RECENT_POSTS always count;
+ * beyond those, posts must be newer than `cutoff`.
  */
 export function selectPosts(
   sorted: Post[],
@@ -79,7 +80,7 @@ export function selectPosts(
   reason: SetAsideReason,
   cutoff: number,
 ): Selection {
-  const inRange = (p: Post, i: number) => i < count || new Date(p.postedAt).getTime() >= cutoff;
+  const inRange = (p: Post, i: number) => i < Math.min(count, MIN_RECENT_POSTS) || new Date(p.postedAt).getTime() >= cutoff;
   const candidates = sorted.filter(inRange);
   // "Typical" is judged on a wider sample (up to twice the count) so it stays steady.
   const outliers = findOutliers(candidates.filter((p) => !p.excluded).slice(0, count * 2), value);
@@ -111,9 +112,8 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
   const avgLikes = trimmedMean(withLikes.map((p) => p.likes as number));
   const avgComments = trimmedMean(typicalPosts.map((p) => p.comments));
 
-  // Views: the latest posts that have views (Instagram only has them on Reels),
-  // all within the look-back period.
-  const withViews = all.filter((p) => p.views !== null && new Date(p.postedAt).getTime() >= cutoff);
+  // Views: the latest posts that have views (Instagram only has them on Reels).
+  const withViews = all.filter((p) => p.views !== null);
   const views = selectPosts(withViews, settings.recentPostCount, (p) => p.views as number, "high_views", cutoff);
   for (const x of views.setAside) if (!setAside.some((y) => y.post.id === x.post.id)) setAside.push(x);
   const viewPosts = views.chosen;
@@ -141,6 +141,7 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
 
   return {
     band,
+    trend: recentTrend(typicalPosts),
     postsUsed,
     typicalPosts,
     setAside,
@@ -157,6 +158,20 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
     lowConfidence,
     expectedEngagements,
   };
+}
+
+/**
+ * How the newest posts compare with the full set: e.g. +0.35 means the latest
+ * 10 posts got 35% more engagement than this creator's usual level. Shown
+ * separately so a hot streak (or a slump) is visible without changing the
+ * headline numbers.
+ */
+export function recentTrend(typicalPosts: Post[]): Metrics["trend"] {
+  if (typicalPosts.length < MIN_POSTS_FOR_TREND) return null;
+  const all = trimmedMean(typicalPosts.map(postEngagement));
+  const recent = trimmedMean(typicalPosts.slice(0, TREND_POSTS).map(postEngagement));
+  if (!all || recent === null) return null;
+  return { recentPosts: TREND_POSTS, change: recent / all - 1 };
 }
 
 export function daysBetween(a: string | number, b: string | number): number {

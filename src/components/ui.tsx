@@ -216,3 +216,17 @@ export function CreatorLink({ id, children, className }: { id: string; children:
 export function Loading() {
   return <p className="py-20 text-center text-sm text-muted">Loading…</p>;
 }
+
+/** "Last 10 posts: +35% vs usual". Neutral when within ±10%. */
+export function TrendLine({ trend }: { trend: { recentPosts: number; change: number } | null }) {
+  if (!trend) return null;
+  const pct = Math.round(trend.change * 100);
+  const flat = Math.abs(pct) < 10;
+  const cls = flat ? "text-muted" : pct > 0 ? "text-good" : "text-bad";
+  const arrow = flat ? "→" : pct > 0 ? "↑" : "↓";
+  return (
+    <span className={cx("text-xs font-semibold", cls)} title="Engagement on the newest posts compared with this creator's usual level. It doesn't change the headline numbers.">
+      {arrow} Last {trend.recentPosts} posts: {flat ? "about the same as usual" : `${pct > 0 ? "+" : ""}${pct}% vs usual`}
+    </span>
+  );
+}
