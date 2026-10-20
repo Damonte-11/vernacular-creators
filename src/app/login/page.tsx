@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { Wordmark } from "@/components/logo";
 import { buttonClass, Card, inputClass, labelClass } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { IS_LIVE } from "@/lib/supabase/config";
+import { IS_LIVE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 
 export default function LoginPage() {
   return (
@@ -51,7 +51,17 @@ function LoginForm() {
         <h1 className="mt-6 text-xl font-semibold">Sign in to Creators</h1>
         <p className="mt-1 text-sm text-ink-2">For the Vernacular team. Ask an admin if you need an account.</p>
         {!IS_LIVE ? (
-          <p className="mt-4 rounded-lg bg-warn-soft p-3 text-sm text-warn">The app is in demo mode, so no sign-in is needed.</p>
+          <div className="mt-4 rounded-lg bg-warn-soft p-3 text-sm text-warn">
+            <p>The app is in demo mode, so no sign-in is needed.</p>
+            <p className="mt-3 font-semibold">Setup check (values are hidden):</p>
+            <ul className="mt-1 space-y-0.5">
+              <li>{SUPABASE_URL ? "✅" : "❌"} NEXT_PUBLIC_SUPABASE_URL</li>
+              <li>{SUPABASE_PUBLISHABLE_KEY ? "✅" : "❌"} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</li>
+            </ul>
+            <p className="mt-2 text-xs">
+              Both need ✅ for live mode. They must be set for this environment (Production or Preview) before the deployment is built.
+            </p>
+          </div>
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4">
             <label className="block">
