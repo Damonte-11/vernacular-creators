@@ -57,6 +57,8 @@ export interface Settings {
   minPostAgeHours: number;
   /** YouTube: videos newer than this are left out. */
   minPostAgeHoursYoutube: number;
+  /** Instagram: % of the API view count that's counted (see config/app.ts). */
+  instagramViewsShare: number;
   refreshIntervalHours: number;
 }
 
@@ -85,7 +87,10 @@ export interface Metrics {
   avgLikes: number | null;
   avgComments: number | null;
   /** Views of the middle post (median), after setting posts aside. */
+  /** Typical views, after the views adjustment. */
   avgViews: number | null;
+  /** Share of each post's raw view count that is counted (1 = all of it). */
+  viewsAdjustment: number;
   viewPostCount: number;
   likesHidden: boolean;
   /** (likes + comments) per post ÷ followers. */

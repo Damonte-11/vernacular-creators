@@ -498,3 +498,34 @@ describe("30 posts and recent trend", () => {
     expect(APP_DEFAULTS.recentPostCount).toBe(30);
   });
 });
+
+describe("Instagram views adjustment", () => {
+  // Same six Reels as above: raw middle = 3,500 views; 500 likes + 20 comments each.
+  const reels = [1_000, 2_000, 3_000, 4_000, 9_000, 10_000].map((v, i) => ({ ...post(2 + i, 500, 20, v), id: `m${i}` }));
+  const seventy = { ...SETTINGS, instagramViewsShare: 70 };
+
+  it("counts 70% of Instagram views by default", () => {
+    expect(APP_DEFAULTS.instagramViewsShare).toBe(70);
+    const m = computeMetrics(creator({ posts: reels }), seventy, NOW);
+    expect(m.avgViews).toBeCloseTo(2_450); // 3,500 × 0.7
+    expect(m.viewsAdjustment).toBe(0.7);
+  });
+
+  it("scales reach and engagement by views the same way", () => {
+    const c = creator({ posts: reels });
+    const raw = computeMetrics(c, SETTINGS, NOW);
+    const adj = computeMetrics(c, seventy, NOW);
+    expect(adj.viewEngagementRate!).toBeCloseTo(raw.viewEngagementRate! / 0.7);
+    const rRaw = estimateReach(c, raw);
+    const rAdj = estimateReach(c, adj);
+    expect(rAdj.high).toBeCloseTo(rRaw.high * 0.7, -1);
+    expect(rAdj.note).toContain("70% of them are counted");
+  });
+
+  it("leaves YouTube views alone", () => {
+    const vids = reels.map((p) => ({ ...p, type: "video" as const }));
+    const m = computeMetrics(creator({ platform: "youtube", posts: vids }), seventy, NOW);
+    expect(m.avgViews).toBe(3_500);
+    expect(m.viewsAdjustment).toBe(1);
+  });
+});

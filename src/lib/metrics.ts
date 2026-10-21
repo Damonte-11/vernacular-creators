@@ -19,6 +19,17 @@ export function eligiblePosts(posts: Post[], minAgeHours: number, now: number): 
     .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
 }
 
+/**
+ * Share of a post's view count that is counted. Instagram's count includes
+ * Facebook views of cross-posted Reels and paid views, so it's scaled down
+ * (Settings → "Instagram views counted"). YouTube's is used as is.
+ */
+export function viewsAdjustment(platform: Creator["platform"], settings: Pick<Settings, "instagramViewsShare">): number {
+  if (platform !== "instagram") return 1;
+  const share = settings.instagramViewsShare;
+  return Number.isFinite(share) ? Math.min(100, Math.max(1, share)) / 100 : 1;
+}
+
 /** Engagement thresholds for this exact follower count (blended between bands). */
 export function engagementBenchmark(platform: Creator["platform"], followers: number) {
   return smoothByFollowers(ENGAGEMENT_BENCHMARKS[platform], followers);
@@ -117,9 +128,11 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
   const views = selectPosts(withViews, settings.recentPostCount, (p) => p.views as number, "high_views", cutoff);
   for (const x of views.setAside) if (!setAside.some((y) => y.post.id === x.post.id)) setAside.push(x);
   const viewPosts = views.chosen;
+  const adjust = viewsAdjustment(creator.platform, settings);
   // Views are more lopsided than likes (a few Reels take off), so use the middle
   // post: the safer figure to promise a client.
-  const avgViews = median(viewPosts.map((p) => p.views as number));
+  const rawViews = median(viewPosts.map((p) => p.views as number));
+  const avgViews = rawViews === null ? null : rawViews * adjust;
 
   let engagementRate: number | null = null;
   let label: EngagementLabel | null = null;
@@ -136,7 +149,7 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
   }
 
   // Engagement per view: how much the people who actually watched reacted.
-  const viewRatios = viewPosts.filter((p) => p.likes !== null && (p.views as number) > 0).map((p) => postEngagement(p) / (p.views as number));
+  const viewRatios = viewPosts.filter((p) => p.likes !== null && (p.views as number) > 0).map((p) => postEngagement(p) / ((p.views as number) * adjust));
   const viewEngagementRate = trimmedMean(viewRatios);
 
   return {
@@ -149,6 +162,7 @@ export function computeMetrics(creator: Creator, settings: Settings, now: number
     avgLikes,
     avgComments,
     avgViews,
+    viewsAdjustment: adjust,
     viewPostCount: viewPosts.length,
     likesHidden,
     engagementRate,

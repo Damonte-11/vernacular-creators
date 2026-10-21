@@ -13,6 +13,14 @@ export const APP_DEFAULTS = {
    */
   minPostAgeHours: 72,
   minPostAgeHoursYoutube: 168,
+  /**
+   * Instagram views counted, in %. Since April 2026 Instagram's official view
+   * count adds the Facebook views of Reels the creator cross-posts there, and
+   * paid (ad) views. Neither is shown separately, so views are scaled down to
+   * roughly what the Instagram app shows. 70 brings @asherkine in line with
+   * HypeAuditor. 100 turns the adjustment off. YouTube views aren't adjusted.
+   */
+  instagramViewsShare: 70,
   /** Refresh a creator from the API when their data is older than this (Stage 2). */
   refreshIntervalHours: 24,
 };

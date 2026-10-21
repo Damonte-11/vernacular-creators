@@ -20,7 +20,7 @@ export function estimateReach(
   campaignResults: CampaignResult[] = [],
   allCreators: Creator[] = [],
 ): ReachEstimate {
-  const views = metrics.viewPosts.map((p) => p.views as number);
+  const views = metrics.viewPosts.map((p) => (p.views as number) * metrics.viewsAdjustment);
   if (views.length >= MIN_VIEW_POSTS) {
     const f = viewsToReach(campaignResults);
     const kind = creator.platform === "instagram" ? "Reels" : "videos";
@@ -28,7 +28,7 @@ export function estimateReach(
       low: Math.round(percentile(views, 0.25)! * f.factor),
       high: Math.round(percentile(views, 0.75)! * f.factor),
       method: "views",
-      note: `Based on public view counts of ${views.length} recent ${kind} (middle 50%), leaving out any unusually high, possibly boosted ones. Views include repeat plays, so reach is taken as ${pct(f.factor)} of views${f.fromCampaigns ? `, learned from ${f.fromCampaigns} logged campaign results` : ""}.`,
+      note: `Based on public view counts of ${views.length} recent ${kind} (middle 50%), leaving out any unusually high, possibly boosted ones.${metrics.viewsAdjustment < 1 ? ` Instagram's view counts include Facebook and paid views, so ${pct(metrics.viewsAdjustment)} of them are counted.` : ""} Views include repeat plays, so reach is taken as ${pct(f.factor)} of views${f.fromCampaigns ? `, learned from ${f.fromCampaigns} logged campaign results` : ""}.`,
     };
   }
 

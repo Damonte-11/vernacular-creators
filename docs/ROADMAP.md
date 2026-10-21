@@ -21,6 +21,7 @@ Since then, the engagement maths was reviewed against HypeAuditor:
 - Numbers use the last 30 posts (within 6 months, always the newest 12), with a "Recent trend" line for the newest 10.
 - Possibly boosted posts are set aside and replaced; the team can exclude posts by hand.
 - Engagement is shown by followers (trimmed average) and by views; views use the median post; reach = views × 60%.
+- Instagram views count at 70% (adjustable), because Instagram's count includes Facebook cross-post and paid views.
 - Benchmarks blend smoothly between sizes; high engagement is only flagged with evidence; Authenticity only counts signs of faking; new inactive-followers flag.
 
 Next: tune benchmarks against real Nigerian creators as the database grows, rank against real peers once there are enough per size, and decide whether to track daily API usage on a dashboard.

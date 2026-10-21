@@ -152,6 +152,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0002_post_exclusions.sql`: lets the team exclude individual posts (e.g. known ads)
 - `0003_engagement_update.sql`: per-platform post ages (3 days Instagram, 7 days YouTube)
 - `0004_thirty_posts.sql`: base the numbers on the last 30 posts (was 12)
+- `0005_instagram_views_share.sql`: count 70% of Instagram views (they include Facebook and paid views), adjustable in Settings
 
 ## What happens after setup
 

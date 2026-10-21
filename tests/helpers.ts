@@ -16,6 +16,7 @@ export const SETTINGS: Settings = {
   minPostAgeHours: 24,
   minPostAgeHoursYoutube: 24,
   recentPostCount: 12,
+  instagramViewsShare: 100,
 };
 
 /** 25,000 followers: exactly at the "micro" anchor, so the micro benchmarks apply as written. */

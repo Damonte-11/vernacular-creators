@@ -8,7 +8,7 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql"];
+    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql"];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run
@@ -24,9 +24,10 @@ describe("database migration", () => {
     const s = await db.query<{ share_token: string }>("insert into shortlists (name) values ('Test') returning share_token");
     expect(s.rows[0].share_token).toMatch(/^[0-9a-f]{64}$/);
 
-    const settings = await db.query<{ recent_post_count: number }>("select * from settings");
+    const settings = await db.query<{ recent_post_count: number; instagram_views_share: number }>("select * from settings");
     expect(settings.rows).toHaveLength(1);
-    expect(settings.rows[0].recent_post_count).toBe(12);
+    expect(settings.rows[0].recent_post_count).toBe(30);
+    expect(settings.rows[0].instagram_views_share).toBe(70);
 
     const post = await db.query<{ excluded: boolean }>(
       "insert into posts (creator_id, platform_post_id, type, posted_at) values ($1, 'p1', 'image', now()) returning excluded",

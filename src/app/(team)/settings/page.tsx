@@ -87,6 +87,14 @@ export default function SettingsPage() {
             onChange={(v) => actions.updateSettings({ minPostAgeHoursYoutube: v })}
           />
           <NumberSetting
+            label="Instagram views counted (%)"
+            hint="Instagram's view counts include Facebook views of cross-posted Reels and paid views. Default 70. Set 100 to use the raw count."
+            value={settings.instagramViewsShare}
+            min={30}
+            max={100}
+            onChange={(v) => actions.updateSettings({ instagramViewsShare: v })}
+          />
+          <NumberSetting
             label="Refresh data after (hours)"
             hint="Saved creators are re-fetched after this long. Saves API allowance."
             value={settings.refreshIntervalHours}
