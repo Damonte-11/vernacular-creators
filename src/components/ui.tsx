@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { EngagementLabel, Flag, Platform } from "@/lib/types";
+import { platformName } from "@/lib/platforms";
 import { Icon } from "./icons";
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
@@ -67,7 +68,7 @@ export function PlatformBadge({ platform, compact }: { platform: Platform; compa
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-ink-2">
       <Icon name={platform} size={13} />
-      {!compact && (platform === "instagram" ? "Instagram" : "YouTube")}
+      {!compact && platformName(platform)}
     </span>
   );
 }

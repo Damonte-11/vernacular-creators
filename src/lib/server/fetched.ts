@@ -10,7 +10,7 @@ export interface FetchedCreator {
   bio: string;
   followers: number;
   mediaCount: number;
-  accountType: "professional" | "channel";
+  accountType: "professional" | "channel" | "creator";
   country: string | null;
   posts: Omit<Post, "id">[];
 }

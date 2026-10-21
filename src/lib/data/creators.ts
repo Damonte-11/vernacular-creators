@@ -39,7 +39,7 @@ export function findByHandle(creators: Creator[], platform: Creator["platform"],
 /** Accepts "@name", "name", or a profile/channel URL. Keeps case (YouTube channel IDs need it). */
 export function normalizeHandle(input: string): string {
   let h = input.trim();
-  const url = h.match(/(?:instagram\.com|youtube\.com)\/(?:@|c\/|user\/|channel\/)?([^/?#\s]+)/i);
+  const url = h.match(/(?:instagram\.com|youtube\.com|tiktok\.com)\/(?:@|c\/|user\/|channel\/)?([^/?#\s]+)/i);
   if (url) h = url[1];
   h = h.replace(/^@/, "");
   return /^UC[A-Za-z0-9_-]{22}$/.test(h) ? h : h.toLowerCase();

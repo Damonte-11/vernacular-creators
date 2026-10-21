@@ -38,6 +38,7 @@ export const FLAG_THRESHOLDS = {
   likesPerComment: {
     instagram: { min: 8, max: 250 },
     youtube: { min: 5, max: 200 },
+    tiktok: { min: 10, max: 400 },
   },
 
   /** Posting gap: a gap between posts (or since the last post) longer than this. */

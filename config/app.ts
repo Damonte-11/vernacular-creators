@@ -73,3 +73,14 @@ export const NICHE_KEYWORDS: Record<string, string[]> = {
   Finance: ["finance", "money", "invest", "investing", "savings", "crypto"],
   Travel: ["travel", "explore", "tourism", "trips"],
 };
+
+/**
+ * TikTok goes through Apify, which is paid per video (about $0.13 a lookup).
+ * Apify's free plan gives $5 of credit a month, so lookups are capped.
+ */
+export const TIKTOK_LIMITS = {
+  /** Most TikTok lookups and refreshes per calendar month. Override with TIKTOK_MONTHLY_LOOKUPS in Vercel. */
+  monthlyLookups: 30,
+  /** Saved TikTok creators are reused for this long (the daily refresh skips TikTok). */
+  refreshDays: 30,
+};

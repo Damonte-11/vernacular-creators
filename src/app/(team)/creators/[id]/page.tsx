@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { CITIES, NICHES } from "@config/app";
+import { CITIES, NICHES, TIKTOK_LIMITS } from "@config/app";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { AddToShortlist } from "@/components/add-to-shortlist";
 import { EngagementChart } from "@/components/engagement-chart";
@@ -84,7 +84,10 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
             </div>
             <p className="mt-3 max-w-2xl text-sm">{c.bio}</p>
             <p className="mt-2 text-xs text-muted">
-              Data updated {timeAgo(c.lastFetchedAt, NOW)} · refreshes automatically when older than {settings.refreshIntervalHours} hours
+              Data updated {timeAgo(c.lastFetchedAt, NOW)} ·{" "}
+              {c.platform === "tiktok"
+                ? `TikTok isn't refreshed automatically (each refresh uses Apify credit); saved data is reused for ${TIKTOK_LIMITS.refreshDays} days`
+                : `refreshes automatically when older than ${settings.refreshIntervalHours} hours`}
             </p>
           </div>
           <div className="flex gap-2 sm:flex-col">
@@ -175,7 +178,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
               {formatNumber(reach.low)} – {formatNumber(reach.high)}
             </p>
             <p className="mt-2 text-sm text-ink-2">{reach.note}</p>
-            {c.platform === "instagram" && reach.method !== "views" && (
+            {c.platform !== "youtube" && reach.method !== "views" && (
               <p className="mt-2 text-xs text-muted">The range is wider because it isn&apos;t based on this creator&apos;s own view counts.</p>
             )}
           </Card>
@@ -231,7 +234,7 @@ function Avg({ label, value, empty = "—", hint }: { label: string; value: numb
   );
 }
 
-const TYPE_LABEL: Record<Post["type"], string> = { image: "Photo", carousel: "Carousel", reel: "Reel", video: "Video", short: "Short" };
+const TYPE_LABEL: Record<Post["type"], string> = { image: "Photo", carousel: "Carousel", reel: "Reel", video: "Video", short: "Short", slideshow: "Photo slideshow" };
 
 function summariseSetAside(list: Metrics["setAside"]): string {
   const team = list.filter((x) => x.reason === "team").length;

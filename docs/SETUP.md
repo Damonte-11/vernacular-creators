@@ -1,11 +1,12 @@
 # Stage 2 setup guide
 
-This connects the app to real data. There are four parts. Do them in order; each takes 10–20 minutes.
+This connects the app to real data. There are five parts. Do them in order; each takes 10–20 minutes.
 
 1. **Supabase**: the database and team login
 2. **Vercel**: put the keys into the live site
 3. **Meta (Instagram)**: lets us look up Instagram creators
 4. **Google Cloud (YouTube)**: lets us look up YouTube channels
+5. **Apify (TikTok)**: lets us look up TikTok creators
 
 You can stop after any part. The app works with whatever is connected: for example, with only Supabase and YouTube, YouTube lookups work and Instagram lookups say "Instagram isn't connected yet".
 
@@ -144,6 +145,28 @@ Add these in Vercel (as in Part 2), then redeploy:
 
 ---
 
+## Part 5: Apify (TikTok)
+
+TikTok has no official way to look up other creators' numbers, so the app uses **Apify**, a paid service that collects a TikTok profile's public numbers and latest videos for us. This goes against TikTok's terms of service: TikTok can block it at any time, and the risk sits with Vernacular. If Apify stops working, Instagram and YouTube are not affected.
+
+**Cost:** about **$0.13 per lookup** (36 videos at $0.0037 each). Apify's free plan gives **$5 of credit a month**, so the app allows **30 TikTok lookups or refreshes a month** and stops there until the 1st. TikTok creators are not part of the daily refresh: saved ones are reused for 30 days, and **Refresh data** on a profile fetches new numbers (it counts towards the 30).
+
+1. Go to <https://apify.com> and click **Sign up** (free; no card needed). Use a Vernacular email.
+2. In the Apify console, left menu: **Settings** → **API & Integrations**. Copy the **Personal API token**.
+3. Optional but recommended: **Settings** → **Usage & billing** (or **Limits**) → set a monthly usage limit of **$5**, so Apify can never charge you.
+4. Add it in Vercel and redeploy:
+
+| Name | Value |
+|---|---|
+| `APIFY_TOKEN` | The token from step 2 |
+| `TIKTOK_MONTHLY_LOOKUPS` | Optional. Leave it out for 30. |
+
+5. Run database update `0006_tiktok.sql` (below).
+
+A TikTok lookup takes **30 seconds to 2 minutes**, as Apify has to open the profile. Each lookup is capped at $0.20.
+
+---
+
 ## Database updates
 
 When the app gains a feature that needs a database change, there's a new numbered file in `supabase/migrations/`. Run each one once, in order, in **Supabase → SQL Editor → New query → paste → Run**:
@@ -153,6 +176,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0003_engagement_update.sql`: per-platform post ages (3 days Instagram, 7 days YouTube)
 - `0004_thirty_posts.sql`: base the numbers on the last 30 posts (was 12)
 - `0005_instagram_views_share.sql`: count 70% of Instagram views (they include Facebook and paid views), adjustable in Settings
+- `0006_tiktok.sql`: allow TikTok creators
 
 ## What happens after setup
 

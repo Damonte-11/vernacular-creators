@@ -1,10 +1,12 @@
 /**
- * The Instagram and YouTube connections, tested with responses shaped like the
+ * The Instagram, YouTube and TikTok (Apify) connections, tested with responses shaped like the
  * official API documentation (no real network calls).
+ * TikTok responses follow the Apify actor's documented output.
  */
 import { describe, expect, it } from "vitest";
 import { LookupError, withRetry } from "@/lib/server/errors";
 import { fetchInstagramCreator, mapGraphError } from "@/lib/server/instagram";
+import { fetchTikTokCreator, mapApifyError, TIKTOK_MAX_CHARGE_USD, TIKTOK_VIDEO_LIMIT } from "@/lib/server/tiktok";
 import { durationSeconds, fetchYouTubeCreator, isChannelId } from "@/lib/server/youtube";
 
 function jsonFetch(routes: (url: URL) => { status?: number; body: unknown }) {
@@ -129,6 +131,54 @@ describe("YouTube Data API", () => {
     expect(durationSeconds("P1DT1S")).toBe(86401);
     expect(isChannelId("UCabcdefghijklmnopqrstuv")).toBe(true);
     expect(isChannelId("lagoskitchen")).toBe(false);
+  });
+});
+
+describe("TikTok via Apify", () => {
+  const author = { id: "6900", name: "naija.creator", nickName: "Naija Creator", avatar: "https://cdn.example/a.jpg", signature: "Comedy skits", region: "NG", fans: 52_000, video: 240, privateAccount: false };
+
+  it("maps a profile and its videos, leaving out ads", async () => {
+    const { fetcher, calls } = jsonFetch(() => ({
+      status: 201,
+      body: [
+        { id: "1", text: "Skit 1", createTimeISO: "2026-10-10T10:00:00.000Z", webVideoUrl: "https://www.tiktok.com/@naija.creator/video/1", authorMeta: author, diggCount: 4_000, commentCount: 80, playCount: 60_000 },
+        { id: "2", text: "Photos", createTime: 1_759_000_000, isSlideshow: true, authorMeta: author, diggCount: 900, commentCount: 10, playCount: 15_000 },
+        { id: "3", text: "Ad", isAd: true, createTimeISO: "2026-10-09T10:00:00.000Z", authorMeta: author, diggCount: 1, commentCount: 0, playCount: 5 },
+      ],
+    }));
+    const c = await fetchTikTokCreator("@Naija.Creator", "apify-token", fetcher);
+    expect(c).toMatchObject({ platform: "tiktok", platformId: "6900", handle: "naija.creator", name: "Naija Creator", followers: 52_000, mediaCount: 240, country: "NG", accountType: "creator" });
+    expect(c.posts).toHaveLength(2);
+    expect(c.posts[0]).toMatchObject({ platformPostId: "1", type: "video", likes: 4_000, comments: 80, views: 60_000 });
+    expect(c.posts[1]).toMatchObject({ type: "slideshow", postedAt: new Date(1_759_000_000_000).toISOString() });
+
+    const url = calls[0];
+    expect(url.pathname).toBe("/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
+    expect(url.searchParams.get("maxTotalChargeUsd")).toBe(String(TIKTOK_MAX_CHARGE_USD));
+    expect(url.searchParams.has("token")).toBe(false); // the token goes in a header, never the URL
+    expect(TIKTOK_VIDEO_LIMIT).toBeGreaterThanOrEqual(30);
+  });
+
+  it("explains private, missing and empty accounts", async () => {
+    const run = (errorCode: string) =>
+      fetchTikTokCreator("someone", "t", jsonFetch(() => ({ status: 201, body: [{ input: "someone", error: "x", errorCode }] })).fetcher);
+    await expect(run("PROFILE_PRIVATE")).rejects.toMatchObject({ code: "not_found", message: expect.stringContaining("private") });
+    await expect(run("NOT_FOUND")).rejects.toMatchObject({ code: "not_found", message: expect.stringContaining("couldn't find") });
+    await expect(run("PROFILE_EMPTY")).rejects.toMatchObject({ code: "not_found", message: expect.stringContaining("no public") });
+  });
+
+  it("rejects invalid usernames without calling Apify", async () => {
+    const { fetcher, calls } = jsonFetch(() => ({ body: [] }));
+    await expect(fetchTikTokCreator("not a handle!", "t", fetcher)).rejects.toMatchObject({ code: "not_found" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("maps Apify errors", () => {
+    expect(mapApifyError(401, { type: "user-or-token-not-found" }).code).toBe("auth");
+    expect(mapApifyError(402, { type: "not-enough-usage-to-run-paid-actor" }).code).toBe("quota");
+    expect(mapApifyError(429, undefined).code).toBe("rate_limited");
+    expect(mapApifyError(408, undefined).code).toBe("upstream");
+    expect(mapApifyError(503, undefined).code).toBe("upstream");
   });
 });
 

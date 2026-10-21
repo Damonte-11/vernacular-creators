@@ -1,4 +1,5 @@
 "use client";
+import { PLATFORMS, platformName } from "@/lib/platforms";
 import { useState } from "react";
 import { CITIES, NICHES } from "@config/app";
 import { SIZE_BANDS } from "@config/size-bands";
@@ -69,10 +70,7 @@ export const bandOptions = SIZE_BANDS.map((b) => ({
   value: b.id,
   label: `${b.label} (${short(b.min)}${b.max === Infinity ? "+" : `–${short(b.max)}`})`,
 }));
-export const platformOptions = [
-  { value: "instagram", label: "Instagram" },
-  { value: "youtube", label: "YouTube" },
-];
+export const platformOptions = PLATFORMS.map((p) => ({ value: p, label: platformName(p) }));
 
 function short(n: number): string {
   return n >= 1_000_000 ? `${n / 1_000_000}M` : n >= 1_000 ? `${n / 1_000}K` : `${n}`;

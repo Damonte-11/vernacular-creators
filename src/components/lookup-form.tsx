@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
+import { PLATFORMS, platformName } from "@/lib/platforms";
 import type { Platform } from "@/lib/types";
 import { Icon } from "./icons";
 import { IS_LIVE } from "@/lib/supabase/config";
@@ -11,7 +12,7 @@ import { buttonClass, cx, inputClass } from "./ui";
 export function PlatformToggle({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
   return (
     <div className="flex shrink-0 rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Platform">
-      {(["instagram", "youtube"] as Platform[]).map((p) => (
+      {PLATFORMS.map((p) => (
         <button
           key={p}
           type="button"
@@ -24,7 +25,7 @@ export function PlatformToggle({ value, onChange }: { value: Platform; onChange:
           )}
         >
           <Icon name={p} size={16} />
-          {p === "instagram" ? "Instagram" : "YouTube"}
+          {platformName(p)}
         </button>
       ))}
     </div>
@@ -56,7 +57,7 @@ export function LookupForm() {
         <PlatformToggle value={platform} onChange={setPlatform} />
         <input
           className={inputClass}
-          placeholder={platform === "instagram" ? "@handle or instagram.com/handle" : "@handle, channel link or channel ID"}
+          placeholder={{ instagram: "@handle or instagram.com/handle", youtube: "@handle, channel link or channel ID", tiktok: "@handle or tiktok.com/@handle" }[platform]}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           aria-label="Creator handle or link"

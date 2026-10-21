@@ -24,10 +24,12 @@ Since then, the engagement maths was reviewed against HypeAuditor:
 - Instagram views count at 70% (adjustable), because Instagram's count includes Facebook cross-post and paid views.
 - Benchmarks blend smoothly between sizes; high engagement is only flagged with evidence; Authenticity only counts signs of faking; new inactive-followers flag.
 
+TikTok was added through Apify (a paid third-party service, as TikTok has no official API for this), capped at 30 lookups a month to fit Apify's free credit, and left out of the daily refresh.
+
 Next: tune benchmarks against real Nigerian creators as the database grows, rank against real peers once there are enough per size, and decide whether to track daily API usage on a dashboard.
 
 ## Stage 3: Version 2 (plan only)
 
-- **TikTok**: creators connect their own accounts through TikTok's official Login Kit.
+- **TikTok accounts connected by creators** through TikTok's official Login Kit, for real reach and audience data.
 - **Creator sign-up**: creators connect Instagram / TikTok / YouTube themselves. That shares their real reach, impressions and audience data, and earns them the **Verified** badge. Reach from connected accounts is shown as real numbers, not estimates.
 - **Campaign tracking**: paste live post links and track results over time.

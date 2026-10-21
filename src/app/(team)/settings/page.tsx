@@ -71,7 +71,7 @@ export default function SettingsPage() {
             onChange={(v) => actions.updateSettings({ recentPostCount: v })}
           />
           <NumberSetting
-            label="Instagram: skip posts newer than (hours)"
+            label="Instagram & TikTok: skip posts newer than (hours)"
             hint="New posts are still gaining likes. Default 72 (3 days)."
             value={settings.minPostAgeHours}
             min={0}
@@ -112,13 +112,14 @@ export default function SettingsPage() {
           change. Each size&apos;s numbers apply at its typical follower count and blend smoothly in between, so there&apos;s no sudden jump between sizes.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-muted">
               <tr className="border-b border-line">
                 <th className="py-2 pr-3">Size</th>
                 <th className="py-2 pr-3">Followers</th>
                 <th className="py-2 pr-3">Instagram engagement: poor / avg / good</th>
                 <th className="py-2 pr-3">YouTube engagement: poor / avg / good</th>
+                <th className="py-2 pr-3">TikTok engagement: poor / avg / good</th>
                 <th className="py-2 pr-3">Instagram reach (no views)</th>
               </tr>
             </thead>
@@ -126,6 +127,7 @@ export default function SettingsPage() {
               {SIZE_BANDS.map((b) => {
                 const ig = ENGAGEMENT_BENCHMARKS.instagram[b.id];
                 const yt = ENGAGEMENT_BENCHMARKS.youtube[b.id];
+                const tt = ENGAGEMENT_BENCHMARKS.tiktok[b.id];
                 const r = REACH_RATIOS.instagram[b.id];
                 return (
                   <tr key={b.id}>
@@ -141,6 +143,9 @@ export default function SettingsPage() {
                       &lt;{formatPercent(yt.poor)} / &lt;{formatPercent(yt.average)} / &lt;{formatPercent(yt.good)}
                     </td>
                     <td className="py-2 pr-3">
+                      &lt;{formatPercent(tt.poor)} / &lt;{formatPercent(tt.average)} / &lt;{formatPercent(tt.good)}
+                    </td>
+                    <td className="py-2 pr-3">
                       {formatPercent(r.low, 0)}–{formatPercent(r.high, 0)} of followers
                     </td>
                   </tr>
@@ -154,7 +159,8 @@ export default function SettingsPage() {
             Engagement by views: poor below {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.poor, 0)}, good from{" "}
             {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.average, 0)}, great from {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.instagram.good, 0)} on Instagram (
             {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.poor, 1)} / {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.average, 0)} /{" "}
-            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.good, 0)} on YouTube). The Engagement score uses both rates half and half where views exist.
+            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.youtube.good, 0)} on YouTube, {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.tiktok.poor, 0)} /{" "}
+            {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.tiktok.average, 0)} / {formatPercent(VIEW_ENGAGEMENT_BENCHMARKS.tiktok.good, 0)} on TikTok). The Engagement score uses both rates half and half where views exist.
           </li>
           <li>Reach from views: {formatPercent(VIEWS_TO_REACH, 0)} of views (views include repeat plays), adjusted by logged campaign results.</li>
           <li>
@@ -169,7 +175,8 @@ export default function SettingsPage() {
           <li>Follower jump: more than {formatPercent(FLAG_THRESHOLDS.followerJumpPct, 0)} growth within {FLAG_THRESHOLDS.followerJumpWindowDays} days.</li>
           <li>
             Likes per comment: normal is {FLAG_THRESHOLDS.likesPerComment.instagram.min}–{FLAG_THRESHOLDS.likesPerComment.instagram.max} on Instagram,{" "}
-            {FLAG_THRESHOLDS.likesPerComment.youtube.min}–{FLAG_THRESHOLDS.likesPerComment.youtube.max} on YouTube.
+            {FLAG_THRESHOLDS.likesPerComment.youtube.min}–{FLAG_THRESHOLDS.likesPerComment.youtube.max} on YouTube,{" "}
+            {FLAG_THRESHOLDS.likesPerComment.tiktok.min}–{FLAG_THRESHOLDS.likesPerComment.tiktok.max} on TikTok.
           </li>
           <li>Posting gap: more than {FLAG_THRESHOLDS.maxPostingGapDays} days.</li>
           <li>

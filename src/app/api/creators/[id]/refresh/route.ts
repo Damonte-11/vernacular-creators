@@ -1,10 +1,11 @@
 import { LookupError } from "@/lib/server/errors";
-import { errorResponse, fetchFromPlatform } from "@/lib/server/lookup-service";
+import { assertTikTokAllowance, errorResponse, fetchFromPlatform } from "@/lib/server/lookup-service";
 import { getCreator, loadSettings, saveFetchedCreator } from "@/lib/server/repository";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 
-export const maxDuration = 60;
+// TikTok lookups go through Apify and can take a minute or two.
+export const maxDuration = 180;
 
 /** POST → fetch fresh data for one creator now, whatever its age. Team only. */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   try {
     const saved = await getCreator(db, id);
     if (!saved) throw new LookupError("not_found", "This creator is no longer in the database.");
+    if (saved.platform === "tiktok") await assertTikTokAllowance(db);
     const fetched = await fetchFromPlatform(saved.platform, saved.platform === "youtube" ? saved.platformId : saved.handle);
     const creator = await saveFetchedCreator(db, fetched, await loadSettings(db), user.id);
     return Response.json({ status: "refreshed", creator });

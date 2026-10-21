@@ -1,8 +1,11 @@
 import { errorResponse, lookupCreator } from "@/lib/server/lookup-service";
+import { PLATFORMS } from "@/lib/platforms";
 import { IS_LIVE } from "@/lib/supabase/config";
+import type { Platform } from "@/lib/types";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 
-export const maxDuration = 60;
+// TikTok lookups go through Apify and can take a minute or two.
+export const maxDuration = 180;
 
 /** POST { platform, handle } → look up (and save) a creator. Team only. */
 export async function POST(request: Request) {
@@ -11,11 +14,11 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Please sign in." }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as { platform?: string; handle?: string };
-  if (body.platform !== "instagram" && body.platform !== "youtube") {
-    return Response.json({ error: "Choose Instagram or YouTube." }, { status: 400 });
+  if (!PLATFORMS.includes(body.platform as Platform)) {
+    return Response.json({ error: "Choose Instagram, YouTube or TikTok." }, { status: 400 });
   }
   try {
-    const result = await lookupCreator(supabaseAdmin(), body.platform, String(body.handle ?? "").trim(), user.id);
+    const result = await lookupCreator(supabaseAdmin(), body.platform as Platform, String(body.handle ?? "").trim(), user.id);
     return Response.json(result);
   } catch (e) {
     return errorResponse(e);

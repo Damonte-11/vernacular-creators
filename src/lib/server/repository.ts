@@ -170,11 +170,24 @@ export async function saveFetchedCreator(
 }
 
 /** Creators whose data is older than the refresh interval, oldest first. */
+/** How many fetches (follower snapshots) of this platform's creators were saved since `since`. */
+export async function countFetchesSince(db: SupabaseClient, platform: Platform, since: string): Promise<number> {
+  const { count, error } = await db
+    .from("creator_snapshots")
+    .select("id, creators!inner(platform)", { count: "exact", head: true })
+    .eq("creators.platform", platform)
+    .gte("captured_at", since);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Creators due a refresh. TikTok is left out: each refresh costs Apify credit, so it's refreshed by hand. */
 export async function staleCreators(db: SupabaseClient, intervalHours: number, limit: number): Promise<{ id: string; platform: Platform; handle: string; platform_id: string }[]> {
   const cutoff = new Date(Date.now() - intervalHours * 3_600_000).toISOString();
   const { data, error } = await db
     .from("creators")
     .select("id, platform, handle, platform_id")
+    .neq("platform", "tiktok")
     .lt("last_fetched_at", cutoff)
     .order("last_fetched_at", { ascending: true })
     .limit(limit);

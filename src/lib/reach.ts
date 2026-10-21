@@ -1,5 +1,6 @@
 import { CAMPAIGN_BLEND, REACH_RATIOS, VIEWS_TO_REACH } from "@config/benchmarks";
 import { smoothByFollowers } from "./benchmarks";
+import { platformName } from "./platforms";
 import type { CampaignResult, Creator, Metrics, ReachEstimate } from "./types";
 import { median, percentile } from "./stats";
 import { sizeBandFor } from "./size-bands";
@@ -98,6 +99,3 @@ function pct(n: number): string {
   return `${Math.round(n * 100)}%`;
 }
 
-function platformName(p: Creator["platform"]): string {
-  return p === "instagram" ? "Instagram" : "YouTube";
-}

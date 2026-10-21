@@ -12,6 +12,12 @@ const PATHS = {
       <path d="M10 9.5v5l4.5-2.5z" fill="currentColor" />
     </>
   ),
+  tiktok: (
+    <>
+      <path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5" />
+      <path d="M14 4c.4 2.3 2 4 4.5 4.2" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

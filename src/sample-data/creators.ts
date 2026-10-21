@@ -7,6 +7,7 @@
  * Some creators are deliberately "problem" accounts so the warning flags have
  * something to show.
  */
+import { platformName } from "@/lib/platforms";
 import { ENGAGEMENT_BENCHMARKS, VIEWS_RATIO_TARGETS } from "@config/benchmarks";
 import type { Creator, Platform, Post, PostType, Snapshot } from "@/lib/types";
 import { sizeBandFor } from "@/lib/size-bands";
@@ -142,7 +143,8 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
   if (arch.has("bought_likes")) likesPerComment = 320 + r() * 150;
 
   // Posting rhythm.
-  const perMonth = isIG ? 6 + r() * 8 : 2 + r() * 4;
+  const isTT = spec.platform === "tiktok";
+  const perMonth = isIG ? 6 + r() * 8 : isTT ? 8 + r() * 12 : 2 + r() * 4;
   const count = 36;
   const posts: Post[] = [];
   let t = now - (arch.has("dormant") ? 46 : 0.4) * DAY_MS; // most have a post from the last few hours
@@ -154,9 +156,13 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
         : r() < 0.4
           ? "carousel"
           : "image"
-      : r() < 0.3
-        ? "short"
-        : "video";
+      : isTT
+        ? r() < 0.15
+          ? "slideshow"
+          : "video"
+        : r() < 0.3
+          ? "short"
+          : "video";
 
     let likes: number;
     let comments: number;
@@ -178,10 +184,10 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
         views = Math.round(spec.followers * vr * noise() * boost);
       }
     } else {
-      let vr = VIEWS_RATIO_TARGETS.youtube[band] * (0.6 + quality) * (type === "short" ? 1.8 : 1);
+      let vr = VIEWS_RATIO_TARGETS[spec.platform][band] * (0.6 + quality) * (type === "short" ? 1.8 : 1);
       if (arch.has("fake_followers")) vr *= 0.08;
       views = Math.round(spec.followers * vr * noise());
-      const likeRate = arch.has("bought_likes") ? 0.15 : 0.025 + r() * 0.025;
+      const likeRate = arch.has("bought_likes") ? 0.15 : isTT ? 0.04 + r() * 0.05 : 0.025 + r() * 0.025;
       likes = Math.round(views * likeRate);
       comments = Math.max(0, Math.round(likes / likesPerComment));
     }
@@ -214,7 +220,7 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
     country: "Nigeria",
     followers: spec.followers,
     mediaCount: Math.round(80 + r() * 900),
-    accountType: isIG ? (r() < 0.5 ? "creator" : "business") : "channel",
+    accountType: isIG ? (r() < 0.5 ? "creator" : "business") : isTT ? "creator" : "channel",
     verified: !!spec.verified,
     lastFetchedAt: new Date(now - r() * 20 * 60 * 60 * 1000).toISOString(),
     notes: "",
@@ -273,7 +279,7 @@ export function simulateLookup(
     };
   }
   if (handle.includes("notfound") || handle.includes("missing")) {
-    return { ok: false, error: `We couldn't find @${handle} on ${platform === "instagram" ? "Instagram" : "YouTube"}. Check the spelling.` };
+    return { ok: false, error: `We couldn't find @${handle} on ${platformName(platform)}. Check the spelling.` };
   }
 
   const r = rng(hash(handle + platform));

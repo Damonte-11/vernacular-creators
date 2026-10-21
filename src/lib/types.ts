@@ -1,8 +1,8 @@
 import type { SizeBandId } from "@config/size-bands";
 import type { ScoreFactor } from "@config/scoring";
 
-export type Platform = "instagram" | "youtube";
-export type PostType = "image" | "carousel" | "reel" | "video" | "short";
+export type Platform = "instagram" | "youtube" | "tiktok";
+export type PostType = "image" | "carousel" | "reel" | "video" | "short" | "slideshow";
 
 export interface Post {
   id: string;
@@ -53,7 +53,7 @@ export interface Creator {
 export interface Settings {
   weights: Record<ScoreFactor, number>;
   recentPostCount: number;
-  /** Instagram: posts newer than this are left out (numbers still growing). */
+  /** Instagram and TikTok: posts newer than this are left out (numbers still growing). */
   minPostAgeHours: number;
   /** YouTube: videos newer than this are left out. */
   minPostAgeHoursYoutube: number;

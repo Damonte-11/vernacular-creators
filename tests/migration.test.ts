@@ -8,7 +8,7 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql"];
+    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql"];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run
@@ -34,6 +34,10 @@ describe("database migration", () => {
       [id],
     );
     expect(post.rows[0].excluded).toBe(false);
+
+    await db.query("insert into creators (platform, platform_id, handle) values ('tiktok', '9', 'someone')"); // TikTok allowed
+    await expect(db.query("insert into creators (platform, platform_id, handle) values ('myspace', '9', 'x')")).rejects.toThrow();
+    await db.query("update posts set views = 3000000000 where creator_id = $1", [id]); // over 2 billion fits
 
     await db.query("delete from creators where id = $1", [id]); // cascades cleanly
   }, 30_000);

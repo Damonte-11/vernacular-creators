@@ -1,6 +1,6 @@
 # Vernacular Creators
 
-A tool for the Vernacular team to **find, vet and rank Instagram and YouTube creators**. You can:
+A tool for the Vernacular team to **find, vet and rank Instagram, YouTube and TikTok creators**. You can:
 
 - look up a creator and see their real public numbers
 - see expected engagement and estimated reach per post
@@ -61,6 +61,7 @@ All calculations use a creator's **last 30 posts** (like HypeAuditor) from the p
 
 - **Possibly boosted posts are set aside.** A post with more than **3×** a typical post's engagement or views (likely paid ads, or a one-off viral hit) is left out and marked on the profile, and the next older post takes its place (up to 6 months back). If more than a quarter of posts are that big, it's simply the creator's pattern and nothing is set aside. The team can also **exclude any post by hand**, for example a known ad. Instagram doesn't say which posts were promoted, and its Reel view counts include paid views, which is why this check exists.
 - **Likes, comments and engagement use a "trimmed" average:** the single most extreme post at each end is dropped (10% each side) before averaging. That lands close to what other tools report, but one freak post can't swing it.
+- **TikTok** uses the same maths on the creator's latest videos (pinned videos and ads left out), with TikTok's own benchmarks: TikTok shows videos to non-followers, so normal engagement and views per follower are higher than on Instagram.
 - **Views use the middle post (median)**, because views are more lopsided than likes (a few Reels take off). It's the safer figure to promise a client.
 - **Instagram views are adjusted down to 70%.** Since April 2026, Instagram's official view count also includes the Facebook views of Reels the creator cross-posts there, plus paid (ad) views, and doesn't say how many. Counting 70% brings the numbers close to what the Instagram app and HypeAuditor show. The team can change it under **Settings → Instagram views counted** (100 = no adjustment). The posts list still shows each Reel's raw count. YouTube views aren't adjusted.
 - **Engagement rate (by followers)** = average (likes + comments) per post ÷ followers. This is the classic measure most tools show.
@@ -122,4 +123,4 @@ docs/SETUP.md        step-by-step setup for Supabase, Vercel, Meta and Google
 docs/ROADMAP.md      what's done and the plan for Stage 3
 ```
 
-**Data rule:** this app only uses **official APIs** (Instagram Graph API Business Discovery, YouTube Data API v3, and later TikTok Login Kit). No scraping, no fake accounts, no getting around rate limits.
+**Data sources:** Instagram and YouTube use their **official APIs** (Instagram Graph API Business Discovery, YouTube Data API v3). TikTok has no official API for this, so it goes through **Apify**, a paid third-party service that collects public profile data; this is against TikTok's terms, and TikTok can block it. The app itself never logs in to TikTok, uses fake accounts or gets around blocks, and never collects data about a creator's followers. TikTok lookups are capped at 30 a month to stay inside Apify's free credit.

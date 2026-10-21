@@ -289,6 +289,7 @@ describe("helpers", () => {
     expect(normalizeHandle("https://www.instagram.com/Some.Creator/")).toBe("some.creator");
     expect(normalizeHandle("@Someone")).toBe("someone");
     expect(normalizeHandle("youtube.com/@channel_name")).toBe("channel_name");
+    expect(normalizeHandle("https://www.tiktok.com/@Naija.Creator?lang=en")).toBe("naija.creator");
   });
 });
 
