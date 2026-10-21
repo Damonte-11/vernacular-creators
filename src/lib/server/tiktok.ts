@@ -12,8 +12,12 @@ import type { FetchedCreator, Fetcher } from "./fetched";
 
 /** Videos fetched per lookup: the 30 the maths uses, plus a few for posts too new to count. */
 export const TIKTOK_VIDEO_LIMIT = 36;
-/** Apify stops a run that would cost more than this (US dollars). */
-export const TIKTOK_MAX_CHARGE_USD = 0.2;
+/**
+ * Apify stops a run that would cost more than this (US dollars). $0.50 is the
+ * lowest cap this actor accepts; a normal lookup costs about $0.13, because
+ * only TIKTOK_VIDEO_LIMIT videos are requested (and maxItems caps results too).
+ */
+export const TIKTOK_MAX_CHARGE_USD = 0.5;
 const ACTOR = "clockworks~tiktok-scraper";
 const API = "https://api.apify.com/v2";
 /** How long Apify may take before we give up, in seconds. */
@@ -126,6 +130,7 @@ async function runActor(fetcher: Fetcher, token: string, input: Record<string, u
   const url = new URL(`${API}/acts/${ACTOR}/run-sync-get-dataset-items`);
   url.searchParams.set("timeout", String(RUN_TIMEOUT_SECS));
   url.searchParams.set("maxTotalChargeUsd", String(TIKTOK_MAX_CHARGE_USD));
+  url.searchParams.set("maxItems", String(TIKTOK_VIDEO_LIMIT + 4));
   let res: Response;
   try {
     res = await fetcher(url, {

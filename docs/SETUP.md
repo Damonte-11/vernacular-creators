@@ -163,7 +163,7 @@ TikTok has no official way to look up other creators' numbers, so the app uses *
 
 5. Run database update `0006_tiktok.sql` (below).
 
-A TikTok lookup takes **30 seconds to 2 minutes**, as Apify has to open the profile. Each lookup is capped at $0.20.
+A TikTok lookup takes **30 seconds to 2 minutes**, as Apify has to open the profile. A normal lookup costs about $0.13; Apify's lowest per-lookup safety cap for this service is $0.50, which a lookup won't reach.
 
 ---
 
