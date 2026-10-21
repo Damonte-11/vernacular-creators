@@ -18,7 +18,7 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader title="Find and vet creators" subtitle="Look up any Instagram or YouTube creator and see how they really perform." />
+      <PageHeader title="Find and vet creators" subtitle="Look up any Instagram, YouTube or TikTok creator and see how they really perform." />
       <Card className="mb-6 p-5">
         <h2 className="mb-3 font-bold">Look up a creator</h2>
         <LookupForm />
