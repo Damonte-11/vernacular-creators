@@ -35,14 +35,14 @@ export function EngagementChart({ posts, likesHidden }: { posts: Post[]; likesHi
           {" · dashed line = average"}
         </p>
         {hasViews && (
-          <div className="flex rounded-lg border border-line p-0.5 text-xs font-semibold" role="tablist">
+          <div className="flex rounded-lg bg-surface-2 p-1 text-xs font-medium ring-1 ring-line" role="tablist" aria-label="Chart shows">
             {(["engagements", "views"] as Mode[]).map((m) => (
               <button
                 key={m}
                 role="tab"
                 aria-selected={mode === m}
                 onClick={() => setMode(m)}
-                className={cx("rounded-md px-3 py-1 capitalize", mode === m ? "bg-brand text-brand-ink" : "text-ink-2")}
+                className={cx("rounded-md px-3 py-1 capitalize transition-colors", mode === m ? "bg-surface text-ink shadow-sm ring-1 ring-line" : "text-ink-2 hover:text-ink")}
               >
                 {m}
               </button>

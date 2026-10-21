@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CreatorTable } from "@/components/creator-table";
-import { FilterPanel, Select } from "@/components/filters";
-import { buttonClass, EmptyState, PageHeader } from "@/components/ui";
+import { FilterPanel } from "@/components/filters";
+import { buttonClass, cx, EmptyState, inputClass, PageHeader } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { useAnalyses } from "@/lib/data/creators";
 import { applyFilters, EMPTY_FILTERS, sortAnalyses, type SortKey } from "@/lib/filter";
 
@@ -21,29 +22,31 @@ export default function CreatorsPage() {
         subtitle={`${all.length} creators in the database`}
         actions={
           <Link href="/add" className={buttonClass.primary}>
-            Add creators
+            <Icon name="plus" size={16} /> Add creators
           </Link>
         }
       />
-      <FilterPanel filters={filters} onChange={setFilters} countries={countries} />
-      <div className="my-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-2">
-          {rows.length} {rows.length === 1 ? "result" : "results"}
-        </p>
-        <div className="w-48">
-          <Select
-            label="Sort by"
+      <FilterPanel
+        filters={filters}
+        onChange={setFilters}
+        countries={countries}
+        trailing={
+          <select
+            className={cx(inputClass, "w-auto min-w-44 flex-none")}
             value={sort}
-            onChange={(v) => setSort((v || "score") as SortKey)}
-            allLabel="Score (high to low)"
-            options={[
-              { value: "followers", label: "Followers" },
-              { value: "engagement", label: "Engagement rate" },
-              { value: "name", label: "Name (A–Z)" },
-            ]}
-          />
-        </div>
-      </div>
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            aria-label="Sort by"
+          >
+            <option value="score">Sort: Score (high to low)</option>
+            <option value="followers">Sort: Followers</option>
+            <option value="engagement">Sort: Engagement rate</option>
+            <option value="name">Sort: Name (A–Z)</option>
+          </select>
+        }
+      />
+      <p className="mb-3 mt-5 text-sm text-muted" aria-live="polite">
+        {rows.length === all.length ? `Showing all ${rows.length} creators` : `${rows.length} of ${all.length} creators match`}
+      </p>
       {rows.length === 0 ? (
         <EmptyState
           title="No creators match these filters"

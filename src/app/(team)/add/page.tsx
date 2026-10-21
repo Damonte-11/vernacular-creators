@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { LookupForm, PlatformToggle } from "@/components/lookup-form";
-import { buttonClass, Card, cx, inputClass, PageHeader } from "@/components/ui";
+import { buttonClass, Card, cx, inputClass, PageHeader, SectionHeader } from "@/components/ui";
+import { platformName } from "@/lib/platforms";
 import { useCreators } from "@/lib/data/creators";
 import { lookupCreator, type LookupResult } from "@/lib/data/lookup";
 import type { Platform } from "@/lib/types";
@@ -14,9 +15,9 @@ const BULK_LIMIT = 100;
 export default function AddPage() {
   return (
     <>
-      <PageHeader title="Add creators" subtitle="Every creator you look up is saved to the database." />
-      <Card className="mb-6 p-5">
-        <h2 className="mb-3 font-bold">One creator</h2>
+      <PageHeader title="Add creators" subtitle="Every creator you look up is saved, so the whole team can find them later." />
+      <Card className="mb-6 p-5 sm:p-6">
+        <SectionHeader title="One creator" description="Opens their profile as soon as the lookup finishes." className="mb-4" />
         <LookupForm />
       </Card>
       <BulkAdd />
@@ -51,7 +52,7 @@ function BulkAdd() {
       let r = await lookupCreator(platform, h, known);
       for (let tries = 0; r.status === "error" && r.code === "rate_limited" && tries < 3 && !stop.current; tries++) {
         const wait = Math.max(10, r.retryAfterSeconds ?? 60);
-        setNotice(`${platform === "instagram" ? "Instagram" : "YouTube"} asked us to slow down. Resuming in ${wait} seconds…`);
+        setNotice(`${platformName(platform)} asked us to slow down. Resuming in ${wait} seconds…`);
         await new Promise((res) => setTimeout(res, wait * 1000));
         setNotice(null);
         r = await lookupCreator(platform, h, known);
@@ -72,16 +73,17 @@ function BulkAdd() {
   const failed = results.filter((r) => r.status === "error");
 
   return (
-    <Card className="p-5">
-      <h2 className="font-bold">Bulk add</h2>
-      <p className="mb-3 text-sm text-ink-2">
-        Paste a list of handles, one per line or separated by commas. We look them up one at a time to respect the platforms&apos; limits (up to {BULK_LIMIT} at once).
-      </p>
-      <div className="mb-3">
+    <Card className="p-5 sm:p-6">
+      <SectionHeader
+        title="Bulk add"
+        description={`Paste handles, one per line or separated by commas. They're looked up one at a time to respect the platforms' limits (up to ${BULK_LIMIT} at once).`}
+        className="mb-4"
+      />
+      <div className="mb-3 flex">
         <PlatformToggle value={platform} onChange={setPlatform} />
       </div>
       <textarea
-        className={cx(inputClass, "min-h-36 font-mono")}
+        className={cx(inputClass, "min-h-36 leading-relaxed")}
         placeholder={"@first_creator\n@second_creator\nthird_creator"}
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -98,6 +100,7 @@ function BulkAdd() {
             Add {handles.length > 0 ? Math.min(handles.length, BULK_LIMIT) : ""} {handles.length === 1 ? "creator" : "creators"}
           </button>
         )}
+        {handles.length > 0 && !running && <p className="text-xs text-muted">{handles.length} {handles.length === 1 ? "handle" : "handles"} found</p>}
         {handles.length > BULK_LIMIT && <p className="text-xs text-warn">Only the first {BULK_LIMIT} will be added.</p>}
       </div>
 
@@ -110,8 +113,8 @@ function BulkAdd() {
               {added} added · {existing} already saved · {failed.length} failed
             </span>
           </div>
-          <div className="mt-2 h-2 rounded-full bg-canvas">
-            <div className="h-2 rounded-full bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
+          <div className="mt-2 h-1.5 rounded-full bg-line" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total} aria-label="Bulk add progress">
+            <div className="h-1.5 rounded-full bg-accent transition-all" style={{ width: `${(done / total) * 100}%` }} />
           </div>
           <ul className="mt-4 divide-y divide-line text-sm">
             {results.map((r, i) => (

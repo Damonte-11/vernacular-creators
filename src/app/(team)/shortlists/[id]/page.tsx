@@ -69,7 +69,7 @@ export default function ShortlistPage() {
 
   return (
     <>
-      <Link href="/shortlists" className={cx(buttonClass.ghost, "-ml-2 mb-3")}>
+      <Link href="/shortlists" className={cx(buttonClass.ghost, "-ml-2.5 mb-4")}>
         <Icon name="back" size={16} /> All shortlists
       </Link>
       {editing ? (
@@ -80,7 +80,7 @@ export default function ShortlistPage() {
           subtitle={list.client ? `Client: ${list.client}` : undefined}
           actions={
             <>
-              <button className={buttonClass.ghost} onClick={() => setEditing(true)}>
+              <button className={buttonClass.secondary} onClick={() => setEditing(true)}>
                 Rename
               </button>
               <button className={buttonClass.secondary} onClick={copyLink} disabled={rows.length === 0}>
@@ -95,7 +95,8 @@ export default function ShortlistPage() {
       )}
 
       {list.shareToken && rows.length > 0 && (
-        <p className="-mt-3 mb-5 text-xs text-muted">
+        <p className="-mt-3 mb-6 flex items-start gap-1.5 text-xs text-muted lg:-mt-5">
+          <Icon name="info" size={13} className="mt-px shrink-0" />
           Anyone with the share link can view the client report without signing in. They can&apos;t see team notes or make changes.
         </p>
       )}
@@ -117,10 +118,18 @@ export default function ShortlistPage() {
           }
         />
       ) : (
-        <Card className="divide-y divide-line">
+        <Card className="divide-y divide-line overflow-hidden">
+          <div className="hidden items-center gap-3 bg-surface-2 px-4 py-2.5 text-xs font-medium text-muted sm:flex">
+            <span className="flex-1">Creator ({rows.length})</span>
+            <span className="w-20 text-right">Followers</span>
+            <span className="w-20 text-right">Engagement</span>
+            <span className="w-12 text-center">Flags</span>
+            <span className="w-12 text-center">Score</span>
+            <span className="w-9" />
+          </div>
           {rows.map((a) => (
-            <div key={a.creator.id} className="flex flex-wrap items-center gap-3 p-4">
-              <CreatorLink id={a.creator.id} className="flex min-w-0 flex-1 items-center gap-3">
+            <div key={a.creator.id} className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2">
+              <CreatorLink id={a.creator.id} className="flex min-w-0 flex-1 basis-56 items-center gap-3 rounded-md">
                 <Avatar name={a.creator.name} photoUrl={a.creator.photoUrl} />
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{a.creator.name}</span>
@@ -129,18 +138,22 @@ export default function ShortlistPage() {
                   </span>
                 </span>
               </CreatorLink>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-right">
-                  <span className="block font-semibold">{formatNumber(a.creator.followers)}</span>
-                  <span className="text-xs text-muted">followers</span>
+              <div className="flex w-full items-center gap-3 text-sm sm:w-auto">
+                <span className="w-20 text-left sm:text-right">
+                  <span className="block font-semibold tabular-nums">{formatNumber(a.creator.followers)}</span>
+                  <span className="text-xs text-muted sm:hidden">followers</span>
                 </span>
-                <span className="text-right">
-                  <span className="block font-semibold">{formatPercent(a.metrics.engagementRate)}</span>
-                  <span className="text-xs text-muted">engagement</span>
+                <span className="w-20 text-left sm:text-right">
+                  <span className="block font-semibold tabular-nums">{formatPercent(a.metrics.engagementRate)}</span>
+                  <span className="text-xs text-muted sm:hidden">engagement</span>
                 </span>
-                <FlagCount flags={a.flags} />
-                <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="sm" />
-                <button className={buttonClass.ghost} onClick={() => actions.toggleInShortlist(list.id, a.creator.id)} aria-label={`Remove ${a.creator.name}`} title="Remove from shortlist">
+                <span className="w-12 text-center">
+                  <FlagCount flags={a.flags} />
+                </span>
+                <span className="flex w-12 justify-center sm:ml-0 max-sm:ml-auto">
+                  <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="sm" />
+                </span>
+                <button className={buttonClass.icon} onClick={() => actions.toggleInShortlist(list.id, a.creator.id)} aria-label={`Remove ${a.creator.name}`} title="Remove from shortlist">
                   <Icon name="close" size={16} />
                 </button>
               </div>
@@ -149,7 +162,7 @@ export default function ShortlistPage() {
         </Card>
       )}
 
-      <div className="mt-8 flex justify-end">
+      <div className="mt-10 flex justify-end border-t border-line pt-6">
         <button
           className={buttonClass.danger}
           onClick={() => {

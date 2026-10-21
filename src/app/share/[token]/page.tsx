@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { StatusPage } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { ReportView } from "@/components/report-view";
 import { loadShareReport } from "@/lib/server/repository";
@@ -18,10 +19,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   } catch (e) {
     console.error(e);
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <p className="text-lg font-bold">This report can&apos;t be shown right now</p>
-        <p className="mt-2 text-sm text-ink-2">Please try again in a few minutes.</p>
-      </div>
+      <StatusPage title="This report can't be shown right now" body="Please try again in a few minutes." />
     );
   }
   if (!data) notFound();

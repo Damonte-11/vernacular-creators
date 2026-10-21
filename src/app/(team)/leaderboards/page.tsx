@@ -18,7 +18,7 @@ export default function LeaderboardsPage() {
   return (
     <>
       <PageHeader title="Leaderboards" subtitle="Top creators by Creator Score. Pick a size to compare like with like." />
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-line bg-surface p-4 shadow-[0_1px_2px_rgb(23_23_21/0.04)] sm:p-5 lg:grid-cols-4">
         <Select label="Platform" value={f.platform} onChange={set("platform")} options={platformOptions} />
         <Select label="Niche" value={f.niche} onChange={set("niche")} options={nicheOptions} />
         <Select label="City" value={f.city} onChange={set("city")} options={cityOptions} />

@@ -93,12 +93,12 @@ export function ReportView({
 function Total({ label, value, hint, estimate }: { label: string; value: string; hint?: string; estimate?: boolean }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+      <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted">
         {label}
-        {estimate && <span className="ml-1 text-accent-ink">(estimate)</span>}
+        {estimate && <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-ink">Estimate</span>}
       </p>
-      <p className="mt-1 text-xl font-bold">{value}</p>
-      {hint && <p className="text-[11px] text-muted">{hint}</p>}
+      <p className="mt-1.5 text-xl font-semibold tracking-tight tabular-nums">{value}</p>
+      {hint && <p className="mt-0.5 text-[11px] leading-snug text-muted">{hint}</p>}
     </div>
   );
 }
@@ -107,11 +107,11 @@ function CreatorCard({ a }: { a: CreatorAnalysis }) {
   const c = a.creator;
   const m = a.metrics;
   return (
-    <div className="rounded-xl border border-line bg-surface p-5 print-avoid-break">
+    <div className="rounded-xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgb(23_23_21/0.04)] sm:p-6 print-avoid-break">
       <div className="flex items-start gap-4">
         <Avatar name={c.name} photoUrl={c.photoUrl} size={52} />
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold">{c.name}</p>
+          <p className="text-lg font-semibold tracking-tight">{c.name}</p>
           <p className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
             <PlatformBadge platform={c.platform} /> @{c.handle}
           </p>
@@ -124,13 +124,13 @@ function CreatorCard({ a }: { a: CreatorAnalysis }) {
         </div>
         <div className="text-center">
           <ScoreBadge limited={isLimited(a.score)} score={a.score.total} />
-          <p className="mt-1 text-[10px] font-semibold uppercase text-muted">Score</p>
+          <p className="mt-1 text-[11px] font-medium text-muted">Score</p>
         </div>
       </div>
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+      <dl className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 border-t border-line pt-4 text-sm sm:grid-cols-5">
         <Stat label="Followers" value={formatNumber(c.followers)} />
         <Stat
-          label="Engagement (followers)"
+          label="Engagement by followers"
           value={
             <span className="flex items-center gap-1.5">
               {formatPercent(m.engagementRate)} <EngagementChip label={m.engagementLabel} />
@@ -164,8 +164,8 @@ function CreatorCard({ a }: { a: CreatorAnalysis }) {
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 font-bold">{value}</dd>
+      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dd className="mt-1 font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }

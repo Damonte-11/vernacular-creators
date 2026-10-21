@@ -11,7 +11,7 @@ import { buttonClass, cx, inputClass } from "./ui";
 
 export function PlatformToggle({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
   return (
-    <div className="flex shrink-0 rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Platform">
+    <div className="flex shrink-0 rounded-lg bg-surface-2 p-1 ring-1 ring-line" role="radiogroup" aria-label="Platform">
       {PLATFORMS.map((p) => (
         <button
           key={p}
@@ -20,8 +20,8 @@ export function PlatformToggle({ value, onChange }: { value: Platform; onChange:
           aria-checked={value === p}
           onClick={() => onChange(p)}
           className={cx(
-            "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold",
-            value === p ? "bg-brand text-brand-ink" : "text-ink-2 hover:bg-canvas",
+            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:flex-none",
+            value === p ? "bg-surface text-ink shadow-sm ring-1 ring-line" : "text-ink-2 hover:text-ink",
           )}
         >
           <Icon name={p} size={16} />
@@ -52,17 +52,26 @@ export function LookupForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2">
-      <div className="flex flex-col gap-2 sm:flex-row">
+    <form onSubmit={submit} className="space-y-3">
+      <div className="flex flex-col gap-2 lg:flex-row">
         <PlatformToggle value={platform} onChange={setPlatform} />
-        <input
-          className={inputClass}
-          placeholder={{ instagram: "@handle or instagram.com/handle", youtube: "@handle, channel link or channel ID", tiktok: "@handle or tiktok.com/@handle" }[platform]}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          aria-label="Creator handle or link"
-        />
+        <div className="relative flex-1">
+          <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            className={cx(inputClass, "pl-9")}
+            placeholder={
+              { instagram: "@handle or instagram.com/handle", youtube: "@handle, channel link or channel ID", tiktok: "@handle or tiktok.com/@handle" }[
+                platform
+              ]
+            }
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            aria-label="Creator handle or link"
+            disabled={busy}
+          />
+        </div>
         <button className={cx(buttonClass.primary, "whitespace-nowrap")} disabled={busy}>
+          {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink" aria-hidden />}
           {busy ? "Looking up…" : "Look up"}
         </button>
       </div>
@@ -72,9 +81,13 @@ export function LookupForm() {
         </p>
       )}
       <p className="text-xs text-muted">
-        {IS_LIVE
-          ? "Instagram works for business and creator accounts only. Creators already saved load instantly."
-          : "Demo: any new handle creates a made-up profile. Try one with \"personal\" or \"notfound\" in it to see the error messages."}
+        {!IS_LIVE
+          ? 'Demo: any new handle creates a made-up profile. Try one with "personal" or "notfound" in it to see the error messages.'
+          : platform === "instagram"
+            ? "Instagram works for business and creator accounts only. Creators already saved load instantly."
+            : platform === "tiktok"
+              ? "A new TikTok lookup takes up to 2 minutes and uses one of this month's TikTok lookups. Creators already saved load instantly."
+              : "Creators already saved load instantly."}
       </p>
     </form>
   );

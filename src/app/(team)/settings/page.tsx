@@ -19,48 +19,52 @@ export default function SettingsPage() {
         subtitle={IS_LIVE ? "Shared by the whole team. Changes apply straight away to every score." : "Changes apply straight away to every score on the site."}
       />
 
-      <Card className="mb-6 p-5">
+      <Card className="mb-6 p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="font-bold">Creator Score weights</h2>
-            <p className="text-sm text-ink-2">
+            <h2 className="text-base font-semibold">Creator Score weights</h2>
+            <p className="mt-0.5 max-w-2xl text-sm text-muted">
               How much each factor counts. For a brand that cares most about views, turn up &quot;Views&quot;. Weights are re-balanced automatically, so they
               don&apos;t need to add up to 100.
             </p>
           </div>
-          <button className={buttonClass.ghost} onClick={() => actions.resetSettings()}>
+          <button className={buttonClass.secondary} onClick={() => actions.resetSettings()}>
             Reset to defaults
           </button>
         </div>
-        <div className="space-y-5">
+        <div className="divide-y divide-line border-t border-line">
           {(Object.keys(SCORE_FACTOR_LABELS) as ScoreFactor[]).map((f) => (
-            <div key={f}>
-              <div className="flex items-baseline justify-between text-sm">
-                <label htmlFor={`w-${f}`} className="font-semibold">
+            <div key={f} className="grid gap-x-8 gap-y-2 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-center">
+              <div>
+                <label htmlFor={`w-${f}`} className="text-sm font-semibold">
                   {SCORE_FACTOR_LABELS[f].label}
                 </label>
-                <span className="text-xs text-muted">
-                  {settings.weights[f]} → <span className="font-semibold text-ink">{weightTotal ? Math.round((settings.weights[f] / weightTotal) * 100) : 0}%</span> of the score
+                <p className="text-xs text-muted">{SCORE_FACTOR_LABELS[f].help}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  id={`w-${f}`}
+                  type="range"
+                  min={0}
+                  max={50}
+                  step={1}
+                  value={settings.weights[f]}
+                  onChange={(e) => actions.updateSettings({ weights: { ...settings.weights, [f]: Number(e.target.value) } })}
+                  className="slider w-full"
+                  style={{ "--fill": `${(settings.weights[f] / 50) * 100}%` } as React.CSSProperties}
+                  aria-valuetext={`${settings.weights[f]}, ${weightTotal ? Math.round((settings.weights[f] / weightTotal) * 100) : 0}% of the score`}
+                />
+                <span className="w-24 shrink-0 text-right text-xs text-muted">
+                  <span className="text-base font-semibold tabular-nums text-ink">{weightTotal ? Math.round((settings.weights[f] / weightTotal) * 100) : 0}%</span> of score
                 </span>
               </div>
-              <input
-                id={`w-${f}`}
-                type="range"
-                min={0}
-                max={50}
-                step={1}
-                value={settings.weights[f]}
-                onChange={(e) => actions.updateSettings({ weights: { ...settings.weights, [f]: Number(e.target.value) } })}
-                className="mt-1 w-full accent-[var(--color-accent)]"
-              />
-              <p className="text-xs text-muted">{SCORE_FACTOR_LABELS[f].help}</p>
             </div>
           ))}
         </div>
       </Card>
 
-      <Card className="mb-6 p-5">
-        <h2 className="mb-4 font-bold">Data</h2>
+      <Card className="mb-6 p-5 sm:p-6">
+        <h2 className="mb-4 text-base font-semibold">Data</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberSetting
             label="Recent posts to use"
@@ -105,15 +109,15 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="mb-6 p-5">
-        <h2 className="font-bold">Benchmarks and thresholds</h2>
+      <Card className="mb-6 p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Benchmarks and thresholds</h2>
         <p className="mb-4 text-sm text-ink-2">
           These are kept in the <code className="rounded bg-canvas px-1">config</code> folder so they&apos;re easy to adjust. Tell me (or a developer) what to
           change. Each size&apos;s numbers apply at its typical follower count and blend smoothly in between, so there&apos;s no sudden jump between sizes.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-muted">
+            <thead className="text-left text-xs font-medium text-muted">
               <tr className="border-b border-line">
                 <th className="py-2 pr-3">Size</th>
                 <th className="py-2 pr-3">Followers</th>
@@ -191,8 +195,8 @@ export default function SettingsPage() {
         </ul>
       </Card>
 
-      {!IS_LIVE && <Card className="p-5">
-        <h2 className="font-bold">Demo data</h2>
+      {!IS_LIVE && <Card className="p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Demo data</h2>
         <p className="mb-3 text-sm text-ink-2">Clear everything saved in this browser (added creators, notes, shortlists, settings) and start the demo fresh.</p>
         <button
           className={buttonClass.danger}

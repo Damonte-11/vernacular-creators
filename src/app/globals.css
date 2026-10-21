@@ -13,8 +13,10 @@
   --color-accent-soft: #feeee8; /* Orange 50: light orange backgrounds */
 
   --color-surface: #ffffff; /* cards */
+  --color-surface-2: #faf8f3; /* quiet panels inside cards: table headers, notes */
   --color-canvas: #f2eee3; /* Alabaster: page background */
-  --color-line: #e3ded0; /* borders */
+  --color-line: #e6e1d4; /* borders */
+  --color-line-strong: #d3ccba; /* input borders, dividers that need to show */
   --color-ink: #171715; /* main text */
   --color-ink-2: #45443f; /* secondary text */
   --color-muted: #6c6a62; /* hints, labels */
@@ -40,6 +42,42 @@ html {
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+/* One visible focus style for keyboard users, everywhere. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Score-weight sliders: thin track, brand-coloured fill. */
+input[type="range"].slider {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-accent) var(--fill, 50%), var(--color-line) var(--fill, 50%));
+  cursor: pointer;
+}
+input[type="range"].slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 2px rgb(23 23 21 / 0.15);
+}
+input[type="range"].slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
 }
 
 @media print {

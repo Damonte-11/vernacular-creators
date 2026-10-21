@@ -80,10 +80,13 @@ export function FilterPanel({
   filters,
   onChange,
   countries,
+  trailing,
 }: {
   filters: CreatorFilters;
   onChange: (f: CreatorFilters) => void;
   countries: string[];
+  /** Extra controls on the toolbar row, e.g. sorting. */
+  trailing?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const set = (k: Field) => (v: string) => onChange({ ...filters, [k]: v });
@@ -91,24 +94,27 @@ export function FilterPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1 basis-60">
+          <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            className={cx(inputClass, "pl-10")}
+            className={cx(inputClass, "pl-9")}
             placeholder="Search by name or handle"
             value={filters.q}
             onChange={(e) => set("q")(e.target.value)}
             aria-label="Search by name or handle"
           />
         </div>
-        <button className={buttonClass.secondary} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          Filters{active > 0 && <span className="rounded-full bg-brand px-1.5 text-xs text-brand-ink">{active}</span>}
+        <button className={cx(buttonClass.secondary, open && "bg-surface-2")} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="creator-filters">
+          <Icon name="settings" size={16} className="text-muted" />
+          Filters
+          {active > 0 && <span className="rounded-full bg-brand px-1.5 text-xs leading-5 text-brand-ink">{active}</span>}
         </button>
+        {trailing}
       </div>
 
       {open && (
-        <div className="grid gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div id="creator-filters" className="grid gap-4 rounded-xl border border-line bg-surface p-4 shadow-[0_1px_2px_rgb(23_23_21/0.04)] sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
           <Select label="Platform" value={filters.platform} onChange={set("platform")} options={platformOptions} />
           <Select label="Niche" value={filters.niche} onChange={set("niche")} options={nicheOptions} />
           <Select label="City" value={filters.city} onChange={set("city")} options={cityOptions} />
@@ -129,7 +135,7 @@ export function FilterPanel({
             allLabel="Any"
           />
           <div className="flex items-end">
-            <button className={buttonClass.ghost} onClick={() => onChange({ ...EMPTY_FILTERS, q: filters.q })}>
+            <button className={buttonClass.ghost} onClick={() => onChange({ ...EMPTY_FILTERS, q: filters.q })} disabled={active === 0}>
               Clear filters
             </button>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { ReportView } from "@/components/report-view";
-import { Loading } from "@/components/ui";
+import { Loading, StatusPage } from "@/components/ui";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { useAppState } from "@/lib/data/store";
 import { IS_LIVE } from "@/lib/supabase/config";
@@ -17,14 +17,10 @@ export default function ReportPage() {
   if (!ready) return <Loading />;
   if (!list) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <p className="text-lg font-bold">Report not available</p>
-        <p className="mt-2 text-sm text-ink-2">
-          {IS_LIVE
-            ? "This shortlist may have been deleted."
-            : "In the demo, report links only open in the browser where the shortlist was made."}
-        </p>
-      </div>
+      <StatusPage
+        title="Report not available"
+        body={IS_LIVE ? "This shortlist may have been deleted." : "In the demo, report links only open in the browser where the shortlist was made."}
+      />
     );
   }
 

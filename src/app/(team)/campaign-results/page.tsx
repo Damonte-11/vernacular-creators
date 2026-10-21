@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
-import { buttonClass, Card, CreatorLink, EmptyState, inputClass, labelClass, PageHeader } from "@/components/ui";
+import { buttonClass, Card, CreatorLink, EmptyState, inputClass, labelClass, PageHeader, SectionHeader } from "@/components/ui";
 import { useCreators } from "@/lib/data/creators";
 import { actions, useAppState } from "@/lib/data/store";
 import { formatDate, formatFull } from "@/lib/format";
@@ -48,10 +48,13 @@ export default function CampaignResultsPage() {
         title="Campaign results"
         subtitle="Optional. Log what a post really achieved (from the creator's screenshot or report). Reach estimates get more accurate as results build up."
       />
-      <Card className="mb-6 p-5">
+      <Card className="mb-8 p-5 sm:p-6">
+        <SectionHeader title="Log a result" description="Enter whichever numbers the creator shared. At least one is needed." className="mb-5" />
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block sm:col-span-2 lg:col-span-1">
-            <span className={labelClass}>Creator</span>
+            <span className={labelClass}>
+              Creator <span className="text-bad">*</span>
+            </span>
             <select className={inputClass} value={creatorId} onChange={(e) => setCreatorId(e.target.value)}>
               <option value="">Choose a creator…</option>
               {sortedCreators.map((c) => (
@@ -72,14 +75,14 @@ export default function CampaignResultsPage() {
             <span className={labelClass}>Logged by</span>
             <input className={inputClass} value={loggedBy} onChange={(e) => setLoggedBy(e.target.value)} placeholder="Your name" />
           </label>
-          <div className="flex items-end sm:col-span-2">
+          <div className="flex flex-col justify-end gap-2 sm:flex-row sm:items-end lg:col-span-2">
+            {error && (
+              <p role="alert" className="flex items-center gap-1.5 text-sm text-bad sm:mr-auto">
+                <Icon name="alert" size={14} /> {error}
+              </p>
+            )}
             <button className={buttonClass.primary}>Save result</button>
           </div>
-          {error && (
-            <p role="alert" className="text-sm text-bad sm:col-span-2 lg:col-span-3">
-              {error}
-            </p>
-          )}
         </form>
       </Card>
 
@@ -88,7 +91,7 @@ export default function CampaignResultsPage() {
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
+            <thead className="border-b border-line bg-surface-2 text-left text-xs font-medium text-muted">
               <tr>
                 <th className="px-4 py-3">Creator</th>
                 <th className="px-4 py-3 text-right">Reach</th>
@@ -125,7 +128,7 @@ export default function CampaignResultsPage() {
                       {r.loggedBy && ` · ${r.loggedBy}`}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button className={buttonClass.ghost} onClick={() => actions.deleteCampaignResult(r.id)} aria-label="Delete result">
+                      <button className={buttonClass.icon} onClick={() => actions.deleteCampaignResult(r.id)} aria-label="Delete result" title="Delete result">
                         <Icon name="trash" size={16} />
                       </button>
                     </td>
