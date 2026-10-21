@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { IS_LIVE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 
 /** Pages anyone can open without signing in. */
-const PUBLIC_PATHS = ["/login", "/share/", "/api/cron/"];
+const PUBLIC_PATHS = ["/login", "/auth/", "/share/", "/api/cron/"];
 
 export async function middleware(request: NextRequest) {
   if (!IS_LIVE) return NextResponse.next(); // demo mode: no login

@@ -49,6 +49,25 @@ For each person:
    - **Publishable key** (starts with `sb_publishable_`). On older versions, the **anon public** key.
    - **Secret key** (starts with `sb_secret_`; click **Reveal**). On older versions, the **service_role** key.
 
+### 1.6 Sign in with Google (optional, recommended)
+The team can sign in with their Google account instead of a password. It stays invite-only: Google sign-in only works for emails you've added in 1.4, so use each person's Google (or Google Workspace) email there.
+
+**In Google Cloud** (the same project as YouTube in Part 4, or a new one):
+1. Go to <https://console.cloud.google.com>, pick the project, then search for **Google Auth Platform** (on older screens: **APIs & Services** → **OAuth consent screen**). Click **Get started**.
+2. **App name:** `Vernacular Creators`. **User support email:** yours. **Audience:** choose **Internal** if everyone uses a Vernacular Google Workspace email; otherwise **External**. Add your email as the contact and click **Create**.
+3. If you chose External: go to **Audience** and click **Publish app** (so anyone you've invited can use it; it only asks for name and email, so Google doesn't need to review it).
+4. Go to **Clients** → **Create client**. **Application type:** Web application. **Name:** `Vernacular Creators`.
+5. Under **Authorised redirect URIs**, click **Add URI** and paste the **Callback URL** from Supabase: in Supabase, **Authentication** → **Sign In / Providers** → **Google**, it's shown near the bottom and looks like `https://abcdefgh.supabase.co/auth/v1/callback`. Click **Create**.
+6. Copy the **Client ID** and **Client secret** that appear.
+
+**In Supabase:**
+7. **Authentication** → **Sign In / Providers** → **Google**: switch it **on**, paste the Client ID and Client secret, and click **Save**.
+8. **Authentication** → **URL Configuration**:
+   - **Site URL:** `https://vernacular-creators.vercel.app`
+   - **Redirect URLs** → **Add URL**: `https://vernacular-creators.vercel.app/**`, and for preview links also `https://*-damonte.vercel.app/**`. Save.
+
+Then click **Sign in with Google** on the sign-in page. If it says the account isn't on the team, that Google email hasn't been added in 1.4.
+
 ---
 
 ## Part 2: Vercel (put the keys into the live site)
