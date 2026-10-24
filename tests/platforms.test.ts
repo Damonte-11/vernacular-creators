@@ -74,6 +74,9 @@ describe("Instagram Business Discovery", () => {
     expect(mapGraphError({ code: 4 }, 400, "x").code).toBe("rate_limited");
     expect(mapGraphError({ code: 80002 }, 400, "x").code).toBe("rate_limited");
     expect(mapGraphError({ code: 190 }, 400, "x").code).toBe("auth");
+    expect(mapGraphError({ code: 10, message: "(#10) Application does not have permission for this action" }, 400, "x").message).toContain(
+      'Meta says: "(#10) Application does not have permission for this action"',
+    );
     expect(mapGraphError({ code: 1 }, 500, "x").code).toBe("upstream");
     // A general "invalid parameter" error must not be blamed on the creator's account type.
     expect(mapGraphError({ code: 100, message: "(#100) Tried accessing nonexisting field (view_count)" }, 400, "x").code).toBe("upstream");

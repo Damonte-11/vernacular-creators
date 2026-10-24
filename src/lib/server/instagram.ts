@@ -77,7 +77,11 @@ export async function fetchInstagramCreator(username: string, config: InstagramC
   }
   const body = (await res.json().catch(() => ({}))) as { business_discovery?: IgUser } & GraphError;
 
-  if (!res.ok || body.error) throw mapGraphError(body.error, res.status, username);
+  if (!res.ok || body.error) {
+    // Logged for Vercel's runtime logs; contains no token.
+    console.warn("Instagram Graph error", res.status, body.error?.code, body.error?.error_subcode, body.error?.message);
+    throw mapGraphError(body.error, res.status, username);
+  }
   const user = body.business_discovery;
   if (!user) throw notProfessional(username);
 
@@ -129,11 +133,13 @@ export function mapGraphError(err: GraphError["error"], status: number, username
   if (code === 4 || code === 17 || code === 32 || code === 613 || code === 80002 || status === 429) {
     return new LookupError("rate_limited", "Instagram asked us to slow down. Waiting a little before trying again.", 60);
   }
+  // Meta's own wording says which token or permission is the problem, so it's shown too.
+  const metaSays = err?.message ? ` Meta says: "${err.message}"` : "";
   if (code === 190 || code === 102) {
-    return new LookupError("auth", "Our Instagram access token has expired or is wrong. It needs renewing (see docs/SETUP.md).");
+    return new LookupError("auth", `Our Instagram access token has expired or is wrong. It needs renewing (see docs/SETUP.md).${metaSays}`);
   }
   if (code === 10 || code === 200) {
-    return new LookupError("auth", "Our Instagram app is missing a permission. Check the permissions step in docs/SETUP.md.");
+    return new LookupError("auth", `Our Instagram app is missing a permission. Check the permissions step in docs/SETUP.md.${metaSays}`);
   }
   // Subcode 2207013 / code 110: "user not found" (personal, private or misspelled account).
   // Code 100 is a general "invalid parameter" error, so only count it when it's about the user.
