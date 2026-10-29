@@ -84,6 +84,9 @@ function message(e: unknown): string {
   if (/column/i.test(text) && /excluded|min_post_age_hours_youtube/.test(text)) {
     return "the database needs a small update first. Run the files 0002 and 0003 from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
+  if (/person_id/.test(text)) {
+    return "the database needs a small update first. Run 0007_linked_accounts.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
+  }
   return text;
 }
 
@@ -122,6 +125,7 @@ export const liveBackend: Backend = {
       if (patch.country !== undefined) row.country = patch.country;
       if (patch.notes !== undefined) row.notes = patch.notes;
       if (patch.tags !== undefined) row.tags = patch.tags;
+      if (patch.personId !== undefined) row.person_id = patch.personId;
       await save("the creator", () => db().from("creators").update(row).eq("id", id));
     },
     async setPostExcluded(creatorId, postId, excluded) {

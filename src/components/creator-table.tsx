@@ -1,6 +1,10 @@
 "use client";
 import { isLimited } from "@/components/score-breakdown";
-import type { CreatorAnalysis } from "@/lib/types";
+import type { Creator, CreatorAnalysis } from "@/lib/types";
+import { useCreators } from "@/lib/data/creators";
+import { linkedAccounts } from "@/lib/people";
+import { platformName } from "@/lib/platforms";
+import { Icon } from "./icons";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { sizeBandLabel } from "@/lib/size-bands";
 import { AddToShortlist } from "./add-to-shortlist";
@@ -10,6 +14,7 @@ const TH = "px-4 py-2.5 text-xs font-medium text-muted";
 
 /** Table on wide screens, stacked cards on phones. */
 export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked?: boolean }) {
+  const all = useCreators();
   return (
     <>
       <Card className="hidden overflow-hidden md:block">
@@ -46,6 +51,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
                       </span>
                       <span className="flex items-center gap-1.5 text-xs text-muted">
                         <PlatformBadge platform={a.creator.platform} compact />@{a.creator.handle}
+                        <AlsoOn creator={a.creator} all={all} />
                       </span>
                     </span>
                   </CreatorLink>
@@ -97,6 +103,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
                   <span className="flex items-center gap-1.5 text-xs text-muted">
                     <PlatformBadge platform={a.creator.platform} compact />
                     <span className="truncate">@{a.creator.handle}</span>
+                    <AlsoOn creator={a.creator} all={all} />
                   </span>
                 </span>
               </CreatorLink>
@@ -131,5 +138,21 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
         ))}
       </div>
     </>
+  );
+}
+
+/** Small icons for the same person's other platforms (their numbers stay on their own profiles). */
+export function AlsoOn({ creator, all }: { creator: Creator; all: Creator[] }) {
+  const others = linkedAccounts(creator, all);
+  if (others.length === 0) return null;
+  const label = `Also on ${others.map((o) => platformName(o.platform)).join(", ")}`;
+  return (
+    <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 ring-1 ring-line" title={label}>
+      <span className="text-[11px]">+</span>
+      {others.map((o) => (
+        <Icon key={o.id} name={o.platform} size={12} />
+      ))}
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }

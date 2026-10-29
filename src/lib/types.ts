@@ -42,6 +42,11 @@ export interface Creator {
   accountType: "business" | "creator" | "professional" | "channel";
   /** Stage 3: the creator connected their own account. */
   verified: boolean;
+  /**
+   * Accounts with the same personId belong to the same person (e.g. their
+   * Instagram, TikTok and YouTube). Numbers always stay separate per account.
+   */
+  personId?: string | null;
   lastFetchedAt: string;
   notes: string;
   tags: string[];
@@ -178,4 +183,5 @@ export interface CreatorEdits {
   excludedPostIds?: string[];
   notes?: string;
   tags?: string[];
+  personId?: string | null;
 }

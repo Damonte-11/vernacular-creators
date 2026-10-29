@@ -7,10 +7,15 @@ describe("sample data", () => {
   const creators = sampleCreators(NOW);
   const byHandle = (h: string) => analyzeCreator(creators.find((c) => c.handle === h)!, SETTINGS, NOW);
 
-  it("has 40 clearly made-up creators", () => {
-    expect(creators).toHaveLength(40);
+  it("has 43 clearly made-up creators", () => {
+    expect(creators).toHaveLength(43);
     expect(creators.every((c) => c.isSample && c.handle.endsWith("_demo"))).toBe(true);
-    expect(new Set(creators.map((c) => c.id)).size).toBe(40);
+    expect(new Set(creators.map((c) => c.id)).size).toBe(43);
+  });
+
+  it("links some people's accounts across platforms", () => {
+    const halima = creators.filter((c) => c.personId === "sample-person-halima");
+    expect(halima.map((c) => c.platform).sort()).toEqual(["instagram", "tiktok", "youtube"]);
   });
 
   it("is the same every time", () => {

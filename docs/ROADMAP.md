@@ -26,6 +26,8 @@ Since then, the engagement maths was reviewed against HypeAuditor:
 
 TikTok was added through Apify (a paid third-party service, as TikTok has no official API for this), capped at 30 lookups a month to fit Apify's free credit, and left out of the daily refresh.
 
+A person's accounts on different platforms can be linked (the **Profiles** list on each creator, like Modash). Each account keeps its own numbers; nothing is added together. Leaderboards rank within one size band, with the top 3 highlighted.
+
 Next: tune benchmarks against real Nigerian creators as the database grows, rank against real peers once there are enough per size, and decide whether to track daily API usage on a dashboard.
 
 ## Stage 3: Version 2 (plan only)

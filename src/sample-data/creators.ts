@@ -38,6 +38,8 @@ interface Spec {
   reels?: number;
   verified?: boolean;
   tags?: string[];
+  /** Same value = same person on another platform. */
+  person?: string;
 }
 
 const SPECS: Spec[] = [
@@ -47,7 +49,7 @@ const SPECS: Spec[] = [
   { name: "Amaka Eze", handle: "amakastyles_demo", platform: "instagram", niche: "Fashion", city: "Lagos", followers: 86_000, bio: "Fashion stylist • Ankara with a twist • Bookings via email", reels: 0.3 },
   { name: "Bolaji Adeyemi", handle: "bolajitech_demo", platform: "instagram", niche: "Tech", city: "Lagos", followers: 34_500, bio: "Phone and gadget reviews in plain English 📱", reels: 0.6 },
   { name: "Zainab Musa", handle: "zainabeats_demo", platform: "instagram", niche: "Food", city: "Abuja", followers: 7_800, bio: "Abuja food spots and home cooking. Honest reviews only.", reels: 0.4, arch: ["new"] },
-  { name: "Ifeanyi Nwosu", handle: "ifeanyiskits_demo", platform: "instagram", niche: "Comedy", city: "Port Harcourt", followers: 1_350_000, bio: "Skits • Comedy • PH to the world", reels: 0.9 },
+  { name: "Ifeanyi Nwosu", handle: "ifeanyiskits_demo", platform: "instagram", niche: "Comedy", city: "Port Harcourt", followers: 1_350_000, bio: "Skits • Comedy • PH to the world", reels: 0.9, person: "ifeanyi" },
   { name: "Funmi Alade", handle: "funmilives_demo", platform: "instagram", niche: "Lifestyle", city: "Lagos", followers: 52_000, bio: "Mum of two. Lifestyle, home and family vlog.", reels: 0.2, arch: ["hidden_likes"] },
   { name: "Kelechi Obi", handle: "kelechibeats_demo", platform: "instagram", niche: "Music", city: "Lagos", followers: 210_000, bio: "Afrobeats singer & songwriter 🎶 New single out now", reels: 0.7, arch: ["boosted"] },
   { name: "Hauwa Bello", handle: "hauwamodest_demo", platform: "instagram", niche: "Fashion", city: "Abuja", followers: 23_000, bio: "Modest fashion & outfit ideas 🧕", reels: 0.35 },
@@ -61,7 +63,7 @@ const SPECS: Spec[] = [
   { name: "Tunde Bakare", handle: "tundetalkstech_demo", platform: "instagram", niche: "Tech", city: "Abuja", followers: 4_300, bio: "Software developer sharing coding tips", reels: 0.3, arch: ["new"] },
   { name: "Ifeoma Chukwu", handle: "ifeomaoutfits_demo", platform: "instagram", niche: "Fashion", city: "Port Harcourt", followers: 41_000, bio: "Everyday outfits under ₦20k 👗", reels: 0.5, arch: ["erratic"] },
   { name: "Kunle Ajayi", handle: "kunlecomedy_demo", platform: "instagram", niche: "Comedy", city: "Ibadan", followers: 15_800, bio: "Comedy skits about university life", reels: 0.8 },
-  { name: "Halima Yusuf", handle: "halimalifestyle_demo", platform: "instagram", niche: "Lifestyle", city: "Abuja", followers: 180_000, bio: "Lifestyle • Travel • Home decor", reels: 0.4, verified: true },
+  { name: "Halima Yusuf", handle: "halimalifestyle_demo", platform: "instagram", niche: "Lifestyle", city: "Abuja", followers: 180_000, bio: "Lifestyle • Travel • Home decor", reels: 0.4, verified: true, person: "halima" },
   { name: "Emeka Obi", handle: "emekafits_demo", platform: "instagram", niche: "Lifestyle", city: "Lagos", followers: 27_000, bio: "Fitness and lifestyle. Gym every morning 💪", reels: 0.5, arch: ["dormant"] },
   { name: "Sade Lawal", handle: "sadesings_demo", platform: "instagram", niche: "Music", city: "Ibadan", followers: 58_000, bio: "Singer. Covers and originals 🎤", reels: 0.65 },
   { name: "Obinna Ekwe", handle: "obinnaeats_demo", platform: "instagram", niche: "Food", city: "Abuja", followers: 520_000, bio: "Street food hunter. Suya, boli and everything in between", reels: 0.75, arch: ["bought_likes", "jump"] },
@@ -84,6 +86,10 @@ const SPECS: Spec[] = [
   { name: "Ibadan Food Tour", handle: "ibadanfoodtour_demo", platform: "youtube", niche: "Food", city: "Ibadan", followers: 8_900, bio: "Amala spots and food tours around Ibadan." },
   { name: "Glow with Fola", handle: "glowwithfola_demo", platform: "youtube", niche: "Lifestyle", city: "Abuja", followers: 205_000, bio: "Lifestyle, beauty and skincare routines.", arch: ["erratic"] },
   { name: "Afro Vibes Daily", handle: "afrovibesdaily_demo", platform: "youtube", niche: "Music", city: "Abuja", followers: 3_300_000, bio: "Afrobeats music videos and artist interviews." },
+  // ── The same people on other platforms (linked by "person") ─
+  { name: "Halima Yusuf", handle: "halimayusuf_demo", platform: "tiktok", niche: "Lifestyle", city: "Abuja", followers: 410_000, bio: "Lifestyle, travel and home tours. IG: @halimalifestyle_demo", person: "halima" },
+  { name: "Halima Yusuf", handle: "halimahome_demo", platform: "youtube", niche: "Lifestyle", city: "Abuja", followers: 62_000, bio: "Long-form home makeovers and travel vlogs.", person: "halima" },
+  { name: "Ifeanyi Nwosu", handle: "ifeanyinwosu_demo", platform: "tiktok", niche: "Comedy", city: "Port Harcourt", followers: 2_100_000, bio: "Skits every day. PH to the world.", person: "ifeanyi" },
 ];
 
 const CAPTIONS: Record<string, string[]> = {
@@ -222,6 +228,7 @@ export function buildSampleCreator(spec: Spec, now: number): Creator {
     mediaCount: Math.round(80 + r() * 900),
     accountType: isIG ? (r() < 0.5 ? "creator" : "business") : isTT ? "creator" : "channel",
     verified: !!spec.verified,
+    personId: spec.person ? `sample-person-${spec.person}` : null,
     lastFetchedAt: new Date(now - r() * 20 * 60 * 60 * 1000).toISOString(),
     notes: "",
     tags: spec.tags ?? [],

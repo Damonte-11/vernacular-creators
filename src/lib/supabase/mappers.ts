@@ -38,6 +38,8 @@ export interface CreatorRow {
   last_fetched_at: string;
   notes: string;
   tags: string[];
+  /** Added in migration 0007; missing until it's run. */
+  person_id?: string | null;
   posts?: PostRow[];
   creator_snapshots?: SnapshotRow[];
 }
@@ -64,6 +66,7 @@ export function creatorFromRow(r: CreatorRow): Creator {
     lastFetchedAt: r.last_fetched_at,
     notes: r.notes,
     tags: r.tags ?? [],
+    personId: r.person_id ?? null,
     posts: (r.posts ?? []).map((p) => ({
       id: `${r.id}-${p.platform_post_id}`,
       platformPostId: p.platform_post_id,

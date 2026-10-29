@@ -6,6 +6,7 @@ import { CITIES, NICHES, TIKTOK_LIMITS } from "@config/app";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { AddToShortlist } from "@/components/add-to-shortlist";
 import { EngagementChart } from "@/components/engagement-chart";
+import { LinkedProfiles } from "@/components/linked-profiles";
 import { Icon } from "@/components/icons";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import {
@@ -109,6 +110,9 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
               </a>
             )}
           </div>
+        </div>
+        <div className="mt-5 max-w-2xl border-t border-line pt-4">
+          <LinkedProfiles creator={c} />
         </div>
       </Card>
 

@@ -39,9 +39,9 @@ To stop the app, go back to the terminal and press `Ctrl + C`.
 |---|---|
 | **Home** | Quick creator lookup, headline numbers, and the top 5 creators |
 | **Creators** | Search and filter everyone in the database (platform, niche, city, size, followers, engagement, score, verified) |
-| **Creator profile** | Key numbers, averages, reach estimate, warning flags, Creator Score breakdown, chart, recent posts, team notes and tags, follower history |
+| **Creator profile** | Key numbers, averages, reach estimate, warning flags, Creator Score breakdown, chart, recent posts, team notes and tags, follower history, and **Profiles**: the same person's accounts on other platforms, one click away (numbers are never added together) |
 | **Add creators** | Look up one creator, or paste a list for bulk add with a progress bar |
-| **Leaderboards** | Top creators by score, filtered by niche, city, platform and size |
+| **Leaderboards** | Top creators by score within one size band (top 3 highlighted), filtered by platform, niche and city |
 | **Shortlists** | Group creators for a campaign and see combined totals |
 | **Client report** | A clean, view-only page for the client, with a **Download PDF** button |
 | **Campaign results** | Optional: log what posts really achieved, to improve reach estimates |
@@ -51,6 +51,7 @@ To stop the app, go back to the terminal and press `Ctrl + C`.
 - Look up a made-up handle such as `@my_new_creator`. The demo creates a sample profile for it.
 - Look up a handle containing `personal` or `notfound` to see the error messages.
 - Open **Obinna Ekwe** or **Blessing Ike** to see warning flags in action.
+- Open **Halima Yusuf** to see one person's Instagram, YouTube and TikTok linked under **Profiles**.
 - On **Settings**, drag "Views" up and "Engagement" down, and watch the scores change.
 
 In **demo mode**, your changes (shortlists, notes, settings, added creators) are saved in your browser only. In **live mode** (after setup), everything is saved in the shared database, and the whole team sees the same creators, shortlists and settings.
@@ -117,7 +118,7 @@ src/lib/server/      official API clients (Instagram, YouTube), saving, caching
 src/app/api/         lookup, refresh and the daily cron job
 src/app/share/       public view-only report links
 supabase/migrations/ database tables and security rules
-src/sample-data/     the 40 made-up creators (seeded, so always the same)
+src/sample-data/     the 43 made-up creators (seeded, so always the same)
 tests/               maths tests
 docs/SETUP.md        step-by-step setup for Supabase, Vercel, Meta and Google
 docs/ROADMAP.md      what's done and the plan for Stage 3

@@ -196,6 +196,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0004_thirty_posts.sql`: base the numbers on the last 30 posts (was 12)
 - `0005_instagram_views_share.sql`: count 70% of Instagram views (they include Facebook and paid views), adjustable in Settings
 - `0006_tiktok.sql`: allow TikTok creators
+- `0007_linked_accounts.sql`: link a person's accounts across platforms (Instagram, TikTok, YouTube)
 
 ## What happens after setup
 
