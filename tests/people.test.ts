@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleKey, linkEdits, linkedAccounts, suggestLinks, unlinkEdits } from "@/lib/people";
+import { handleKey, linkEdits, linkedAccounts, searchSaved, suggestLinks, unlinkEdits } from "@/lib/people";
 import type { Creator } from "@/lib/types";
 import { creator } from "./helpers";
 
@@ -42,5 +42,12 @@ describe("linked accounts", () => {
       ["yt", { personId: null }],
       ["ig", { personId: null }],
     ]);
+  });
+
+  it("searches the database by name or handle, best match first", () => {
+    expect(searchSaved(all, "kie").map((c) => c.id).sort()).toEqual(["ig", "tt", "yt"]);
+    expect(searchSaved(all, "kiekie")[0].id).toBe("tt"); // exact handle first
+    expect(searchSaved(all, "someone").map((c) => c.id)).toEqual(["x"]);
+    expect(searchSaved(all, "k")).toEqual([]);
   });
 });

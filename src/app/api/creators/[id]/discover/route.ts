@@ -43,7 +43,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }
       try {
         const f = await fetchFromPlatform(m.platform, m.handle, 1);
-        results.push({ ...m, handle: f.handle, preview: { name: f.name, followers: f.followers, photoUrl: f.photoUrl } });
+        results.push({ ...m, handle: f.handle, preview: { name: f.name, followers: f.followers, photoUrl: f.photoUrl, bio: f.bio.slice(0, 300), platformId: f.platformId } });
         done.add(m.platform);
       } catch (e) {
         // Not found is normal for a guess; anything else (limits, keys) stops this platform quietly.

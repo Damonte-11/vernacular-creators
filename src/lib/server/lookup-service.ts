@@ -38,11 +38,9 @@ export async function lookupCreator(
   if (!handle) throw new LookupError("not_found", "Type a handle first.");
   const settings = await loadSettings(db);
   const saved = await findCreator(db, platform, handle);
-  if (saved && !force) {
-    const ageHours = (Date.now() - new Date(saved.lastFetchedAt).getTime()) / 3_600_000;
-    const maxAge = platform === "tiktok" ? TIKTOK_LIMITS.refreshDays * 24 : settings.refreshIntervalHours;
-    if (ageHours < maxAge) return { status: "existing", creator: saved };
-  }
+  // Already saved: open it straight away. Fresh numbers come from the daily
+  // refresh, or the Refresh data button, not from searching again.
+  if (saved && !force) return { status: "existing", creator: saved };
   if (platform === "tiktok") await assertTikTokAllowance(db);
   const fetched = await fetchFromPlatform(platform, saved?.platform === "youtube" ? saved.platformId : handle);
   const creator = await saveFetchedCreator(db, fetched, settings, userId);

@@ -35,7 +35,7 @@ export async function discoverAccounts(creator: Creator, all: Creator[]): Promis
       if (m.platform === "tiktok") results.push({ ...m, unchecked: true });
       else {
         const sim = simulateLookup(m.platform, m.handle, NOW);
-        if (sim.ok) results.push({ ...m, preview: { name: sim.creator.name, followers: sim.creator.followers, photoUrl: null } });
+        if (sim.ok) results.push({ ...m, preview: { name: sim.creator.name, followers: sim.creator.followers, photoUrl: null, bio: sim.creator.bio, platformId: sim.creator.platformId } });
       }
       done.add(m.platform);
     }

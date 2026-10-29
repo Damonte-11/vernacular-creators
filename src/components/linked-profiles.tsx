@@ -2,15 +2,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoveryResult } from "@/lib/discover";
 import { discoverAccounts } from "@/lib/data/discover";
-import { useAnalyses, useCreators } from "@/lib/data/creators";
+import { normalizeHandle, useAnalyses, useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
 import { actions, useAppState } from "@/lib/data/store";
 import { formatNumber, formatPercent } from "@/lib/format";
-import { linkedAccounts, linkEdits, suggestLinks, unlinkEdits } from "@/lib/people";
-import { platformName } from "@/lib/platforms";
+import { linkedAccounts, linkEdits, searchSaved, suggestLinks, unlinkEdits } from "@/lib/people";
+import { PLATFORMS, platformName, profileLink } from "@/lib/platforms";
 import type { Creator, CreatorEdits, Platform } from "@/lib/types";
 import { Icon } from "./icons";
 import { PlatformToggle } from "./lookup-form";
+import { SavedMatches } from "./saved-matches";
 import { Avatar, buttonClass, CreatorLink, cx, inputClass } from "./ui";
 
 async function save(edits: [string, CreatorEdits][]) {
@@ -93,16 +94,14 @@ export function LinkedProfiles({ creator, autoFind }: { creator: Creator; autoFi
 function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[]; onDone: () => void }) {
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState<Platform>(creator.platform === "instagram" ? "tiktok" : "instagram");
-  const [handle, setHandle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const suggestions = suggestLinks(creator, all);
-  const query = q.trim().toLowerCase().replace(/^@/, "");
   const linkedIds = new Set([creator.id, ...linkedAccounts(creator, all).map((c) => c.id)]);
-  const results = query
-    ? all.filter((c) => !linkedIds.has(c.id) && (c.handle.toLowerCase().includes(query) || c.name.toLowerCase().includes(query))).slice(0, 6)
-    : [];
+  const suggestions = suggestLinks(creator, all);
+  // The database first: saved accounts matching what's typed. Platforms are only asked on "Look up".
+  const matches = searchSaved(all, normalizeHandle(q) || q, 6).filter((c) => !linkedIds.has(c.id));
+  const shown = q.trim() ? matches : suggestions;
 
   async function link(other: Creator) {
     await save(linkEdits(creator, other, all, () => crypto.randomUUID()));
@@ -111,10 +110,10 @@ function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[];
 
   async function lookUpAndLink(e: React.FormEvent) {
     e.preventDefault();
-    if (!handle.trim()) return;
+    if (!q.trim()) return;
     setBusy(true);
     setError(null);
-    const r = await lookupCreator(platform, handle, all);
+    const r = await lookupCreator(platform, q, all);
     setBusy(false);
     if (r.status === "error") return setError(r.error);
     if (r.creator.id === creator.id) return setError("That's this same account.");
@@ -123,24 +122,8 @@ function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[];
     onDone();
   }
 
-  const Row = ({ c }: { c: Creator }) => (
-    <li className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-2">
-      <Icon name={c.platform} size={16} className="shrink-0 text-ink-2" />
-      <Avatar name={c.name} photoUrl={c.photoUrl} size={28} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{c.name}</span>
-        <span className="block truncate text-xs text-muted">
-          @{c.handle} · {formatNumber(c.followers)}
-        </span>
-      </span>
-      <button className={cx(buttonClass.secondary, "px-3 py-1.5")} onClick={() => link(c)}>
-        Link
-      </button>
-    </li>
-  );
-
   return (
-    <div className="mt-3 space-y-4 rounded-xl bg-surface-2 p-4 ring-1 ring-line">
+    <div className="mt-3 space-y-3 rounded-xl bg-surface-2 p-4 ring-1 ring-line">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Link another account of {creator.name}</p>
         <button className={buttonClass.icon} onClick={onDone} aria-label="Close">
@@ -148,38 +131,40 @@ function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[];
         </button>
       </div>
 
-      {suggestions.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted">Possibly the same person</p>
-          <ul>
-            {suggestions.map((c) => (
-              <Row key={c.id} c={c} />
-            ))}
-          </ul>
+      <form onSubmit={lookUpAndLink} className="space-y-2">
+        <div className="relative">
+          <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            className={cx(inputClass, "pl-9")}
+            placeholder="Name, @handle or profile link"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            disabled={busy}
+            aria-label="Search saved accounts, or a handle to look up"
+            autoFocus
+          />
         </div>
-      )}
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted" htmlFor="link-search">
-          Find a saved account
-        </label>
-        <input id="link-search" className={inputClass} placeholder="Name or handle" value={q} onChange={(e) => setQ(e.target.value)} />
-        {query && (
-          <ul className="mt-1">
-            {results.length ? results.map((c) => <Row key={c.id} c={c} />) : <li className="px-2 py-2 text-xs text-muted">No saved account matches.</li>}
-          </ul>
+        <SavedMatches
+          matches={shown}
+          title={q.trim() ? "Already in your database" : "Possibly the same person (saved)"}
+          action={(c) => (
+            <button type="button" className={cx(buttonClass.secondary, "px-3 py-1.5")} onClick={() => link(c)}>
+              Link
+            </button>
+          )}
+        />
+
+        {q.trim() && (
+          <div className="flex flex-col gap-2 border-t border-line pt-3 sm:flex-row sm:items-center">
+            <p className="text-xs text-muted sm:mr-auto">{matches.length ? "Not the one? Look it up on" : "Not in your database. Look it up on"}</p>
+            <PlatformToggle value={platform} onChange={setPlatform} />
+            <button className={cx(buttonClass.primary, "whitespace-nowrap")} disabled={busy}>
+              {busy ? "Looking up…" : "Look up and link"}
+            </button>
+          </div>
         )}
-      </div>
-
-      <form onSubmit={lookUpAndLink} className="space-y-2 border-t border-line pt-4">
-        <p className="text-xs font-medium text-muted">Not saved yet? Look it up and link it</p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <PlatformToggle value={platform} onChange={setPlatform} />
-          <input className={inputClass} placeholder="@handle or profile link" value={handle} onChange={(e) => setHandle(e.target.value)} disabled={busy} aria-label="Handle to look up and link" />
-          <button className={cx(buttonClass.primary, "whitespace-nowrap")} disabled={busy || !handle.trim()}>
-            {busy ? "Looking up…" : "Look up and link"}
-          </button>
-        </div>
+        {platform === "tiktok" && q.trim() && <p className="text-[11px] text-muted">A new TikTok lookup uses one of this month&apos;s TikTok lookups.</p>}
         {error && (
           <p role="alert" className="text-xs text-bad">
             {error}
@@ -189,6 +174,12 @@ function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[];
     </div>
   );
 }
+
+const SOURCE_LABEL: Record<DiscoveryResult["source"], string> = {
+  bio: "named in their bio",
+  handle: "same handle: open their page to check it's them",
+  saved: "already in your database: similar name or handle",
+};
 
 type FindState = { status: "idle" } | { status: "loading" } | { status: "done"; results: DiscoveryResult[] } | { status: "error"; error: string };
 
@@ -231,9 +222,19 @@ function OtherPlatforms({ creator, all, autoFind }: { creator: Creator; all: Cre
   const find = useCallback(async () => {
     setState({ status: "loading" });
     setError(null);
-    const res = await discoverAccounts(creator, allRef.current);
-    if ("error" in res) return setState({ status: "error", error: res.error });
-    let results = res.results;
+    // The database first: saved accounts with a similar name or handle, at no cost.
+    const saved: DiscoveryResult[] = suggestLinks(creator, allRef.current, 5)
+      .filter((c) => c.platform !== creator.platform)
+      .map((c) => ({ platform: c.platform, handle: c.handle, source: "saved", savedId: c.id }));
+    const covered = new Set(saved.map((r) => r.platform));
+    const others = PLATFORMS.filter((p) => p !== creator.platform);
+    let results = saved;
+    if (!others.every((p) => covered.has(p))) {
+      const res = await discoverAccounts(creator, allRef.current);
+      if ("error" in res) return setState({ status: "error", error: res.error });
+      const seen = new Set(saved.map((r) => r.savedId));
+      results = [...saved, ...res.results.filter((r) => !(r.savedId && seen.has(r.savedId)) && !covered.has(r.platform))];
+    }
     if (settings.autoLinkFromBio) {
       // Bio matches the platform has confirmed (or that are already saved) are added straight away.
       const auto = results.filter((r) => r.source === "bio" && (r.savedId || r.preview));
@@ -307,42 +308,64 @@ function OtherPlatforms({ creator, all, autoFind }: { creator: Creator; all: Cre
           bio names it (each check uses Apify credit), so use <span className="font-medium">Link another account</span> if you know it.
         </p>
       )}
-      <ul className="mt-1 space-y-1">
+      <ul className="mt-1 space-y-2">
         {visible.map((r) => {
           const k = keyOf(r);
+          const saved = r.savedId ? all.find((c) => c.id === r.savedId) : undefined;
+          const name = saved?.name ?? r.preview?.name;
+          const followers = saved?.followers ?? r.preview?.followers;
+          const bio = saved?.bio ?? r.preview?.bio;
           return (
-            <li key={k} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-surface px-3 py-2 ring-1 ring-line">
-              <Icon name={r.platform} size={16} className="shrink-0 text-ink-2" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
-                  @{r.handle}
-                  {r.preview && <span className="font-normal text-muted"> · {r.preview.name}</span>}
-                </span>
-                <span className="block text-xs text-muted">
-                  {r.preview ? `${formatNumber(r.preview.followers)} followers · ` : r.savedId ? "Already saved · " : ""}
-                  {r.source === "bio" ? "named in their bio" : "same handle: check it's them"}
-                </span>
-              </span>
-              <span className="flex items-center gap-1">
-                <button
-                  className={cx(buttonClass.secondary, "px-3 py-1.5")}
-                  disabled={busy !== null}
-                  title={r.unchecked ? "Uses 1 of this month's TikTok lookups" : undefined}
-                  onClick={async () => {
-                    setBusy(k);
-                    setError(null);
-                    const c = await addAndLink(r);
-                    setBusy(null);
-                    if (c) setHidden((h) => new Set(h).add(k));
-                  }}
-                >
-                  {busy === k ? "Adding…" : r.savedId ? "Link" : "Add & link"}
-                </button>
-                <button className={cx(buttonClass.ghost, "text-xs")} onClick={() => setHidden((h) => new Set(h).add(k))}>
-                  Not them
-                </button>
-              </span>
-              {r.unchecked && <span className="w-full text-[11px] text-muted">Uses 1 of this month&apos;s TikTok lookups.</span>}
+            <li key={k} className="rounded-lg bg-surface p-3 ring-1 ring-line">
+              <div className="flex items-start gap-3">
+                <Avatar name={name ?? r.handle} photoUrl={saved?.photoUrl ?? r.preview?.photoUrl ?? null} size={40} />
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-x-1.5 text-sm">
+                    <Icon name={r.platform} size={14} className="text-ink-2" />
+                    <span className="font-semibold">@{r.handle}</span>
+                    {name && <span className="text-muted">· {name}</span>}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {followers !== undefined && <span className="font-medium text-ink-2">{formatNumber(followers)} followers · </span>}
+                    {SOURCE_LABEL[r.source]}
+                  </p>
+                  {bio && <p className="mt-1.5 line-clamp-3 whitespace-pre-line text-xs text-ink-2">{bio}</p>}
+                  <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
+                    <a
+                      href={profileLink(r.platform, r.handle, saved?.platformId ?? r.preview?.platformId)}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-accent-ink hover:underline"
+                    >
+                      Open on {platformName(r.platform)} ↗
+                    </a>
+                    {saved && (
+                      <CreatorLink id={saved.id} className="text-ink-2 hover:underline">
+                        View saved profile
+                      </CreatorLink>
+                    )}
+                  </p>
+                  {r.unchecked && <p className="mt-1 text-[11px] text-muted">Not checked yet. Adding it uses 1 of this month&apos;s TikTok lookups.</p>}
+                </div>
+                <div className="flex shrink-0 flex-col items-stretch gap-1 sm:flex-row sm:items-center">
+                  <button
+                    className={cx(buttonClass.secondary, "px-3 py-1.5")}
+                    disabled={busy !== null}
+                    onClick={async () => {
+                      setBusy(k);
+                      setError(null);
+                      const c = await addAndLink(r);
+                      setBusy(null);
+                      if (c) setHidden((h) => new Set(h).add(k));
+                    }}
+                  >
+                    {busy === k ? "Adding…" : r.savedId ? "Link" : "Add & link"}
+                  </button>
+                  <button className={cx(buttonClass.ghost, "text-xs")} onClick={() => setHidden((h) => new Set(h).add(k))}>
+                    Not them
+                  </button>
+                </div>
+              </div>
             </li>
           );
         })}

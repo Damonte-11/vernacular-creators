@@ -26,7 +26,7 @@ import {
   TrendLine,
   VerifiedBadge,
 } from "@/components/ui";
-import { platformName } from "@/lib/platforms";
+import { platformName, profileLink } from "@/lib/platforms";
 import { Loading } from "@/components/ui";
 import { NOW, useAnalysis } from "@/lib/data/creators";
 import { refreshCreator } from "@/lib/data/lookup";
@@ -115,7 +115,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
             <AddToShortlist creatorId={c.id} />
             <RefreshButton creatorId={c.id} />
             {!c.isSample && (
-              <a href={profileUrl(c)} target="_blank" rel="noreferrer noopener" className={buttonClass.ghost}>
+              <a href={profileLink(c.platform, c.handle, c.platformId)} target="_blank" rel="noreferrer noopener" className={buttonClass.ghost}>
                 Open on {platformName(c.platform)} <span aria-hidden>↗</span>
               </a>
             )}
@@ -386,11 +386,6 @@ function PostGrid({ creatorId, posts, metrics: m }: { creatorId: string; posts: 
 }
 
 /** Public profile link on the platform itself. */
-function profileUrl(c: Creator): string {
-  if (c.platform === "instagram") return `https://www.instagram.com/${c.handle}/`;
-  if (c.platform === "tiktok") return `https://www.tiktok.com/@${c.handle}`;
-  return /^UC[A-Za-z0-9_-]{22}$/.test(c.platformId) ? `https://www.youtube.com/channel/${c.platformId}` : `https://www.youtube.com/@${c.handle}`;
-}
 
 const ACCOUNT_LABEL: Record<Creator["accountType"], string> = {
   channel: "YouTube channel",

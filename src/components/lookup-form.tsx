@@ -1,7 +1,9 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useCreators } from "@/lib/data/creators";
+import { useMemo, useState } from "react";
+import { normalizeHandle, useCreators } from "@/lib/data/creators";
+import { searchSaved } from "@/lib/people";
+import { SavedMatches } from "./saved-matches";
 import { lookupCreator } from "@/lib/data/lookup";
 import { PLATFORMS, platformName } from "@/lib/platforms";
 import type { Platform } from "@/lib/types";
@@ -39,6 +41,8 @@ export function LookupForm() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Search the database first, as they type; platforms are only asked on Look up.
+  const matches = useMemo(() => searchSaved(creators, normalizeHandle(input) || input), [creators, input]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +80,10 @@ export function LookupForm() {
           {busy ? "Looking up…" : "Look up"}
         </button>
       </div>
+      {!busy && <SavedMatches matches={matches} />}
+      {!busy && matches.length > 0 && (
+        <p className="text-xs text-muted">Not the one? Click Look up to search {platformName(platform)}.</p>
+      )}
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">
           <Icon name="alert" size={16} className="mt-0.5 shrink-0" /> {error}

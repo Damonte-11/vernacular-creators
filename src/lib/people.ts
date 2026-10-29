@@ -69,3 +69,21 @@ export function unlinkEdits(creator: Creator, all: Creator[]): [string, CreatorE
   if (rest.length === 1) edits.push([rest[0].id, { personId: null }]);
   return edits;
 }
+
+/** Saved accounts whose name or handle matches what's typed (any platform), best matches first. */
+export function searchSaved(all: Creator[], query: string, limit = 5): Creator[] {
+  const q = query.trim().toLowerCase().replace(/^@/, "");
+  if (q.length < 2) return [];
+  const key = handleKey(q);
+  return all
+    .map((c) => {
+      const h = c.handle.toLowerCase();
+      const n = c.name.toLowerCase();
+      const score = h === q ? 4 : h.startsWith(q) || n.startsWith(q) ? 3 : h.includes(q) || n.includes(q) ? 2 : key.length >= 3 && handleKey(c.handle).includes(key) ? 1 : 0;
+      return { c, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || b.c.followers - a.c.followers)
+    .slice(0, limit)
+    .map((x) => x.c);
+}

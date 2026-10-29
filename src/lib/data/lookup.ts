@@ -18,6 +18,10 @@ export async function lookupCreator(platform: Platform, input: string, existing:
   const handle = normalizeHandle(input);
   if (!handle) return { status: "error", handle, error: "Type a handle or paste a profile link first." };
 
+  // Saved already? Open it without asking any platform.
+  const saved = findByHandle(existing, platform, handle);
+  if (saved) return { status: "existing", creator: saved };
+
   if (IS_LIVE) {
     try {
       const res = await fetch("/api/creators/lookup", {
@@ -36,8 +40,6 @@ export async function lookupCreator(platform: Platform, input: string, existing:
     }
   }
 
-  const found = findByHandle(existing, platform, handle);
-  if (found) return { status: "existing", creator: found };
   await new Promise((r) => setTimeout(r, 450 + Math.random() * 400)); // pretend network delay
   const result = simulateLookup(platform, handle, NOW);
   if (!result.ok) return { status: "error", handle, error: result.error };

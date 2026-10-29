@@ -1,7 +1,10 @@
 import type { Platform } from "./types";
 
-/** Where a possible other account came from. "bio" is the creator's own word; "handle" is a guess. */
-export type DiscoverySource = "bio" | "handle";
+/**
+ * Where a possible other account came from: "bio" is the creator's own word,
+ * "handle" is a guess, "saved" is a similar account already in the database.
+ */
+export type DiscoverySource = "bio" | "handle" | "saved";
 
 export interface Mention {
   platform: Platform;
@@ -66,7 +69,7 @@ export interface DiscoveryResult {
   /** Already saved in the database: linking it is free. */
   savedId?: string;
   /** Found on the platform (not saved yet). */
-  preview?: { name: string; followers: number; photoUrl: string | null };
+  preview?: { name: string; followers: number; photoUrl: string | null; bio: string; platformId: string };
   /** TikTok: not checked, because each check uses paid Apify credit. */
   unchecked?: boolean;
 }
