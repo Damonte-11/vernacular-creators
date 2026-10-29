@@ -28,7 +28,7 @@ export default function HomePage() {
         <StatTile label="Creators saved" value={all.length} hint="Instagram, YouTube and TikTok" />
         <StatTile label="Average score" value={avgScore ?? "—"} hint="Across all scored creators" />
         <StatTile label="With warning signs" value={flagged} hint="Medium or high flags" />
-        <StatTile label="Shortlists" value={shortlists.length} hint={shortlists.length ? "Ready to share with clients" : "Group creators for a campaign"} />
+        <StatTile label="Lists" value={shortlists.length} hint={shortlists.length ? "Campaigns you are managing" : "Group creators for a campaign"} />
       </div>
 
       <SectionHeader

@@ -1,9 +1,10 @@
 "use client";
 /** Demo mode: sample data, with the team's changes saved in this browser only. */
+import { newListItem } from "../lists";
 import { APP_DEFAULTS } from "@config/app";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
-import type { CampaignResult, Creator, CreatorEdits, Settings, Shortlist } from "../types";
+import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Settings, Shortlist } from "../types";
 import type { AppState, Backend } from "./types";
 
 interface DemoData {
@@ -31,12 +32,12 @@ function initialData(): DemoData {
         client: "inDrive",
         createdAt: new Date().toISOString(),
         items: [
-          "sample-tolukitchen_demo",
-          "sample-chidilaughs_demo",
-          "sample-amakastyles_demo",
-          "sample-kunlecomedy_demo",
-          "sample-lagostechdesk_demo",
-        ].map((creatorId) => ({ creatorId, addedAt: new Date().toISOString() })),
+          newListItem("sample-tolukitchen_demo", { status: "active", rate: 350_000, labels: ["food"] }),
+          newListItem("sample-chidilaughs_demo", { status: "negotiating", rate: 1_200_000, labels: ["comedy"], notes: "Asked for 2 Reels + 3 stories." }),
+          newListItem("sample-amakastyles_demo", { status: "contacted", labels: ["fashion"] }),
+          newListItem("sample-kunlecomedy_demo", { status: "active", rate: 250_000, labels: ["comedy"] }),
+          newListItem("sample-lagostechdesk_demo", { status: "shortlisted", rate: 600_000, labels: ["tech"] }),
+        ],
       },
     ],
     campaignResults: [],
@@ -73,7 +74,8 @@ function toState(d: DemoData, ready: boolean): AppState {
         : edited;
     }),
     settings: d.settings,
-    shortlists: d.shortlists,
+    // Lists saved before statuses existed get the defaults.
+    shortlists: d.shortlists.map((l) => ({ ...l, items: l.items.map((i) => ({ ...newListItem(i.creatorId), ...i })) })),
     campaignResults: d.campaignResults,
   };
 }
@@ -158,6 +160,20 @@ export const demoBackend: Backend = {
     async toggleInShortlist(listId, creatorId) {
       set((d) => ({ ...d, shortlists: d.shortlists.map((l) => (l.id === listId ? toggleItem(l, creatorId) : l)) }));
     },
+    async addToList(listId, items) {
+      set((d) => ({ ...d, shortlists: d.shortlists.map((l) => (l.id === listId ? mergeItems(l, items) : l)) }));
+    },
+    async updateListItems(listId, creatorIds, fields) {
+      const ids = new Set(creatorIds);
+      set((d) => ({
+        ...d,
+        shortlists: d.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.map((i) => (ids.has(i.creatorId) ? { ...i, ...fields } : i)) } : l)),
+      }));
+    },
+    async removeFromList(listId, creatorIds) {
+      const ids = new Set(creatorIds);
+      set((d) => ({ ...d, shortlists: d.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.filter((i) => !ids.has(i.creatorId)) } : l)) }));
+    },
     async logCampaignResult(result) {
       set((d) => ({ ...d, campaignResults: [...d.campaignResults, { ...result, id: newId(), loggedAt: new Date().toISOString() }] }));
     },
@@ -175,6 +191,17 @@ export function toggleItem(l: Shortlist, creatorId: string): Shortlist {
   const has = l.items.some((i) => i.creatorId === creatorId);
   return {
     ...l,
-    items: has ? l.items.filter((i) => i.creatorId !== creatorId) : [...l.items, { creatorId, addedAt: new Date().toISOString() }],
+    items: has ? l.items.filter((i) => i.creatorId !== creatorId) : [...l.items, newListItem(creatorId)],
   };
+}
+
+/** Adds new creators to a list, and updates the given fields of ones already on it. */
+export function mergeItems(l: Shortlist, items: { creatorId: string; fields?: ListItemFields }[]): Shortlist {
+  const next = [...l.items];
+  for (const { creatorId, fields } of items) {
+    const i = next.findIndex((x) => x.creatorId === creatorId);
+    if (i >= 0) next[i] = { ...next[i], ...fields };
+    else next.push(newListItem(creatorId, fields));
+  }
+  return { ...l, items: next };
 }

@@ -47,6 +47,8 @@ export interface Creator {
    * Instagram, TikTok and YouTube). Numbers always stay separate per account.
    */
   personId?: string | null;
+  /** Contact email, entered by the team or imported (falls back to one found in the bio). */
+  email?: string | null;
   lastFetchedAt: string;
   notes: string;
   tags: string[];
@@ -161,10 +163,22 @@ export interface CreatorAnalysis {
   score: ScoreResult;
 }
 
+/** Where a creator is with a campaign, per list. */
+export type ListStatus = "shortlisted" | "contacted" | "negotiating" | "active" | "ended" | "declined";
+
 export interface ShortlistItem {
   creatorId: string;
   addedAt: string;
+  /** The fields below are per list: the same creator can be Active on one campaign and Contacted on another. */
+  status: ListStatus;
+  /** Agreed or quoted fee for this campaign, in Naira. */
+  rate: number | null;
+  labels: string[];
+  notes: string;
 }
+
+/** The fields the team edits on a list row. */
+export type ListItemFields = Partial<Pick<ShortlistItem, "status" | "rate" | "labels" | "notes">>;
 
 export interface Shortlist {
   id: string;
@@ -186,4 +200,5 @@ export interface CreatorEdits {
   notes?: string;
   tags?: string[];
   personId?: string | null;
+  email?: string | null;
 }

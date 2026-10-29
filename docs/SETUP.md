@@ -198,6 +198,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0006_tiktok.sql`: allow TikTok creators
 - `0007_linked_accounts.sql`: link a person's accounts across platforms (Instagram, TikTok, YouTube)
 - `0008_auto_link.sql`: the "add accounts named in the bio automatically" setting
+- `0009_lists.sql`: Lists: status, rate, labels and notes per creator on each list, and creator emails
 
 ## What happens after setup
 

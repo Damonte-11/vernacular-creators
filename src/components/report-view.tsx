@@ -23,7 +23,7 @@ export function ReportView({
   client: string;
   rows: CreatorAnalysis[];
   date: number;
-  /** Team view only: link back to the shortlist. */
+  /** Team view only: link back to the list. */
   backHref?: string;
 }) {
   const totals = shortlistTotals(rows);
@@ -35,7 +35,7 @@ export function ReportView({
       <div className="no-print mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 pt-6">
         {backHref ? (
           <Link href={backHref} className={buttonClass.ghost}>
-            <Icon name="back" size={16} /> Back to shortlist
+            <Icon name="back" size={16} /> Back to list
           </Link>
         ) : (
           <span />

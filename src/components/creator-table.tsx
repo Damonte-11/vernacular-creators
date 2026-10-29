@@ -33,7 +33,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
               <th className={cx(TH, "text-center")}>Flags</th>
               <th className={cx(TH, "text-center")}>Score</th>
               <th className="w-12 px-2 py-2.5">
-                <span className="sr-only">Shortlist</span>
+                <span className="sr-only">Add to list</span>
               </th>
             </tr>
           </thead>

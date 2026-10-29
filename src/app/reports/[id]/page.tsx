@@ -19,7 +19,7 @@ export default function ReportPage() {
     return (
       <StatusPage
         title="Report not available"
-        body={IS_LIVE ? "This shortlist may have been deleted." : "In the demo, report links only open in the browser where the shortlist was made."}
+        body={IS_LIVE ? "This list may have been deleted." : "In the demo, report links only open in the browser where the list was made."}
       />
     );
   }

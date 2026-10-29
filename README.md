@@ -42,7 +42,7 @@ To stop the app, go back to the terminal and press `Ctrl + C`.
 | **Creator profile** | Key numbers, averages, reach estimate, warning flags, Creator Score breakdown, chart, recent posts, team notes and tags, follower history, and **Profiles**: the same person's accounts on other platforms, one click away (numbers are never added together). **Find on other platforms** checks their bio and the same handle, and adds what it finds in one click |
 | **Add creators** | Look up one creator, or paste a list for bulk add with a progress bar |
 | **Leaderboards** | Top creators by score within one size band (top 3 highlighted), filtered by platform, niche and city |
-| **Shortlists** | Group creators for a campaign and see combined totals |
+| **Lists** | One list per campaign (like Modash's Manage): status (Shortlisted → Contacted → Negotiating → Active → Ended / Declined), rate in ₦, email, labels and notes per creator, editable in the table; bulk changes, totals, CSV export, "group related profiles", and **import from CSV or Excel** (columns detected automatically, saved creators matched from the database first) |
 | **Client report** | A clean, view-only page for the client, with a **Download PDF** button |
 | **Campaign results** | Optional: log what posts really achieved, to improve reach estimates |
 | **Settings** | Adjust score weights, how many posts to use, and the refresh time |

@@ -1,4 +1,4 @@
-import type { CampaignResult, Creator, CreatorEdits, Settings, Shortlist } from "../types";
+import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Settings, Shortlist } from "../types";
 
 export interface AppState {
   /** False until this browser has loaded the data. */
@@ -24,6 +24,11 @@ export interface Actions {
   renameShortlist(id: string, name: string, client: string): Promise<void>;
   deleteShortlist(id: string): Promise<void>;
   toggleInShortlist(listId: string, creatorId: string): Promise<void>;
+  /** Add creators to a list (or update the fields of ones already on it). */
+  addToList(listId: string, items: { creatorId: string; fields?: ListItemFields }[]): Promise<void>;
+  /** Set status, rate, labels or notes for one or more creators on a list. */
+  updateListItems(listId: string, creatorIds: string[], fields: ListItemFields): Promise<void>;
+  removeFromList(listId: string, creatorIds: string[]): Promise<void>;
   logCampaignResult(result: Omit<CampaignResult, "id" | "loggedAt">): Promise<void>;
   deleteCampaignResult(id: string): Promise<void>;
   clearError(): void;

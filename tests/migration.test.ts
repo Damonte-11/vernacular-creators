@@ -8,7 +8,7 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql"];
+    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql"];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run

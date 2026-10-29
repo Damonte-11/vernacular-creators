@@ -15,7 +15,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/creators", label: "Creators", icon: "users" },
   { href: "/add", label: "Add creators", icon: "plus" },
   { href: "/leaderboards", label: "Leaderboards", icon: "trophy" },
-  { href: "/shortlists", label: "Shortlists", icon: "list" },
+  { href: "/shortlists", label: "Lists", icon: "list" },
   { href: "/campaign-results", label: "Campaign results", icon: "chart" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];

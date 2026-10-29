@@ -18,8 +18,8 @@ import {
   type SettingsRow,
   type ShortlistRow,
 } from "../supabase/mappers";
-import type { Settings } from "../types";
-import { DEFAULT_SETTINGS, toggleItem } from "./demo-store";
+import type { ListItemFields, Settings } from "../types";
+import { DEFAULT_SETTINGS, mergeItems, toggleItem } from "./demo-store";
 import type { AppState, Backend } from "./types";
 
 const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, shortlists: [], campaignResults: [] };
@@ -84,6 +84,9 @@ function message(e: unknown): string {
   if (/column/i.test(text) && /excluded|min_post_age_hours_youtube/.test(text)) {
     return "the database needs a small update first. Run the files 0002 and 0003 from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
+  if (/column/i.test(text) && /\b(status|rate|labels|notes|email)\b/.test(text)) {
+    return "the database needs a small update first. Run 0009_lists.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
+  }
   if (/auto_link_from_bio/.test(text)) {
     return "the database needs a small update first. Run 0008_auto_link.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
@@ -129,6 +132,7 @@ export const liveBackend: Backend = {
       if (patch.notes !== undefined) row.notes = patch.notes;
       if (patch.tags !== undefined) row.tags = patch.tags;
       if (patch.personId !== undefined) row.person_id = patch.personId;
+      if (patch.email !== undefined) row.email = patch.email;
       await save("the creator", () => db().from("creators").update(row).eq("id", id));
     },
     async setPostExcluded(creatorId, postId, excluded) {
@@ -177,6 +181,32 @@ export const liveBackend: Backend = {
           : db().from("shortlist_items").insert({ shortlist_id: listId, creator_id: creatorId }),
       );
     },
+    async addToList(listId, items) {
+      const list = state.shortlists.find((l) => l.id === listId);
+      if (!list || items.length === 0) return;
+      const have = new Set(list.items.map((i) => i.creatorId));
+      set({ shortlists: state.shortlists.map((l) => (l.id === listId ? mergeItems(l, items) : l)) });
+      const fresh = items.filter((i) => !have.has(i.creatorId)).map((i) => ({ shortlist_id: listId, creator_id: i.creatorId, ...itemRow(i.fields ?? {}) }));
+      if (fresh.length) await save("the list", () => db().from("shortlist_items").insert(fresh));
+      // Creators already on the list: only the fields that came with them change.
+      for (const i of items.filter((x) => have.has(x.creatorId) && x.fields && Object.keys(x.fields).length)) {
+        await save("the list", () => db().from("shortlist_items").update(itemRow(i.fields!)).eq("shortlist_id", listId).eq("creator_id", i.creatorId));
+      }
+    },
+    async updateListItems(listId, creatorIds, fields) {
+      if (creatorIds.length === 0) return;
+      const ids = new Set(creatorIds);
+      set({
+        shortlists: state.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.map((i) => (ids.has(i.creatorId) ? { ...i, ...fields } : i)) } : l)),
+      });
+      await save("the list", () => db().from("shortlist_items").update(itemRow(fields)).eq("shortlist_id", listId).in("creator_id", creatorIds));
+    },
+    async removeFromList(listId, creatorIds) {
+      if (creatorIds.length === 0) return;
+      const ids = new Set(creatorIds);
+      set({ shortlists: state.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.filter((i) => !ids.has(i.creatorId)) } : l)) });
+      await save("the list", () => db().from("shortlist_items").delete().eq("shortlist_id", listId).in("creator_id", creatorIds));
+    },
     async logCampaignResult(result) {
       const { data, error } = await db()
         .from("campaign_results")
@@ -206,3 +236,13 @@ export const liveBackend: Backend = {
     resetEverything() {},
   },
 };
+
+/** Only the list fields that were given, as database columns. */
+function itemRow(f: ListItemFields): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (f.status !== undefined) row.status = f.status;
+  if (f.rate !== undefined) row.rate = f.rate;
+  if (f.labels !== undefined) row.labels = f.labels;
+  if (f.notes !== undefined) row.notes = f.notes;
+  return row;
+}

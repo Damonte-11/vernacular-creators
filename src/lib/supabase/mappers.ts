@@ -1,7 +1,7 @@
 /** Converts between database rows (snake_case) and the app's types. */
 import { APP_DEFAULTS } from "@config/app";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
-import type { CampaignResult, Creator, Post, Settings, Shortlist, Snapshot } from "../types";
+import type { CampaignResult, Creator, ListStatus, Post, Settings, Shortlist, Snapshot } from "../types";
 
 export interface PostRow {
   platform_post_id: string;
@@ -40,6 +40,8 @@ export interface CreatorRow {
   tags: string[];
   /** Added in migration 0007; missing until it's run. */
   person_id?: string | null;
+  /** Added in migration 0009. */
+  email?: string | null;
   posts?: PostRow[];
   creator_snapshots?: SnapshotRow[];
 }
@@ -67,6 +69,7 @@ export function creatorFromRow(r: CreatorRow): Creator {
     notes: r.notes,
     tags: r.tags ?? [],
     personId: r.person_id ?? null,
+    email: r.email ?? null,
     posts: (r.posts ?? []).map((p) => ({
       id: `${r.id}-${p.platform_post_id}`,
       platformPostId: p.platform_post_id,
@@ -128,10 +131,21 @@ export interface ShortlistRow {
   client: string;
   share_token: string;
   created_at: string;
-  shortlist_items?: { creator_id: string; added_at: string }[];
+  shortlist_items?: ShortlistItemRow[];
 }
 
-export const SHORTLIST_SELECT = "id, name, client, share_token, created_at, shortlist_items(creator_id, added_at)";
+/** Columns from migration 0009 are optional so lists still load before it's run. */
+export interface ShortlistItemRow {
+  creator_id: string;
+  added_at: string;
+  status?: ListStatus;
+  rate?: number | string | null;
+  labels?: string[];
+  notes?: string;
+}
+
+// "*" for the items so the newer columns are picked up once they exist.
+export const SHORTLIST_SELECT = "id, name, client, share_token, created_at, shortlist_items(*)";
 
 export function shortlistFromRow(r: ShortlistRow): Shortlist {
   return {
@@ -141,7 +155,14 @@ export function shortlistFromRow(r: ShortlistRow): Shortlist {
     createdAt: r.created_at,
     shareToken: r.share_token,
     items: (r.shortlist_items ?? [])
-      .map((i) => ({ creatorId: i.creator_id, addedAt: i.added_at }))
+      .map((i) => ({
+        creatorId: i.creator_id,
+        addedAt: i.added_at,
+        status: i.status ?? "shortlisted",
+        rate: i.rate === null || i.rate === undefined ? null : Number(i.rate),
+        labels: i.labels ?? [],
+        notes: i.notes ?? "",
+      }))
       .sort((a, b) => a.addedAt.localeCompare(b.addedAt)),
   };
 }

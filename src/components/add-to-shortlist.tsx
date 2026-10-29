@@ -30,17 +30,17 @@ export function AddToShortlist({ creatorId, compact }: { creatorId: string; comp
       <button
         className={compact ? cx(buttonClass.icon, inCount > 0 && "text-accent-ink") : buttonClass.secondary}
         onClick={() => setOpen((o) => !o)}
-        aria-label={inCount > 0 ? `In ${inCount} shortlist${inCount > 1 ? "s" : ""}: change` : "Add to shortlist"}
+        aria-label={inCount > 0 ? `On ${inCount} list${inCount > 1 ? "s" : ""}: change` : "Add to list"}
         aria-expanded={open}
-        title={inCount > 0 ? `In ${inCount} shortlist${inCount > 1 ? "s" : ""}` : "Add to shortlist"}
+        title={inCount > 0 ? `On ${inCount} list${inCount > 1 ? "s" : ""}` : "Add to list"}
       >
         <Icon name={inCount > 0 ? "check" : "plus"} size={16} />
-        {compact ? null : inCount > 0 ? `In ${inCount} shortlist${inCount > 1 ? "s" : ""}` : "Add to shortlist"}
+        {compact ? null : inCount > 0 ? `On ${inCount} list${inCount > 1 ? "s" : ""}` : "Add to list"}
       </button>
       {open && (
         <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border border-line bg-surface p-2 text-left shadow-lg">
-          <p className="px-2 pb-1 pt-0.5 text-xs font-medium text-muted">Add to shortlist</p>
-          {shortlists.length === 0 && <p className="px-2 py-1 text-xs text-muted">No shortlists yet. Create one below.</p>}
+          <p className="px-2 pb-1 pt-0.5 text-xs font-medium text-muted">Add to list</p>
+          {shortlists.length === 0 && <p className="px-2 py-1 text-xs text-muted">No lists yet. Create one below.</p>}
           {shortlists.map((l) => {
             const checked = l.items.some((i) => i.creatorId === creatorId);
             return (
@@ -60,8 +60,8 @@ export function AddToShortlist({ creatorId, compact }: { creatorId: string; comp
               setNewName("");
             }}
           >
-            <input className={cx(inputClass, "py-1.5")} placeholder="New shortlist name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <button className={cx(buttonClass.primary, "px-3 py-1.5")} aria-label="Create shortlist">
+            <input className={cx(inputClass, "py-1.5")} placeholder="New list name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <button className={cx(buttonClass.primary, "px-3 py-1.5")} aria-label="Create list">
               <Icon name="plus" size={16} />
             </button>
           </form>
