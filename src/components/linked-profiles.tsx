@@ -1,8 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DiscoveryResult } from "@/lib/discover";
+import { discoverAccounts } from "@/lib/data/discover";
 import { useAnalyses, useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
-import { actions } from "@/lib/data/store";
+import { actions, useAppState } from "@/lib/data/store";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { linkedAccounts, linkEdits, suggestLinks, unlinkEdits } from "@/lib/people";
 import { platformName } from "@/lib/platforms";
@@ -19,7 +21,7 @@ async function save(edits: [string, CreatorEdits][]) {
  * The person's accounts on each platform, like Modash's "Profiles" list. Each
  * row opens that account's own numbers; nothing is added up across platforms.
  */
-export function LinkedProfiles({ creator }: { creator: Creator }) {
+export function LinkedProfiles({ creator, autoFind }: { creator: Creator; autoFind?: boolean }) {
   const all = useCreators();
   const analyses = useAnalyses();
   const [adding, setAdding] = useState(false);
@@ -82,9 +84,7 @@ export function LinkedProfiles({ creator }: { creator: Creator }) {
           );
         })}
       </ul>
-      {rows.length === 1 && !adding && (
-        <p className="mt-1 text-xs text-muted">Only this account so far. Link their accounts on other platforms to switch between them here.</p>
-      )}
+      {!adding && <OtherPlatforms key={creator.id} creator={creator} all={all} autoFind={autoFind} />}
       {adding && <LinkPanel creator={creator} all={all} onDone={() => setAdding(false)} />}
     </div>
   );
@@ -186,6 +186,172 @@ function LinkPanel({ creator, all, onDone }: { creator: Creator; all: Creator[];
           </p>
         )}
       </form>
+    </div>
+  );
+}
+
+type FindState = { status: "idle" } | { status: "loading" } | { status: "done"; results: DiscoveryResult[] } | { status: "error"; error: string };
+
+/**
+ * "Found on other platforms": accounts named in the bio, or the same handle on
+ * Instagram / YouTube. One click adds and links them; with the setting on,
+ * bio matches are added automatically. Handle guesses always wait for a person.
+ */
+function OtherPlatforms({ creator, all, autoFind }: { creator: Creator; all: Creator[]; autoFind?: boolean }) {
+  const { settings } = useAppState();
+  const [state, setState] = useState<FindState>({ status: "idle" });
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [autoAdded, setAutoAdded] = useState<Creator[]>([]);
+  const allRef = useRef(all);
+  allRef.current = all;
+  const keyOf = (r: DiscoveryResult) => `${r.platform}:${r.handle.toLowerCase()}`;
+
+  /** Saves the account if needed, then links it. Returns the linked account. */
+  const addAndLink = useCallback(
+    async (r: DiscoveryResult): Promise<Creator | null> => {
+      const current = allRef.current;
+      let other = r.savedId ? current.find((c) => c.id === r.savedId) : undefined;
+      if (!other) {
+        const res = await lookupCreator(r.platform, r.handle, current);
+        if (res.status === "error") {
+          setError(`${platformName(r.platform)} @${r.handle}: ${res.error}`);
+          return null;
+        }
+        other = res.creator;
+      }
+      const list = [...allRef.current.filter((c) => c.id !== other!.id), other];
+      await save(linkEdits(creator, other, list, () => crypto.randomUUID()));
+      return other;
+    },
+    [creator],
+  );
+
+  const find = useCallback(async () => {
+    setState({ status: "loading" });
+    setError(null);
+    const res = await discoverAccounts(creator, allRef.current);
+    if ("error" in res) return setState({ status: "error", error: res.error });
+    let results = res.results;
+    if (settings.autoLinkFromBio) {
+      // Bio matches the platform has confirmed (or that are already saved) are added straight away.
+      const auto = results.filter((r) => r.source === "bio" && (r.savedId || r.preview));
+      const added: Creator[] = [];
+      for (const r of auto) {
+        const c = await addAndLink(r);
+        if (c) added.push(c);
+      }
+      setAutoAdded(added);
+      results = results.filter((r) => !auto.includes(r));
+    }
+    setState({ status: "done", results });
+  }, [creator, settings.autoLinkFromBio, addAndLink]);
+
+  const started = useRef(false);
+  useEffect(() => {
+    if (autoFind && !started.current) {
+      started.current = true;
+      void find();
+    }
+  }, [autoFind, find]);
+
+  if (state.status === "idle") {
+    return (
+      <button className={cx(buttonClass.ghost, "-ml-2.5 mt-1")} onClick={find}>
+        <Icon name="search" size={14} /> Find on other platforms
+      </button>
+    );
+  }
+  if (state.status === "loading") {
+    return (
+      <p className="mt-2 flex items-center gap-2 text-xs text-muted" role="status">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" aria-hidden />
+        Checking their bio, and the same handle on other platforms…
+      </p>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <p role="alert" className="mt-2 text-xs text-bad">
+        {state.error}{" "}
+        <button className="font-semibold underline" onClick={find}>
+          Try again
+        </button>
+      </p>
+    );
+  }
+
+  const visible = state.results.filter((r) => !hidden.has(keyOf(r)));
+  return (
+    <div className="mt-3 rounded-xl bg-surface-2 p-3 ring-1 ring-line">
+      <p className="px-1 text-xs font-medium text-muted">Found on other platforms</p>
+      {autoAdded.length > 0 && (
+        <ul className="mt-1">
+          {autoAdded.map((c) => (
+            <li key={c.id} className="flex items-center gap-2 px-1 py-1.5 text-xs text-good">
+              <Icon name="check" size={14} />
+              <span className="flex-1">
+                Added {platformName(c.platform)} @{c.handle}: named in their bio
+              </span>
+              <button className="font-semibold text-ink-2 underline" onClick={() => save(unlinkEdits(c, allRef.current))}>
+                Undo
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {visible.length === 0 && autoAdded.length === 0 && (
+        <p className="px-1 py-2 text-xs text-ink-2">
+          Nothing found: their bio doesn&apos;t name other accounts, and the same handle isn&apos;t on the other platforms. TikTok is only checked when the
+          bio names it (each check uses Apify credit), so use <span className="font-medium">Link another account</span> if you know it.
+        </p>
+      )}
+      <ul className="mt-1 space-y-1">
+        {visible.map((r) => {
+          const k = keyOf(r);
+          return (
+            <li key={k} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-surface px-3 py-2 ring-1 ring-line">
+              <Icon name={r.platform} size={16} className="shrink-0 text-ink-2" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  @{r.handle}
+                  {r.preview && <span className="font-normal text-muted"> · {r.preview.name}</span>}
+                </span>
+                <span className="block text-xs text-muted">
+                  {r.preview ? `${formatNumber(r.preview.followers)} followers · ` : r.savedId ? "Already saved · " : ""}
+                  {r.source === "bio" ? "named in their bio" : "same handle: check it's them"}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <button
+                  className={cx(buttonClass.secondary, "px-3 py-1.5")}
+                  disabled={busy !== null}
+                  title={r.unchecked ? "Uses 1 of this month's TikTok lookups" : undefined}
+                  onClick={async () => {
+                    setBusy(k);
+                    setError(null);
+                    const c = await addAndLink(r);
+                    setBusy(null);
+                    if (c) setHidden((h) => new Set(h).add(k));
+                  }}
+                >
+                  {busy === k ? "Adding…" : r.savedId ? "Link" : "Add & link"}
+                </button>
+                <button className={cx(buttonClass.ghost, "text-xs")} onClick={() => setHidden((h) => new Set(h).add(k))}>
+                  Not them
+                </button>
+              </span>
+              {r.unchecked && <span className="w-full text-[11px] text-muted">Uses 1 of this month&apos;s TikTok lookups.</span>}
+            </li>
+          );
+        })}
+      </ul>
+      {error && (
+        <p role="alert" className="mt-2 px-1 text-xs text-bad">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

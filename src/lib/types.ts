@@ -64,6 +64,8 @@ export interface Settings {
   minPostAgeHoursYoutube: number;
   /** Instagram: % of the API view count that's counted (see config/app.ts). */
   instagramViewsShare: number;
+  /** Add and link accounts named in a creator's bio without asking. */
+  autoLinkFromBio: boolean;
   refreshIntervalHours: number;
 }
 

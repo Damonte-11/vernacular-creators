@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CITIES, NICHES, TIKTOK_LIMITS } from "@config/app";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { AddToShortlist } from "@/components/add-to-shortlist";
@@ -63,6 +63,16 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
   const { creator: c, metrics: m, reach, flags, score } = analysis;
   const { settings } = useAppState();
   const bandName = sizeBandLabel(m.band);
+  // Just looked up (?discover=1): look for their other platforms straight away.
+  const [autoFind, setAutoFind] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("discover") === "1") {
+      setAutoFind(true);
+      params.delete("discover");
+      window.history.replaceState(null, "", window.location.pathname + (params.size ? `?${params}` : ""));
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -112,7 +122,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           </div>
         </div>
         <div className="mt-5 max-w-2xl border-t border-line pt-4">
-          <LinkedProfiles creator={c} />
+          <LinkedProfiles creator={c} autoFind={autoFind} />
         </div>
       </Card>
 

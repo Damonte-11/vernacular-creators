@@ -92,6 +92,8 @@ export interface SettingsRow {
   min_post_age_hours_youtube?: number;
   /** Added in migration 0005; missing until it's run. */
   instagram_views_share?: number;
+  /** Added in migration 0008; missing until it's run. */
+  auto_link_from_bio?: boolean;
   refresh_interval_hours: number;
 }
 
@@ -103,6 +105,7 @@ export function settingsFromRow(r: SettingsRow | null): Settings {
     minPostAgeHours: r.min_post_age_hours,
     minPostAgeHoursYoutube: r.min_post_age_hours_youtube ?? APP_DEFAULTS.minPostAgeHoursYoutube,
     instagramViewsShare: r.instagram_views_share ?? APP_DEFAULTS.instagramViewsShare,
+    autoLinkFromBio: r.auto_link_from_bio ?? APP_DEFAULTS.autoLinkFromBio,
     refreshIntervalHours: r.refresh_interval_hours,
   };
 }
@@ -114,6 +117,7 @@ export function settingsToRow(s: Settings): SettingsRow {
     min_post_age_hours: s.minPostAgeHours,
     min_post_age_hours_youtube: s.minPostAgeHoursYoutube,
     instagram_views_share: s.instagramViewsShare,
+    auto_link_from_bio: s.autoLinkFromBio,
     refresh_interval_hours: s.refreshIntervalHours,
   };
 }

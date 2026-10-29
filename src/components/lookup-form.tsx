@@ -48,7 +48,8 @@ export function LookupForm() {
     const result = await lookupCreator(platform, input, creators);
     setBusy(false);
     if (result.status === "error") return setError(result.error);
-    router.push(`/creators/${encodeURIComponent(result.creator.id)}`);
+    // A new creator: their profile also looks for their accounts on other platforms.
+    router.push(`/creators/${encodeURIComponent(result.creator.id)}${result.status === "added" ? "?discover=1" : ""}`);
   }
 
   return (

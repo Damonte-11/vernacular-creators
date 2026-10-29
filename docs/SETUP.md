@@ -197,6 +197,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0005_instagram_views_share.sql`: count 70% of Instagram views (they include Facebook and paid views), adjustable in Settings
 - `0006_tiktok.sql`: allow TikTok creators
 - `0007_linked_accounts.sql`: link a person's accounts across platforms (Instagram, TikTok, YouTube)
+- `0008_auto_link.sql`: the "add accounts named in the bio automatically" setting
 
 ## What happens after setup
 

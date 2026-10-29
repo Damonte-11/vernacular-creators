@@ -84,6 +84,9 @@ function message(e: unknown): string {
   if (/column/i.test(text) && /excluded|min_post_age_hours_youtube/.test(text)) {
     return "the database needs a small update first. Run the files 0002 and 0003 from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
+  if (/auto_link_from_bio/.test(text)) {
+    return "the database needs a small update first. Run 0008_auto_link.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
+  }
   if (/person_id/.test(text)) {
     return "the database needs a small update first. Run 0007_linked_accounts.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }

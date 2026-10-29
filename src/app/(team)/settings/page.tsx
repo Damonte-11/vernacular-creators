@@ -106,6 +106,21 @@ export default function SettingsPage() {
             max={720}
             onChange={(v) => actions.updateSettings({ refreshIntervalHours: v })}
           />
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg bg-surface-2 p-3 ring-1 ring-line sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+              checked={settings.autoLinkFromBio}
+              onChange={(e) => actions.updateSettings({ autoLinkFromBio: e.target.checked })}
+            />
+            <span>
+              <span className="block text-sm font-medium">Add accounts named in the bio automatically</span>
+              <span className="block text-xs text-muted">
+                When a creator&apos;s bio names their account on another platform (e.g. &quot;TikTok: @kiekie&quot;), it&apos;s added and linked without asking. Same-handle
+                guesses always wait for you to confirm. TikTok accounts are offered with a button instead, as each one uses a monthly TikTok lookup.
+              </span>
+            </span>
+          </label>
         </div>
       </Card>
 

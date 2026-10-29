@@ -131,7 +131,12 @@ function BulkAdd() {
                     <Link href={`/creators/${encodeURIComponent(r.creator.id)}`} className="font-semibold text-accent-ink hover:underline">
                       @{r.creator.handle}
                     </Link>
-                    <span className="text-muted">{r.status === "added" ? "Added" : r.status === "refreshed" ? "Updated" : "Already saved"}</span>
+                    <span className="flex items-center gap-3 text-muted">
+                      {r.status === "added" ? "Added" : r.status === "refreshed" ? "Updated" : "Already saved"}
+                      <Link href={`/creators/${encodeURIComponent(r.creator.id)}?discover=1`} className="text-xs font-semibold text-ink-2 hover:underline">
+                        Find other platforms
+                      </Link>
+                    </span>
                   </>
                 )}
               </li>

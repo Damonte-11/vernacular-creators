@@ -39,7 +39,7 @@ To stop the app, go back to the terminal and press `Ctrl + C`.
 |---|---|
 | **Home** | Quick creator lookup, headline numbers, and the top 5 creators |
 | **Creators** | Search and filter everyone in the database (platform, niche, city, size, followers, engagement, score, verified) |
-| **Creator profile** | Key numbers, averages, reach estimate, warning flags, Creator Score breakdown, chart, recent posts, team notes and tags, follower history, and **Profiles**: the same person's accounts on other platforms, one click away (numbers are never added together) |
+| **Creator profile** | Key numbers, averages, reach estimate, warning flags, Creator Score breakdown, chart, recent posts, team notes and tags, follower history, and **Profiles**: the same person's accounts on other platforms, one click away (numbers are never added together). **Find on other platforms** checks their bio and the same handle, and adds what it finds in one click |
 | **Add creators** | Look up one creator, or paste a list for bulk add with a progress bar |
 | **Leaderboards** | Top creators by score within one size band (top 3 highlighted), filtered by platform, niche and city |
 | **Shortlists** | Group creators for a campaign and see combined totals |
