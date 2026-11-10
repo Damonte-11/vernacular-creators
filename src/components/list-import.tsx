@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { findByHandle, useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
 import { actions } from "@/lib/data/store";
+import { clock, slowDownSeconds, waitWithCountdown } from "@/lib/data/wait";
 import { COLUMN_LABELS, detectColumns, parseCsv, readRows, type ColumnKind, type ImportRow } from "@/lib/import";
 import { formatNaira, statusLabel, toCsv } from "@/lib/lists";
 import { PLATFORMS, platformName } from "@/lib/platforms";
@@ -96,15 +97,20 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
       }
       // The database first; only new creators are looked up, one at a time.
       let res = await lookupCreator(r.platform!, r.handle!, known);
-      for (let tries = 0; res.status === "error" && res.code === "rate_limited" && tries < 3 && !stop.current; tries++) {
-        const wait = Math.max(10, res.retryAfterSeconds ?? 60);
-        setNotice(`${platformName(r.platform!)} asked us to slow down. Resuming in ${wait} seconds…`);
-        await new Promise((ok) => setTimeout(ok, wait * 1000));
+      // A platform's hourly limit: wait as long as it asks, then carry on (for as long as this tab stays open).
+      while (res.status === "error" && res.code === "rate_limited" && !stop.current) {
+        const name = platformName(r.platform!);
+        const ok = await waitWithCountdown(
+          slowDownSeconds(res.retryAfterSeconds),
+          (left) => setNotice(`${name} asked us to slow down (its hourly limit). Carrying on automatically in ${clock(left)}. Keep this tab open.`),
+          () => stop.current,
+        );
         setNotice(null);
+        if (!ok) break;
         res = await lookupCreator(r.platform!, r.handle!, known);
       }
       if (res.status === "error") {
-        if (["quota", "auth", "config", "rate_limited"].includes(res.code ?? "")) stopped.set(r.platform!, `Waiting: ${res.error}`);
+        if (["quota", "auth", "config"].includes(res.code ?? "")) stopped.set(r.platform!, `Waiting: ${res.error}`);
         results.push({ line: r.line, label, status: "skipped", detail: res.error });
         continue;
       }
@@ -113,6 +119,8 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
       if (r.email && !c.email) await actions.editCreator(c.id, { email: r.email });
       items.push({ creatorId: c.id, fields: r.fields });
       results.push({ line: r.line, label: `${c.name} · @${c.handle}`, status: onList.has(c.id) ? "updated" : "added", creatorId: c.id });
+      // Save to the list as we go, so closing the tab halfway loses nothing.
+      if (items.length >= 10) await actions.addToList(list.id, items.splice(0));
     }
     await actions.addToList(list.id, items);
     setProgress({ done: usable.length, total: usable.length });

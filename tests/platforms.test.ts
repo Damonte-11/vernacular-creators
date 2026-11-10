@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { LookupError, withRetry } from "@/lib/server/errors";
-import { fetchInstagramCreator, mapGraphError } from "@/lib/server/instagram";
+import { fetchInstagramCreator, mapGraphError, regainSeconds } from "@/lib/server/instagram";
+import { clock, slowDownSeconds } from "@/lib/data/wait";
 import { fetchTikTokCreator, mapApifyError, TIKTOK_MAX_CHARGE_USD, TIKTOK_VIDEO_LIMIT } from "@/lib/server/tiktok";
 import { durationSeconds, fetchYouTubeCreator, isChannelId, searchYouTubeChannels } from "@/lib/server/youtube";
 
@@ -182,6 +183,23 @@ describe("TikTok via Apify", () => {
     expect(mapApifyError(429, undefined).code).toBe("rate_limited");
     expect(mapApifyError(408, undefined).code).toBe("upstream");
     expect(mapApifyError(503, undefined).code).toBe("upstream");
+  });
+});
+
+describe("Instagram's hourly limit", () => {
+  it("waits as long as Meta says, or 10 minutes when it doesn't", () => {
+    const headers = new Headers({ "x-business-use-case-usage": JSON.stringify({ "123": [{ type: "instagram", estimated_time_to_regain_access: 23 }] }) });
+    expect(regainSeconds(headers)).toBe(23 * 60);
+    expect(regainSeconds(new Headers())).toBeNull();
+    expect(mapGraphError({ code: 4 }, 400, "x", 1380).retryAfterSeconds).toBe(1380);
+    expect(mapGraphError({ code: 4 }, 400, "x").retryAfterSeconds).toBe(600);
+  });
+
+  it("keeps waits between 30 seconds and an hour, and shows them as a clock", () => {
+    expect(slowDownSeconds(5)).toBe(30);
+    expect(slowDownSeconds(undefined)).toBe(600);
+    expect(slowDownSeconds(99_999)).toBe(3600);
+    expect(clock(754)).toBe("12:34");
   });
 });
 

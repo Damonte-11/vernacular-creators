@@ -80,7 +80,7 @@ export async function fetchInstagramCreator(username: string, config: InstagramC
   if (!res.ok || body.error) {
     // Logged for Vercel's runtime logs; contains no token.
     console.warn("Instagram Graph error", res.status, body.error?.code, body.error?.error_subcode, body.error?.message);
-    throw mapGraphError(body.error, res.status, username);
+    throw mapGraphError(body.error, res.status, username, regainSeconds(res.headers));
   }
   const user = body.business_discovery;
   if (!user) throw notProfessional(username);
@@ -126,12 +126,30 @@ function notProfessional(username: string): LookupError {
 }
 
 /** Graph API error codes: https://developers.facebook.com/docs/graph-api/guides/error-handling */
-export function mapGraphError(err: GraphError["error"], status: number, username: string): LookupError {
+/**
+ * How long Meta says to wait before calling again, from its usage headers
+ * ("estimated_time_to_regain_access", in minutes). Null when it doesn't say.
+ */
+export function regainSeconds(headers: Headers): number | null {
+  let minutes = 0;
+  for (const name of ["x-business-use-case-usage", "x-ad-account-usage"]) {
+    try {
+      const usage = JSON.parse(headers.get(name) ?? "{}") as Record<string, { estimated_time_to_regain_access?: number }[]>;
+      for (const list of Object.values(usage)) for (const u of list ?? []) minutes = Math.max(minutes, u.estimated_time_to_regain_access ?? 0);
+    } catch {
+      // Missing or unreadable header: no estimate.
+    }
+  }
+  return minutes > 0 ? minutes * 60 : null;
+}
+
+export function mapGraphError(err: GraphError["error"], status: number, username: string, retryAfterSeconds?: number | null): LookupError {
   const code = err?.code;
   const sub = err?.error_subcode;
   // 4, 17, 32, 613: app/user/page rate limits; 80002: Instagram business-use-case limit.
   if (code === 4 || code === 17 || code === 32 || code === 613 || code === 80002 || status === 429) {
-    return new LookupError("rate_limited", "Instagram asked us to slow down. Waiting a little before trying again.", 60);
+    // The limit is per hour, so without an estimate from Meta, wait 10 minutes before trying again.
+    return new LookupError("rate_limited", "Instagram asked us to slow down (its hourly limit).", retryAfterSeconds ?? 600);
   }
   // Meta's own wording says which token or permission is the problem, so it's shown too.
   const metaSays = err?.message ? ` Meta says: "${err.message}"` : "";

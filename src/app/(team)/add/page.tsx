@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { LookupForm, PlatformToggle } from "@/components/lookup-form";
 import { buttonClass, Card, cx, inputClass, PageHeader, SectionHeader } from "@/components/ui";
 import { platformName } from "@/lib/platforms";
+import { clock, slowDownSeconds, waitWithCountdown } from "@/lib/data/wait";
 import { useCreators } from "@/lib/data/creators";
 import { lookupCreator, type LookupResult } from "@/lib/data/lookup";
 import type { Platform } from "@/lib/types";
@@ -50,16 +51,20 @@ function BulkAdd() {
       if (stop.current) break;
       // One at a time, so we stay inside the platforms' rate limits.
       let r = await lookupCreator(platform, h, known);
-      for (let tries = 0; r.status === "error" && r.code === "rate_limited" && tries < 3 && !stop.current; tries++) {
-        const wait = Math.max(10, r.retryAfterSeconds ?? 60);
-        setNotice(`${platformName(platform)} asked us to slow down. Resuming in ${wait} seconds…`);
-        await new Promise((res) => setTimeout(res, wait * 1000));
+      // A platform's hourly limit: wait as long as it asks, then carry on (for as long as this tab stays open).
+      while (r.status === "error" && r.code === "rate_limited" && !stop.current) {
+        const ok = await waitWithCountdown(
+          slowDownSeconds(r.retryAfterSeconds),
+          (left) => setNotice(`${platformName(platform)} asked us to slow down (its hourly limit). Carrying on automatically in ${clock(left)}. Keep this tab open.`),
+          () => stop.current,
+        );
         setNotice(null);
+        if (!ok) break;
         r = await lookupCreator(platform, h, known);
       }
       if (r.status === "added") known = [...known, r.creator];
       setResults((prev) => [...prev, r]);
-      if (r.status === "error" && (r.code === "quota" || r.code === "auth" || r.code === "config" || r.code === "rate_limited")) {
+      if (r.status === "error" && (r.code === "quota" || r.code === "auth" || r.code === "config")) {
         setNotice(`Stopped: ${r.error}`);
         break;
       }
