@@ -6,8 +6,11 @@ import { LookupForm, PlatformToggle } from "@/components/lookup-form";
 import { buttonClass, Card, cx, inputClass, PageHeader, SectionHeader } from "@/components/ui";
 import { platformName } from "@/lib/platforms";
 import { clock, slowDownSeconds, waitWithCountdown } from "@/lib/data/wait";
-import { useCreators } from "@/lib/data/creators";
+import { normalizeHandle, useCreators } from "@/lib/data/creators";
 import { lookupCreator, type LookupResult } from "@/lib/data/lookup";
+import { enqueue } from "@/lib/data/queue";
+import { IS_LIVE } from "@/lib/supabase/config";
+import { QueueStatusCard } from "@/components/queue-status";
 import type { Platform } from "@/lib/types";
 
 /** Most handles a single bulk add will take. */
@@ -22,6 +25,7 @@ export default function AddPage() {
         <LookupForm />
       </Card>
       <BulkAdd />
+      <QueueStatusCard className="mt-6" />
     </>
   );
 }
@@ -38,6 +42,19 @@ function BulkAdd() {
   const handles = [...new Set(text.split(/[\s,;]+/).map((h) => h.trim()).filter(Boolean))];
 
   const [notice, setNotice] = useState<string | null>(null);
+  const [queuedMsg, setQueuedMsg] = useState<string | null>(null);
+
+  /** Every handle goes to the background queue: the server looks them up ~150 an hour, no tab needed. No 100 limit here. */
+  async function queueAll() {
+    setNotice(null);
+    const res = await enqueue(handles.map((h) => ({ platform, handle: normalizeHandle(h) })).filter((i) => i.handle));
+    if ("error" in res) return setNotice(`Couldn't queue them: ${res.error}`);
+    setText("");
+    setQueuedMsg(
+      `${res.queued} queued in the background${res.alreadyWaiting ? ` (${res.alreadyWaiting} were already waiting)` : ""}. Creators already saved are matched instantly; new ones are looked up about 150 an hour. You can close this page.`,
+    );
+    setTotal(0);
+  }
 
   async function run() {
     const list = handles.slice(0, BULK_LIMIT);
@@ -101,14 +118,23 @@ function BulkAdd() {
             Stop
           </button>
         ) : (
-          <button className={buttonClass.primary} disabled={handles.length === 0} onClick={run}>
-            Add {handles.length > 0 ? Math.min(handles.length, BULK_LIMIT) : ""} {handles.length === 1 ? "creator" : "creators"}
-          </button>
+          <>
+            {IS_LIVE && (
+              <button className={buttonClass.primary} disabled={handles.length === 0} onClick={queueAll}>
+                Add {handles.length || ""} in the background
+              </button>
+            )}
+            <button className={IS_LIVE ? buttonClass.secondary : buttonClass.primary} disabled={handles.length === 0} onClick={run}>
+              {IS_LIVE ? "Add now (keep this tab open)" : `Add ${handles.length > 0 ? Math.min(handles.length, BULK_LIMIT) : ""} ${handles.length === 1 ? "creator" : "creators"}`}
+            </button>
+          </>
         )}
         {handles.length > 0 && !running && <p className="text-xs text-muted">{handles.length} {handles.length === 1 ? "handle" : "handles"} found</p>}
-        {handles.length > BULK_LIMIT && <p className="text-xs text-warn">Only the first {BULK_LIMIT} will be added.</p>}
+        {handles.length > BULK_LIMIT && <p className="text-xs text-warn">Add now takes the first {BULK_LIMIT}; the background has no limit.</p>}
       </div>
 
+      {queuedMsg && <p className="mt-4 rounded-lg bg-good-soft px-3 py-2 text-sm text-good">{queuedMsg}</p>}
+      {notice && total === 0 && <p className="mt-4 rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{notice}</p>}
       {total > 0 && (
         <div className="mt-5" aria-live="polite">
           {notice && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">{notice}</p>}

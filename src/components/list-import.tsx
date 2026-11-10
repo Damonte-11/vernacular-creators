@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { findByHandle, useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
+import { enqueue } from "@/lib/data/queue";
+import { IS_LIVE } from "@/lib/supabase/config";
 import { actions } from "@/lib/data/store";
 import { clock, slowDownSeconds, waitWithCountdown } from "@/lib/data/wait";
 import { COLUMN_LABELS, detectColumns, parseCsv, readRows, type ColumnKind, type ImportRow } from "@/lib/import";
@@ -45,6 +47,7 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [notice, setNotice] = useState<string | null>(null);
   const [outcomes, setOutcomes] = useState<Outcome[] | null>(null);
+  const [queued, setQueued] = useState<{ addedNow: number; queued: number; alreadyWaiting: number; skipped: number } | null>(null);
   const stop = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -126,6 +129,21 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
     setProgress({ done: usable.length, total: usable.length });
     setOutcomes(results.sort((a, b) => a.line - b.line));
     setRunning(false);
+  }
+
+  /** Saved creators go on the list now; new ones go to the background queue, looked up ~150 an hour by the server. */
+  async function queueAll() {
+    setRunning(true);
+    const savedItems = saved.map((r) => ({ creatorId: findByHandle(creators, r.platform!, r.handle!)!.id, fields: r.fields }));
+    await actions.addToList(list.id, savedItems);
+    for (const r of saved) {
+      const c = findByHandle(creators, r.platform!, r.handle!)!;
+      if (r.email && !c.email) await actions.editCreator(c.id, { email: r.email });
+    }
+    const res = await enqueue(toLookUp.map((r) => ({ platform: r.platform!, handle: r.handle!, name: r.name, email: r.email, listId: list.id, fields: r.fields })));
+    setRunning(false);
+    if ("error" in res) return setNotice(`Couldn't queue them: ${res.error}`);
+    setQueued({ addedNow: savedItems.length, queued: res.queued, alreadyWaiting: res.alreadyWaiting, skipped: problems.length });
   }
 
   function downloadTemplate() {
@@ -217,7 +235,32 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
         </>
       )}
 
-      {sheet && !outcomes && (
+      {queued && (
+        <div className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Summary n={queued.addedNow} label="added to the list now" hint="Already in your database" tone="good" />
+            <Summary
+              n={queued.queued}
+              label="queued in the background"
+              hint={queued.alreadyWaiting ? `${queued.alreadyWaiting} were already waiting` : `About ${Math.ceil(queued.queued / 150)} hours at ~150 an hour`}
+              tone="neutral"
+            />
+            <Summary n={queued.skipped} label="can't be read" tone={queued.skipped ? "bad" : "neutral"} />
+          </div>
+          <p className="text-sm text-ink-2">You can close this page. Creators appear on this list as they&apos;re found; progress is shown below.</p>
+          <button
+            className={buttonClass.primary}
+            onClick={() => {
+              setQueued(null);
+              onClose();
+            }}
+          >
+            Done
+          </button>
+        </div>
+      )}
+
+      {sheet && !outcomes && !queued && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p>
@@ -345,17 +388,35 @@ export function ListImport({ list, onClose }: { list: Shortlist; onClose: () => 
             </div>
           )}
 
+          {!running && notice && (
+            <p role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">
+              {notice}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
             {running ? (
               <button className={buttonClass.secondary} onClick={() => (stop.current = true)}>
                 Stop
               </button>
             ) : (
-              <button className={buttonClass.primary} onClick={run} disabled={!hasId || usable.length === 0}>
-                Import {usable.length} {usable.length === 1 ? "creator" : "creators"}
-              </button>
+              <>
+                {IS_LIVE && (
+                  <button className={buttonClass.primary} onClick={queueAll} disabled={!hasId || usable.length === 0}>
+                    Add {usable.length} in the background
+                  </button>
+                )}
+                <button className={IS_LIVE ? buttonClass.secondary : buttonClass.primary} onClick={run} disabled={!hasId || usable.length === 0}>
+                  {IS_LIVE ? "Import now (keep this tab open)" : `Import ${usable.length} ${usable.length === 1 ? "creator" : "creators"}`}
+                </button>
+              </>
             )}
             {!hasId && <p className="text-xs text-bad">Mark one column as a profile link or @handle.</p>}
+            {IS_LIVE && hasId && toLookUp.length > 0 && (
+              <p className="w-full text-xs text-muted">
+                In the background, the server looks up about 150 new creators an hour (Instagram&apos;s limit) and adds them to this list. Nobody needs to keep
+                the page open.
+              </p>
+            )}
           </div>
         </div>
       )}

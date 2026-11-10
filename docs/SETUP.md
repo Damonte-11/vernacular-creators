@@ -186,6 +186,35 @@ A TikTok lookup takes **30 seconds to 2 minutes**, as Apify has to open the prof
 
 ---
 
+## Background imports (run every hour)
+
+Big lists (hundreds of handles) can be added **in the background**: on a list, **Import → Add in the background**, or **Add creators → Bulk add → Add in the background**. The server looks up about 150 new creators an hour (inside Instagram's limit) and adds them to the list, with nobody keeping a page open. Progress shows on the list and on Add creators, with a **Run now** button.
+
+To make it run by itself every hour, Supabase calls the app once an hour (one-time setup, 5 minutes):
+
+1. Run database update `0011_import_queue.sql` (below).
+2. In Supabase: **Database → Extensions**. Search for **pg_cron** and switch it on; then **pg_net** and switch it on.
+3. In Vercel: **Settings → Environment Variables → CRON_SECRET**. Copy its value. (If Vercel hides it, set a new long random value, save, redeploy, and use that.)
+4. In Supabase: **SQL Editor → New query**. Paste the following, replace `PASTE_YOUR_CRON_SECRET_HERE` with the value from step 3 (keep the quotes), and click **Run**:
+
+```sql
+select cron.schedule(
+  'vernacular-import-queue',
+  '7 * * * *',
+  $$
+  select net.http_get(
+    url := 'https://vernacular-creators.vercel.app/api/cron/queue',
+    headers := jsonb_build_object('Authorization', 'Bearer PASTE_YOUR_CRON_SECRET_HERE'),
+    timeout_milliseconds := 300000
+  );
+  $$
+);
+```
+
+It now runs at 7 minutes past every hour. To stop it: `select cron.unschedule('vernacular-import-queue');`
+
+---
+
 ## Database updates
 
 When the app gains a feature that needs a database change, there's a new numbered file in `supabase/migrations/`. Run each one once, in order, in **Supabase → SQL Editor → New query → paste → Run**:
@@ -200,6 +229,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0008_auto_link.sql`: the "add accounts named in the bio automatically" setting
 - `0009_lists.sql`: Lists: status, rate, labels and notes per creator on each list, and creator emails
 - `0010_discovery.sql`: automatic discovery of new creators (and its settings)
+- `0011_import_queue.sql`: background imports, looked up about 150 an hour
 
 ## What happens after setup
 

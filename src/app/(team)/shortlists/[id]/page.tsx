@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ListImport } from "@/components/list-import";
 import { ListTable } from "@/components/list-table";
+import { QueueStatusCard } from "@/components/queue-status";
 import { PlatformToggle } from "@/components/lookup-form";
 import { SavedMatches } from "@/components/saved-matches";
 import { buttonClass, cx, EmptyState, inputClass, Loading, PageHeader, SectionHeader, StatTile } from "@/components/ui";
@@ -111,6 +112,8 @@ export default function ListPage() {
         <StatTile label="Estimated reach" value={formatRange(totals.reach)} estimate hint="One post each; people may overlap" />
         <StatTile label="Total rate" value={formatNaira(totalRate)} hint={`${list.items.filter((i) => i.rate !== null).length} of ${list.items.length} with a rate`} />
       </div>
+
+      <QueueStatusCard listId={list.id} hideWhenEmpty className="mb-6" />
 
       {panel === "import" && (
         <div className="mb-6">
