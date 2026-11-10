@@ -256,6 +256,17 @@ export function VerifiedBadge({ verified }: { verified: boolean }) {
   );
 }
 
+/** Marks creators the app found by itself, with where from on hover. */
+export function FoundBadge({ via }: { via?: string | null }) {
+  if (!via) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-info-soft px-1.5 py-0.5 text-[11px] font-semibold text-info" title={`Found automatically · ${via}`}>
+      <Icon name="star" size={11} /> Found
+      <span className="sr-only">automatically: {via}</span>
+    </span>
+  );
+}
+
 export function CreatorLink({ id, children, className }: { id: string; children: ReactNode; className?: string }) {
   return (
     <Link href={`/creators/${encodeURIComponent(id)}`} className={className}>

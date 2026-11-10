@@ -20,6 +20,7 @@ import {
   inputClass,
   labelClass,
   EstimateTag,
+  FoundBadge,
   PlatformBadge,
   SectionHeader,
   StatTile,
@@ -89,6 +90,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{c.name}</h1>
                 <VerifiedBadge verified={c.verified} />
+                <FoundBadge via={c.discoveredVia} />
                 {c.isSample && <span className="rounded-md bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn">Sample</span>}
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-2">

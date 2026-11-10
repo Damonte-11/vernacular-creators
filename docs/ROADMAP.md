@@ -30,6 +30,8 @@ A person's accounts on different platforms can be linked (the **Profiles** list 
 
 Shortlists became **Lists** (like Modash's Manage): per-campaign status, Naira rate, labels and notes per creator, creator emails (filled from the bio when there), bulk actions, a totals row, CSV export, and import from CSV/Excel with automatic column detection. Team-only fields never appear in client reports.
 
+**Automatic discovery** finds new creators nightly: @mentions in saved creators' captions and bios, plus YouTube channel searches limited to Nigeria. Rules decide add / worth a look / skip (Nigeria signal, minimum followers, posted within 60 days, not a business), up to 50 new creators a day, all adjustable in Settings. TikTok discovery (paid Apify) is not switched on yet.
+
 Next: tune benchmarks against real Nigerian creators as the database grows, rank against real peers once there are enough per size, and decide whether to track daily API usage on a dashboard.
 
 ## Stage 3: Version 2 (plan only)

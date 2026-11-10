@@ -19,6 +19,8 @@ export interface CreatorFilters {
   scoreMin: string;
   scoreMax: string;
   verified: "" | "yes" | "no";
+  /** "auto" = found by automatic discovery, "manual" = added by the team. */
+  found: "" | "auto" | "manual";
 }
 
 export const EMPTY_FILTERS: CreatorFilters = {
@@ -37,6 +39,7 @@ export const EMPTY_FILTERS: CreatorFilters = {
   scoreMin: "",
   scoreMax: "",
   verified: "",
+  found: "",
 };
 
 export type SortKey = "score" | "followers" | "engagement" | "name";
@@ -77,6 +80,8 @@ export function applyFilters(list: CreatorAnalysis[], f: CreatorFilters): Creato
     if (sMax !== null && (score.total === null || score.total > sMax)) return false;
     if (f.verified === "yes" && !c.verified) return false;
     if (f.verified === "no" && c.verified) return false;
+    if (f.found === "auto" && !c.discoveredVia) return false;
+    if (f.found === "manual" && c.discoveredVia) return false;
     return true;
   });
 }

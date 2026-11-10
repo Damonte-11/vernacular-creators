@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { ENGAGEMENT_BENCHMARKS, REACH_RATIOS, VIEW_ENGAGEMENT_BENCHMARKS, VIEWS_TO_REACH } from "@config/benchmarks";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { SCORE_FACTOR_LABELS, type ScoreFactor } from "@config/scoring";
@@ -10,6 +11,7 @@ import { formatNumber, formatPercent } from "@/lib/format";
 
 export default function SettingsPage() {
   const { settings } = useAppState();
+  const setDiscovery = (patch: Partial<typeof settings.discovery>) => actions.updateSettings({ discovery: { ...settings.discovery, ...patch } });
   const weightTotal = Object.values(settings.weights).reduce((a, b) => a + b, 0);
 
   return (
@@ -119,6 +121,72 @@ export default function SettingsPage() {
                 When a creator&apos;s bio names their account on another platform (e.g. &quot;TikTok: @kiekie&quot;), it&apos;s added and linked without asking. Same-handle
                 guesses always wait for you to confirm. TikTok accounts are offered with a button instead, as each one uses a monthly TikTok lookup.
               </span>
+            </span>
+          </label>
+        </div>
+      </Card>
+
+      <Card className="mb-6 scroll-mt-6 p-5 sm:p-6">
+        <div id="discovery" className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Automatic discovery</h2>
+            <p className="mt-0.5 max-w-2xl text-sm text-muted">
+              Every night the app looks at accounts your saved creators tag, and YouTube channels for the niches and cities below. Clear matches are added;
+              borderline ones go to Discovered → Worth a look.
+            </p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-accent)]"
+              checked={settings.discovery.enabled}
+              onChange={(e) => setDiscovery({ enabled: e.target.checked })}
+            />
+            Switched on
+          </label>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <NumberSetting
+            label="Minimum followers"
+            hint="Smaller accounts are skipped."
+            value={settings.discovery.minFollowers}
+            min={0}
+            max={10_000_000}
+            onChange={(v) => setDiscovery({ minFollowers: v })}
+          />
+          <NumberSetting
+            label="Posted within (days)"
+            hint="Accounts quiet for longer are skipped."
+            value={settings.discovery.activeDays}
+            min={7}
+            max={365}
+            onChange={(v) => setDiscovery({ activeDays: v })}
+          />
+          <NumberSetting
+            label="New creators per day"
+            hint="Stays inside the free Instagram and YouTube limits."
+            value={settings.discovery.dailyLimit}
+            min={0}
+            max={200}
+            onChange={(v) => setDiscovery({ dailyLimit: v })}
+          />
+          <ListSetting
+            label="Niches"
+            hint="Searched on YouTube with each city, a few a night."
+            value={settings.discovery.keywords}
+            onChange={(v) => setDiscovery({ keywords: v })}
+          />
+          <ListSetting label="Cities" hint="Comma-separated." value={settings.discovery.cities} onChange={(v) => setDiscovery({ cities: v })} />
+          <label className="flex cursor-pointer items-start gap-3 self-end rounded-lg bg-surface-2 p-3 ring-1 ring-line">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+              checked={settings.discovery.reviewQueue}
+              onChange={(e) => setDiscovery({ reviewQueue: e.target.checked })}
+            />
+            <span>
+              <span className="block text-sm font-medium">Show borderline accounts</span>
+              <span className="block text-xs text-muted">Off: anything without a clear Nigeria link is skipped instead of going to Worth a look.</span>
             </span>
           </label>
         </div>
@@ -252,6 +320,23 @@ function NumberSetting({
           const v = Math.round(Number(e.target.value));
           if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
         }}
+      />
+      <span className="mt-1 block text-xs text-muted">{hint}</span>
+    </label>
+  );
+}
+
+/** A comma-separated list, saved when you click away. */
+function ListSetting({ label, hint, value, onChange }: { label: string; hint: string; value: string[]; onChange: (v: string[]) => void }) {
+  const [text, setText] = useState(value.join(", "));
+  return (
+    <label className="block">
+      <span className={labelClass}>{label}</span>
+      <input
+        className={inputClass}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => onChange([...new Set(text.split(",").map((x) => x.trim()).filter(Boolean))])}
       />
       <span className="mt-1 block text-xs text-muted">{hint}</span>
     </label>

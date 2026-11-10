@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { LookupError, withRetry } from "@/lib/server/errors";
 import { fetchInstagramCreator, mapGraphError } from "@/lib/server/instagram";
 import { fetchTikTokCreator, mapApifyError, TIKTOK_MAX_CHARGE_USD, TIKTOK_VIDEO_LIMIT } from "@/lib/server/tiktok";
-import { durationSeconds, fetchYouTubeCreator, isChannelId } from "@/lib/server/youtube";
+import { durationSeconds, fetchYouTubeCreator, isChannelId, searchYouTubeChannels } from "@/lib/server/youtube";
 
 function jsonFetch(routes: (url: URL) => { status?: number; body: unknown }) {
   const calls: URL[] = [];
@@ -182,6 +182,16 @@ describe("TikTok via Apify", () => {
     expect(mapApifyError(429, undefined).code).toBe("rate_limited");
     expect(mapApifyError(408, undefined).code).toBe("upstream");
     expect(mapApifyError(503, undefined).code).toBe("upstream");
+  });
+});
+
+describe("YouTube discovery search", () => {
+  it("searches channels in Nigeria and returns their IDs", async () => {
+    const { fetcher, calls } = jsonFetch(() => ({ body: { items: [{ id: { channelId: "UCaaaaaaaaaaaaaaaaaaaaaa" } }, { id: {} }] } }));
+    expect(await searchYouTubeChannels("comedy Lagos", "key", fetcher)).toEqual(["UCaaaaaaaaaaaaaaaaaaaaaa"]);
+    expect(calls[0].pathname).toBe("/youtube/v3/search");
+    expect(calls[0].searchParams.get("regionCode")).toBe("NG");
+    expect(calls[0].searchParams.get("type")).toBe("channel");
   });
 });
 

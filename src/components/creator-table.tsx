@@ -8,7 +8,7 @@ import { Icon } from "./icons";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { sizeBandLabel } from "@/lib/size-bands";
 import { AddToShortlist } from "./add-to-shortlist";
-import { Avatar, Card, CreatorLink, cx, EngagementChip, FlagCount, PlatformBadge, ScoreBadge, VerifiedBadge } from "./ui";
+import { Avatar, Card, CreatorLink, cx, EngagementChip, FlagCount, FoundBadge, PlatformBadge, ScoreBadge, VerifiedBadge } from "./ui";
 
 const TH = "px-4 py-2.5 text-xs font-medium text-muted";
 
@@ -48,6 +48,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
                       <span className="flex items-center gap-2 font-semibold group-hover:underline">
                         <span className="truncate">{a.creator.name}</span>
                         <VerifiedBadge verified={a.creator.verified} />
+                        <FoundBadge via={a.creator.discoveredVia} />
                       </span>
                       <span className="flex items-center gap-1.5 text-xs text-muted">
                         <PlatformBadge platform={a.creator.platform} compact />@{a.creator.handle}
@@ -99,6 +100,7 @@ export function CreatorTable({ rows, ranked }: { rows: CreatorAnalysis[]; ranked
                   <span className="flex items-center gap-1.5">
                     <span className="truncate font-semibold">{a.creator.name}</span>
                     <VerifiedBadge verified={a.creator.verified} />
+                        <FoundBadge via={a.creator.discoveredVia} />
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-muted">
                     <PlatformBadge platform={a.creator.platform} compact />

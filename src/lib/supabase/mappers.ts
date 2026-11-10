@@ -1,5 +1,6 @@
 /** Converts between database rows (snake_case) and the app's types. */
 import { APP_DEFAULTS } from "@config/app";
+import { DISCOVERY_DEFAULTS, type DiscoverySettings } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import type { CampaignResult, Creator, ListStatus, Post, Settings, Shortlist, Snapshot } from "../types";
 
@@ -42,6 +43,9 @@ export interface CreatorRow {
   person_id?: string | null;
   /** Added in migration 0009. */
   email?: string | null;
+  /** Added in migration 0010. */
+  discovered_via?: string | null;
+  discovered_at?: string | null;
   posts?: PostRow[];
   creator_snapshots?: SnapshotRow[];
 }
@@ -70,6 +74,8 @@ export function creatorFromRow(r: CreatorRow): Creator {
     tags: r.tags ?? [],
     personId: r.person_id ?? null,
     email: r.email ?? null,
+    discoveredVia: r.discovered_via ?? null,
+    discoveredAt: r.discovered_at ?? null,
     posts: (r.posts ?? []).map((p) => ({
       id: `${r.id}-${p.platform_post_id}`,
       platformPostId: p.platform_post_id,
@@ -97,11 +103,13 @@ export interface SettingsRow {
   instagram_views_share?: number;
   /** Added in migration 0008; missing until it's run. */
   auto_link_from_bio?: boolean;
+  /** Added in migration 0010; missing until it's run. */
+  discovery?: Partial<DiscoverySettings>;
   refresh_interval_hours: number;
 }
 
 export function settingsFromRow(r: SettingsRow | null): Settings {
-  if (!r) return { weights: { ...DEFAULT_SCORE_WEIGHTS }, ...APP_DEFAULTS };
+  if (!r) return { weights: { ...DEFAULT_SCORE_WEIGHTS }, ...APP_DEFAULTS, discovery: { ...DISCOVERY_DEFAULTS } };
   return {
     weights: { ...DEFAULT_SCORE_WEIGHTS, ...r.weights },
     recentPostCount: r.recent_post_count,
@@ -109,6 +117,7 @@ export function settingsFromRow(r: SettingsRow | null): Settings {
     minPostAgeHoursYoutube: r.min_post_age_hours_youtube ?? APP_DEFAULTS.minPostAgeHoursYoutube,
     instagramViewsShare: r.instagram_views_share ?? APP_DEFAULTS.instagramViewsShare,
     autoLinkFromBio: r.auto_link_from_bio ?? APP_DEFAULTS.autoLinkFromBio,
+    discovery: { ...DISCOVERY_DEFAULTS, ...r.discovery },
     refreshIntervalHours: r.refresh_interval_hours,
   };
 }
@@ -121,6 +130,7 @@ export function settingsToRow(s: Settings): SettingsRow {
     min_post_age_hours_youtube: s.minPostAgeHoursYoutube,
     instagram_views_share: s.instagramViewsShare,
     auto_link_from_bio: s.autoLinkFromBio,
+    discovery: s.discovery,
     refresh_interval_hours: s.refreshIntervalHours,
   };
 }

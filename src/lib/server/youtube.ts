@@ -96,6 +96,20 @@ export async function fetchYouTubeCreator(handleOrId: string, key: string, fetch
   };
 }
 
+/**
+ * Channel IDs matching a search, limited to Nigeria. Costs 100 of the 10,000
+ * free daily units, so discovery only runs a few a day.
+ */
+export async function searchYouTubeChannels(query: string, key: string, fetcher: Fetcher = fetch): Promise<string[]> {
+  const res = await call<{ items?: { id?: { channelId?: string } }[] }>(
+    fetcher,
+    "search",
+    { part: "snippet", type: "channel", q: query, regionCode: "NG", relevanceLanguage: "en", maxResults: "50" },
+    key,
+  );
+  return (res.items ?? []).map((i) => i.id?.channelId).filter((id): id is string => !!id);
+}
+
 /** ISO 8601 duration ("PT1M5S") to seconds. */
 export function durationSeconds(iso: string | undefined): number | null {
   const m = iso?.match(/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);

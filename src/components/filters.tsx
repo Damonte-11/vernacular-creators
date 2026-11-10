@@ -134,6 +134,16 @@ export function FilterPanel({
             ]}
             allLabel="Any"
           />
+          <Select
+            label="Added"
+            value={filters.found}
+            onChange={set("found")}
+            options={[
+              { value: "auto", label: "Found automatically" },
+              { value: "manual", label: "Added by the team" },
+            ]}
+            allLabel="Any way"
+          />
           <div className="flex items-end">
             <button className={buttonClass.ghost} onClick={() => onChange({ ...EMPTY_FILTERS, q: filters.q })} disabled={active === 0}>
               Clear filters

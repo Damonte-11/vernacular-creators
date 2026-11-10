@@ -87,6 +87,9 @@ function message(e: unknown): string {
   if (/column/i.test(text) && /\b(status|rate|labels|notes|email)\b/.test(text)) {
     return "the database needs a small update first. Run 0009_lists.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
+  if (/discovery|discovered_/.test(text)) {
+    return "the database needs a small update first. Run 0010_discovery.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
+  }
   if (/auto_link_from_bio/.test(text)) {
     return "the database needs a small update first. Run 0008_auto_link.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }

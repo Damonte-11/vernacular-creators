@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { CreatorTable } from "@/components/creator-table";
+import { Icon } from "@/components/icons";
 import { LookupForm } from "@/components/lookup-form";
 import { buttonClass, Card, EmptyState, PageHeader, SectionHeader, StatTile } from "@/components/ui";
 import { useAnalyses } from "@/lib/data/creators";
@@ -14,6 +15,8 @@ export default function HomePage() {
   const top = useMemo(() => sortAnalyses(all, "score").slice(0, 5), [all]);
   const flagged = all.filter((a) => a.flags.some((f) => f.severity !== "low")).length;
   const scored = all.filter((a) => a.score.total !== null);
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const foundThisWeek = all.filter((a) => a.creator.discoveredAt && new Date(a.creator.discoveredAt).getTime() >= weekAgo).length;
   const avgScore = scored.length ? Math.round(scored.reduce((s, a) => s + (a.score.total ?? 0), 0) / scored.length) : null;
 
   return (
@@ -30,6 +33,18 @@ export default function HomePage() {
         <StatTile label="With warning signs" value={flagged} hint="Medium or high flags" />
         <StatTile label="Lists" value={shortlists.length} hint={shortlists.length ? "Campaigns you are managing" : "Group creators for a campaign"} />
       </div>
+
+      {foundThisWeek > 0 && (
+        <Link href="/discovered" className="mb-10 -mt-6 flex items-center gap-2 rounded-xl bg-info-soft px-4 py-3 text-sm text-info ring-1 ring-info/20 hover:underline">
+          <Icon name="star" size={16} />
+          <span>
+            <b>{foundThisWeek}</b> {foundThisWeek === 1 ? "creator" : "creators"} found automatically this week. See what discovery found
+          </span>
+          <span aria-hidden className="ml-auto">
+            →
+          </span>
+        </Link>
+      )}
 
       <SectionHeader
         title="Top creators right now"

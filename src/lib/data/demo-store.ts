@@ -2,6 +2,7 @@
 /** Demo mode: sample data, with the team's changes saved in this browser only. */
 import { newListItem } from "../lists";
 import { APP_DEFAULTS } from "@config/app";
+import { DISCOVERY_DEFAULTS } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
 import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Settings, Shortlist } from "../types";
@@ -18,7 +19,7 @@ interface DemoData {
 const STORAGE_KEY = "vernacular-creators:v1";
 const SAMPLE = sampleCreators(sampleNow());
 
-export const DEFAULT_SETTINGS: Settings = { weights: { ...DEFAULT_SCORE_WEIGHTS }, ...APP_DEFAULTS };
+export const DEFAULT_SETTINGS: Settings = { weights: { ...DEFAULT_SCORE_WEIGHTS }, ...APP_DEFAULTS, discovery: { ...DISCOVERY_DEFAULTS } };
 
 function initialData(): DemoData {
   return {

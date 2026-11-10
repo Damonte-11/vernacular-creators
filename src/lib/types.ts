@@ -1,5 +1,6 @@
 import type { SizeBandId } from "@config/size-bands";
 import type { ScoreFactor } from "@config/scoring";
+import type { DiscoverySettings } from "@config/discovery";
 
 export type Platform = "instagram" | "youtube" | "tiktok";
 export type PostType = "image" | "carousel" | "reel" | "video" | "short" | "slideshow";
@@ -49,6 +50,9 @@ export interface Creator {
   personId?: string | null;
   /** Contact email, entered by the team or imported (falls back to one found in the bio). */
   email?: string | null;
+  /** Found by automatic discovery: where from, e.g. "Tagged by @kiekie". */
+  discoveredVia?: string | null;
+  discoveredAt?: string | null;
   lastFetchedAt: string;
   notes: string;
   tags: string[];
@@ -69,6 +73,8 @@ export interface Settings {
   /** Add and link accounts named in a creator's bio without asking. */
   autoLinkFromBio: boolean;
   refreshIntervalHours: number;
+  /** Automatic discovery of new creators (see config/discovery.ts). */
+  discovery: DiscoverySettings;
 }
 
 export type EngagementLabel = "poor" | "average" | "good" | "great";

@@ -1,5 +1,6 @@
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { APP_DEFAULTS } from "@config/app";
+import { DISCOVERY_DEFAULTS } from "@config/discovery";
 import type { Creator, Post, Settings } from "@/lib/types";
 
 export const NOW = Date.UTC(2026, 9, 18, 12);
@@ -17,6 +18,7 @@ export const SETTINGS: Settings = {
   minPostAgeHoursYoutube: 24,
   recentPostCount: 12,
   instagramViewsShare: 100,
+  discovery: { ...DISCOVERY_DEFAULTS },
 };
 
 /** 25,000 followers: exactly at the "micro" anchor, so the micro benchmarks apply as written. */
