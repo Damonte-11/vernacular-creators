@@ -171,6 +171,15 @@ export const demoBackend: Backend = {
         shortlists: d.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.map((i) => (ids.has(i.creatorId) ? { ...i, ...fields } : i)) } : l)),
       }));
     },
+    async removeCreators(ids) {
+      const gone = new Set(ids);
+      // Demo: only creators added in this browser can be removed; the samples stay.
+      set((d) => ({
+        ...d,
+        addedCreators: d.addedCreators.filter((c) => !gone.has(c.id)),
+        shortlists: d.shortlists.map((l) => ({ ...l, items: l.items.filter((i) => !gone.has(i.creatorId)) })),
+      }));
+    },
     async removeFromList(listId, creatorIds) {
       const ids = new Set(creatorIds);
       set((d) => ({ ...d, shortlists: d.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.filter((i) => !ids.has(i.creatorId)) } : l)) }));

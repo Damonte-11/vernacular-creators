@@ -163,6 +163,14 @@ export default function SettingsPage() {
             onChange={(v) => setDiscovery({ activeDays: v })}
           />
           <NumberSetting
+            label="Minimum Creator Score"
+            hint="0–100. Below this, an account isn't added, however big. Poor engagement or serious warning signs are always skipped."
+            value={settings.discovery.minScore}
+            min={0}
+            max={100}
+            onChange={(v) => setDiscovery({ minScore: v })}
+          />
+          <NumberSetting
             label="New creators per day"
             hint="Stays inside the free Instagram and YouTube limits."
             value={settings.discovery.dailyLimit}

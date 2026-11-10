@@ -3,7 +3,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
 import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, Loading, PageHeader, StatTile } from "@/components/ui";
+import { useAnalyses } from "@/lib/data/creators";
 import { actions, useAppState } from "@/lib/data/store";
+import { businessSignal, mediaSignal, qualityProblem } from "@/lib/discovery-rules";
 import { formatDate, formatNumber } from "@/lib/format";
 import { platformName, profileLink } from "@/lib/platforms";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -43,6 +45,7 @@ const DEMO: Candidate[] = [
  */
 export default function DiscoveredPage() {
   const { settings } = useAppState();
+  const analyses = useAnalyses();
   const cfg = settings.discovery;
   const [rows, setRows] = useState<Candidate[] | null>(IS_LIVE ? null : DEMO);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +114,20 @@ export default function DiscoveredPage() {
 
   if (rows === null) return <Loading />;
   const shown = lists[tab];
+  // Creators found earlier (under looser rules) that don't meet today's bar.
+  const belowBar = analyses
+    .filter((a) => a.creator.discoveredVia)
+    .map((a) => {
+      const words = businessSignal(a.creator) ?? mediaSignal(a.creator);
+      const reason = words
+        ? `Looks like a business or media page ("${words}")`
+        : qualityProblem(
+            { score: a.score.total, engagementLabel: a.metrics.engagementLabel, highFlags: a.flags.filter((f) => f.severity === "high").map((f) => f.message) },
+            cfg.minScore,
+          );
+      return { a, reason };
+    })
+    .filter((x): x is { a: (typeof analyses)[number]; reason: string } => x.reason !== null);
 
   return (
     <>
@@ -137,6 +154,50 @@ export default function DiscoveredPage() {
         </p>
       )}
 
+      {belowBar.length > 0 && (
+        <Card className="mb-6 border-warn/30 bg-warn-soft/30 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold">
+                {belowBar.length} {belowBar.length === 1 ? "creator" : "creators"} found earlier {belowBar.length === 1 ? "doesn't" : "don't"} meet the quality bar
+              </p>
+              <p className="mt-0.5 text-sm text-ink-2">
+                They were added before the score check existed. Removing them deletes them from the database and from any lists; discovery won&apos;t add
+                them again.
+              </p>
+            </div>
+            <button
+              className={buttonClass.danger}
+              onClick={() => {
+                if (window.confirm(`Remove ${belowBar.length} creators found automatically? This can't be undone.`)) {
+                  void actions.removeCreators(belowBar.map((x) => x.a.creator.id));
+                }
+              }}
+            >
+              Remove all {belowBar.length}
+            </button>
+          </div>
+          <ul className="mt-3 divide-y divide-warn/20 text-sm">
+            {belowBar.slice(0, 12).map(({ a, reason }) => (
+              <li key={a.creator.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <CreatorLink id={a.creator.id} className="flex min-w-0 items-center gap-2 hover:underline">
+                  <Icon name={a.creator.platform} size={14} className="text-ink-2" />
+                  <span className="truncate font-medium">{a.creator.name}</span>
+                  <span className="text-xs text-muted">@{a.creator.handle}</span>
+                </CreatorLink>
+                <span className="flex items-center gap-3 text-xs">
+                  <span className="text-ink-2">{reason}</span>
+                  <button className="font-semibold text-bad hover:underline" onClick={() => actions.removeCreators([a.creator.id])}>
+                    Remove
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {belowBar.length > 12 && <p className="mt-1 text-xs text-muted">…and {belowBar.length - 12} more</p>}
+        </Card>
+      )}
+
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Added this week" value={lists.added.filter(recent).length} hint={`${lists.added.length} in total`} />
         <StatTile label="Worth a look" value={lists.review.length} hint="Ignored on their own after 14 days" />
@@ -146,8 +207,8 @@ export default function DiscoveredPage() {
 
       <p className="mb-4 text-sm text-ink-2">
         <Icon name="info" size={14} className="mr-1.5 inline align-[-2px] text-muted" />
-        Adds Nigerian creators with at least <b>{formatNumber(cfg.minFollowers)}</b> followers who posted in the last <b>{cfg.activeDays} days</b>, up to{" "}
-        <b>{cfg.dailyLimit} a day</b>.{" "}
+        Adds Nigerian creators with at least <b>{formatNumber(cfg.minFollowers)}</b> followers, a Creator Score of <b>{cfg.minScore}+</b>, no poor
+        engagement or serious warning signs, who posted in the last <b>{cfg.activeDays} days</b>, up to <b>{cfg.dailyLimit} a day</b>.{" "}
         <Link href="/settings#discovery" className="font-semibold text-accent-ink hover:underline">
           Change
         </Link>

@@ -29,6 +29,8 @@ export interface Actions {
   /** Set status, rate, labels or notes for one or more creators on a list. */
   updateListItems(listId: string, creatorIds: string[], fields: ListItemFields): Promise<void>;
   removeFromList(listId: string, creatorIds: string[]): Promise<void>;
+  /** Delete creators from the database (and from every list). */
+  removeCreators(ids: string[]): Promise<void>;
   logCampaignResult(result: Omit<CampaignResult, "id" | "loggedAt">): Promise<void>;
   deleteCampaignResult(id: string): Promise<void>;
   clearError(): void;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DISCOVERY_DEFAULTS } from "@config/discovery";
-import { decide, mentionedHandles, nigeriaSignal, searchQueries } from "@/lib/discovery-rules";
+import { decide, mediaSignal, mentionedHandles, nigeriaSignal, searchQueries } from "@/lib/discovery-rules";
 
 const NOW = Date.UTC(2026, 10, 10);
 const daysAgo = (d: number) => new Date(NOW - d * 86_400_000).toISOString();
@@ -29,6 +29,19 @@ describe("discovery rules", () => {
     expect(decide(noLink, cfg, true, NOW).decision).toBe("review");
     expect(decide(noLink, cfg, false, NOW).decision).toBe("skip");
     expect(decide(noLink, { ...cfg, reviewQueue: false }, true, NOW).decision).toBe("skip");
+  });
+
+  it("only adds creators that pass the quality bar", () => {
+    const good = { score: 78, engagementLabel: "good" as const, highFlags: [] };
+    expect(decide(base, cfg, false, NOW, good)).toMatchObject({ decision: "add", reason: expect.stringContaining("score 78") });
+    expect(decide(base, cfg, false, NOW, { ...good, score: 52 }).reason).toBe("Creator Score 52 (under 65)");
+    expect(decide(base, cfg, false, NOW, { ...good, engagementLabel: "poor" }).reason).toBe("Poor engagement for their size");
+    expect(decide(base, cfg, false, NOW, { ...good, highFlags: ["Likely bought likes"] }).reason).toMatch(/Warning signs/);
+  });
+
+  it("skips blogs, news and fan pages, but not ordinary creator bios", () => {
+    expect(decide({ ...base, name: "Lagos Gist Hub", bio: "Latest news and gist 🇳🇬" }, cfg, false, NOW).reason).toMatch(/blog, news or fan page/);
+    expect(mediaSignal({ name: "Kie Kie TV", bio: "New skits daily. Social media influencer" })).toBeNull();
   });
 
   it("matches Nigeria words as whole words", () => {

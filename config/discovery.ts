@@ -10,6 +10,11 @@ export const DISCOVERY_DEFAULTS = {
   minFollowers: 5_000,
   /** Must have posted within this many days. */
   activeDays: 60,
+  /**
+   * Lowest Creator Score (0–100) worth adding. The score weighs engagement,
+   * authenticity, views and consistency against creators of the same size.
+   */
+  minScore: 65,
   /** Niches searched on YouTube, combined with the cities below. */
   keywords: ["comedy", "food", "fashion", "beauty", "tech", "music", "lifestyle", "fitness", "family"],
   cities: ["Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu", "Benin"],
@@ -38,4 +43,10 @@ export const BUSINESS_SIGNALS = [
   "ltd", "limited", "plc", "enterprises", "ventures", "store", "stores", "shop", "boutique", "we deliver", "order now",
   "dm to order", "whatsapp to order", "nationwide delivery", "delivery nationwide", "wholesale", "retail", "restaurant",
   "official page of", "bank", "microfinance", "real estate", "properties", "pharmacy", "supermarket",
+];
+
+/** Words that point to a blog, news, meme or fan page rather than a creator. */
+export const MEDIA_SIGNALS = [
+  "blog", "blogger", "news", "gist", "gossip", "memes", "meme page", "magazine", "entertainment hub", "fan page", "fanpage",
+  "fan account", "repost", "reposts", "for promo", "dm for promo", "promo page", "for ads", "adverts", "compilation", "compilations",
 ];

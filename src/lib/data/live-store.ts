@@ -204,6 +204,19 @@ export const liveBackend: Backend = {
       });
       await save("the list", () => db().from("shortlist_items").update(itemRow(fields)).eq("shortlist_id", listId).in("creator_id", creatorIds));
     },
+    async removeCreators(ids) {
+      if (ids.length === 0) return;
+      const gone = new Set(ids);
+      set({
+        creators: state.creators.filter((c) => !gone.has(c.id)),
+        shortlists: state.shortlists.map((l) => ({ ...l, items: l.items.filter((i) => !gone.has(i.creatorId)) })),
+      });
+      // Keep discovery from finding them again.
+      await save("discovery", () =>
+        db().from("discovery_candidates").update({ status: "ignored", reason: "Removed by the team", decided_at: new Date().toISOString() }).in("creator_id", ids),
+      );
+      await save("the creators", () => db().from("creators").delete().in("id", ids));
+    },
     async removeFromList(listId, creatorIds) {
       if (creatorIds.length === 0) return;
       const ids = new Set(creatorIds);

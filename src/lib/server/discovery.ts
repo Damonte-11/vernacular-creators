@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { REVIEW_EXPIRY_DAYS, REVIEW_PER_RUN, YOUTUBE_SEARCHES_PER_RUN } from "@config/discovery";
 import { bioMentions } from "../discover";
 import { decide, mentionedHandles, searchQueries, sourceLabel } from "../discovery-rules";
-import type { Platform } from "../types";
+import { analyzeCreator } from "../analyze";
+import type { Creator, Platform } from "../types";
 import { LookupError } from "./errors";
 import type { FetchedCreator } from "./fetched";
 import { fetchFromPlatform } from "./lookup-service";
@@ -137,7 +138,14 @@ export async function runDiscovery(db: SupabaseClient, deadline: number, now = D
     const lastPostAt = f.posts.reduce<string | null>((m, p) => (!m || p.postedAt > m ? p.postedAt : m), null);
     const facts = { name: f.name, bio: f.bio, followers: f.followers, country: f.country, lastPostAt };
     // Being tagged by a creator in our (Nigerian) database, or found by a Nigeria search, is a weak link on its own.
-    const d = decide(facts, cfg, true, now);
+    // Score it with the same maths as every profile, so only good creators get in.
+    const a = analyzeCreator(asCreator(f, now), settings, now);
+    const quality = {
+      score: a.score.total,
+      engagementLabel: a.metrics.engagementLabel,
+      highFlags: a.flags.filter((x) => x.severity === "high").map((x) => x.message),
+    };
+    const d = decide(facts, cfg, true, now, quality);
     const via = sourceLabel(cand.source);
 
     if (d.decision === "add") {
@@ -155,6 +163,33 @@ export async function runDiscovery(db: SupabaseClient, deadline: number, now = D
     }
   }
   return summary;
+}
+
+/** A fetched profile shaped like a saved creator, so it can be scored before saving. */
+function asCreator(f: FetchedCreator, now: number): Creator {
+  const at = new Date(now).toISOString();
+  return {
+    id: `discovery-${f.platform}-${f.platformId}`,
+    platform: f.platform,
+    platformId: f.platformId,
+    handle: f.handle,
+    name: f.name,
+    photoUrl: f.photoUrl,
+    bio: f.bio,
+    niche: null,
+    city: null,
+    country: "Nigeria",
+    followers: f.followers,
+    mediaCount: f.mediaCount,
+    accountType: f.accountType,
+    verified: false,
+    lastFetchedAt: at,
+    notes: "",
+    tags: [],
+    posts: f.posts.map((p) => ({ ...p, id: `${f.platformId}-${p.platformPostId}` })),
+    snapshots: [{ followers: f.followers, capturedAt: at }],
+    isSample: false,
+  };
 }
 
 /** Every row of a table, 1,000 at a time (Supabase returns at most 1,000 per request). */
