@@ -61,7 +61,7 @@ export async function assertTikTokAllowance(db: SupabaseClient, now = new Date()
   if (used >= limit) {
     throw new LookupError(
       "quota",
-      `This month's TikTok allowance (${limit} lookups) is used up, to stay within Apify's free credit. It resets on the 1st. Saved TikTok creators can still be viewed.`,
+      `The app's own monthly limit of ${limit} TikTok lookups is reached (${used} used this month). This isn't Apify running out: it's a cap the app sets to protect your Apify credit. It resets on the 1st, or raise it with TIKTOK_MONTHLY_LOOKUPS in Vercel.`,
     );
   }
 }

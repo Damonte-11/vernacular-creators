@@ -180,6 +180,9 @@ describe("TikTok via Apify", () => {
   it("maps Apify errors", () => {
     expect(mapApifyError(401, { type: "user-or-token-not-found" }).code).toBe("auth");
     expect(mapApifyError(402, { type: "not-enough-usage-to-run-paid-actor" }).code).toBe("quota");
+    // Other Apify limits are not "credit used up".
+    expect(mapApifyError(400, { type: "actor-memory-limit-exceeded", message: "By launching this job you will exceed the memory limit" }).code).toBe("rate_limited");
+    expect(mapApifyError(402, { type: "x", message: "You have exceeded your usage" }).message).toContain('Apify says: "You have exceeded your usage"');
     expect(mapApifyError(429, undefined).code).toBe("rate_limited");
     expect(mapApifyError(408, undefined).code).toBe("upstream");
     expect(mapApifyError(503, undefined).code).toBe("upstream");

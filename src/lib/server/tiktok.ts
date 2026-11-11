@@ -155,10 +155,15 @@ export function mapApifyError(status: number, error: { type?: string; message?: 
   if (status === 429 || type === "rate-limit-exceeded") {
     return new LookupError("rate_limited", "Apify asked us to slow down. Waiting a little before trying again.", 10);
   }
-  if (status === 402 || /usage|credit|limit|payment/i.test(type)) {
-    return new LookupError("quota", "Apify's monthly credit is used up. It renews at the start of your Apify billing month.");
+  // Only a real "out of credit" answer counts as credit used up; Apify also has
+  // other limits (for example how many runs the free plan does at once).
+  const says = error?.message ? ` Apify says: "${error.message}"` : "";
+  if (status === 402 || /usage|credit|payment|insufficient|billing|monthly/i.test(type)) {
+    return new LookupError("quota", `Apify reports its monthly credit is used up. It renews at the start of your Apify billing month.${says}`);
   }
-  if (status === 408) {
+  if (/limit|concurren|memory|busy/i.test(type)) {
+    return new LookupError("rate_limited", `Apify is busy with another run (the free plan limits how many run at once). Trying again shortly.${says}`, 60);
+  }  if (status === 408) {
     return new LookupError("upstream", "TikTok took too long to answer through Apify. Please try again.");
   }
   if (status >= 500) return new LookupError("upstream", "Apify had a temporary problem. Please try again shortly.");

@@ -240,7 +240,7 @@ async function checkTikTok(
   const used = await tiktokChecksThisMonth(db, now);
   const room = Math.max(0, Math.min(limit - used, TIKTOK_POSTS_PER_RUN));
   if (room === 0) {
-    summary.notes.push(`TikTok: this month's ${limit} post checks are used up; they reset on the 1st. Type numbers in meanwhile.`);
+    summary.notes.push(`TikTok: the app's own limit of ${limit} post checks this month is reached (not Apify running out). It resets on the 1st, or raise TIKTOK_POST_CHECKS_PER_MONTH in Vercel.`);
     return;
   }
   const batch = list.slice(0, room);
