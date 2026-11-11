@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/format";
 import { COLUMN_ROLES, AGENT_COLUMNS, type ColumnRole, type SheetLayout } from "@/lib/sheet-sync";
 import { IS_LIVE } from "@/lib/supabase/config";
 import type { Project } from "@/lib/types";
+import { sheetScript } from "@/lib/sheet-script";
 import { columnLetterOf } from "./sheet-letters";
 import { Icon } from "../icons";
 import { buttonClass, Card, cx, inputClass, labelClass, SectionHeader } from "../ui";
@@ -18,6 +19,8 @@ export function SheetView({ p }: { p: Project }) {
   const [url, setUrl] = useState(p.sheetUrl ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [script, setScript] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const state = p.sheetState ?? {};
   const draftFrom = state.proposed ?? state.layout ?? null;
   const [draft, setDraft] = useState<SheetLayout | null>(draftFrom);
@@ -30,6 +33,17 @@ export function SheetView({ p }: { p: Project }) {
       .then((b) => setInfo({ serviceEmail: b.serviceEmail ?? null, ai: !!b.ai }))
       .catch(() => setInfo({ serviceEmail: null, ai: false }));
   }, [p.id]);
+
+  async function makeScript() {
+    // Reuse the project's code when there is one, so a pasted script keeps working.
+    let token = state.hookToken;
+    if (!token) {
+      setBusy("hook");
+      token = (await actions.sheetAgent(p.id, { action: "hook" })).token;
+      setBusy(null);
+    }
+    if (token) setScript(sheetScript(window.location.origin, token, p.name));
+  }
 
   async function run(label: string, req: Parameters<typeof actions.sheetAgent>[1]) {
     setBusy(label);
@@ -46,47 +60,99 @@ export function SheetView({ p }: { p: Project }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-4">
-        {/* 1. The sheet */}
+        {/* 1. Connect */}
         <Card className="p-4 sm:p-5">
-          <SectionHeader title="1. The sheet" description="The Google Sheet your team logs post links in." />
-          <form
-            className="mt-3 flex flex-col gap-2 sm:flex-row"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (url.trim() && !/docs\.google\.com\/spreadsheets/.test(url))
-                return setNote("That isn't a Google Sheets link (docs.google.com/spreadsheets/…).");
-              await actions.updateProject(p.id, { sheetUrl: url.trim() || null });
-              setNote(url.trim() ? "Sheet link saved." : "Sheet disconnected.");
-            }}
-          >
-            <input
-              className={inputClass}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/…"
-              aria-label="Google Sheet link"
-            />
-            <button className={buttonClass.secondary} disabled={url.trim() === (p.sheetUrl ?? "")}>
-              Save link
-            </button>
-          </form>
-          {IS_LIVE && (
-            <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
-              {info?.serviceEmail ? (
-                <>
-                  In Google Sheets, click <b>Share</b> and add <b className="select-all break-all font-semibold text-ink">{info.serviceEmail}</b> as{" "}
-                  <b>Editor</b>. Editor lets the agent write the numbers back into its own columns.
-                </>
-              ) : info ? (
-                <>Google Sheets isn&apos;t connected to the app yet. It needs GOOGLE_SERVICE_ACCOUNT_JSON in Vercel (see docs/SETUP.md).</>
-              ) : (
-                "Checking the connection…"
-              )}
+          <SectionHeader
+            title="1. Connect the sheet"
+            description="The Google Sheet your team logs post links in. A small script inside the sheet does the syncing: no Google Cloud setup needed."
+          />
+          {state.lastHeardAt && (
+            <p className="mt-3 flex items-center gap-1.5 text-[13px] text-good">
+              <Icon name="check" size={14} /> Connected. The sheet last synced{" "}
+              {new Date(state.lastHeardAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
             </p>
           )}
-          {!IS_LIVE && (
-            <p className="mt-3 text-xs text-muted">Demo: the steps below use a made-up messy sheet, so you can see how the agent reads and matches it.</p>
+          {script ? (
+            <div className="mt-3 space-y-3">
+              <ol className="list-decimal space-y-1.5 pl-5 text-[13px] text-ink-2">
+                <li>
+                  Open the Google Sheet, then <b>Extensions → Apps Script</b>.
+                </li>
+                <li>Delete what&apos;s in the editor, then paste the script below (use Copy script).</li>
+                <li>
+                  Click the save icon. In the box at the top next to <b>Debug</b>, pick <b>connect</b>, then click <b>Run</b>.
+                </li>
+                <li>
+                  Google asks to allow it: <b>Review permissions</b> → pick your account → <b>Advanced</b> → <b>Go to … (unsafe)</b> → <b>Allow</b>. Google
+                  shows that warning for any script that isn&apos;t published; this one is yours.
+                </li>
+                <li>Come back here: step 2 shows the sheet&apos;s columns to confirm.</li>
+              </ol>
+              <div className="relative">
+                <textarea
+                  readOnly
+                  rows={8}
+                  value={script}
+                  className={cx(inputClass, "font-mono text-[11px] leading-relaxed")}
+                  aria-label="Sheet script"
+                  onFocus={(e) => e.target.select()}
+                />
+                <button
+                  className={cx(buttonClass.primary, "absolute right-2 top-2")}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(script).catch(() => undefined);
+                    setCopied(true);
+                  }}
+                >
+                  {copied ? "Copied" : "Copy script"}
+                </button>
+              </div>
+              <p className="text-xs text-muted">
+                The script contains a private code for this project. Don&apos;t share it outside the team. Making a new script switches the old one off.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button className={buttonClass.primary} disabled={!!busy} onClick={makeScript}>
+                {busy === "hook" ? "Making the script…" : state.hookToken ? "Show the script again" : "Get the sheet script"}
+              </button>
+              {!IS_LIVE && <span className="text-xs text-muted">Demo: the live app makes a real script for your sheet.</span>}
+            </div>
           )}
+          <details className="mt-4">
+            <summary className="cursor-pointer text-xs font-medium text-ink-2">Sheet link (optional, for opening it from here)</summary>
+            <form
+              className="mt-2 flex flex-col gap-2 sm:flex-row"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (url.trim() && !/docs\.google\.com\/spreadsheets/.test(url))
+                  return setNote("That isn't a Google Sheets link (docs.google.com/spreadsheets/…).");
+                await actions.updateProject(p.id, { sheetUrl: url.trim() || null });
+                setNote(url.trim() ? "Sheet link saved." : "Sheet link removed.");
+              }}
+            >
+              <input
+                className={inputClass}
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+                aria-label="Google Sheet link"
+              />
+              <button className={buttonClass.secondary} disabled={url.trim() === (p.sheetUrl ?? "")}>
+                Save link
+              </button>
+            </form>
+            {p.sheetUrl && (
+              <a
+                href={p.sheetUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-ink-2 underline"
+              >
+                Open the sheet <Icon name="link" size={11} />
+              </a>
+            )}
+          </details>
         </Card>
 
         {/* 2. Layout */}
@@ -157,7 +223,7 @@ export function SheetView({ p }: { p: Project }) {
               </button>
             </div>
           ) : (
-            <p className="mt-3 text-[13px] text-muted">Not read yet.</p>
+            <p className="mt-3 text-[13px] text-muted">{IS_LIVE ? "Waiting for the sheet: run connect in the sheet's script (step 1)." : "Not read yet."}</p>
           )}
         </Card>
 
@@ -165,11 +231,17 @@ export function SheetView({ p }: { p: Project }) {
         <Card className="p-4 sm:p-5">
           <SectionHeader
             title="3. Keeping in step"
-            description="Every hour: new links in the sheet are added here, and the latest numbers are written into the sheet."
+            description={
+              IS_LIVE && !info?.serviceEmail
+                ? "Every hour the sheet sends its new links here and gets the latest numbers back. To sync straight away, in the sheet click Vernacular → Sync now."
+                : "Every hour: new links in the sheet are added here, and the latest numbers are written into the sheet."
+            }
             action={
-              <button className={buttonClass.primary} disabled={!!busy || !state.layout} onClick={() => run("sync", { action: "sync" })}>
-                {busy === "sync" ? "Syncing…" : "Sync now"}
-              </button>
+              (!IS_LIVE || info?.serviceEmail) && (
+                <button className={buttonClass.primary} disabled={!!busy || !state.layout} onClick={() => run("sync", { action: "sync" })}>
+                  {busy === "sync" ? "Syncing…" : "Sync now"}
+                </button>
+              )
             }
           />
           {note && (

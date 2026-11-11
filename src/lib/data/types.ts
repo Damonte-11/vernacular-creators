@@ -3,7 +3,7 @@ import type { CampaignResult, Creator, CreatorEdits, PostCheck, Project, Project
 
 /** A post link being added: everything except what the app fills in. */
 export type NewProjectPost = Pick<ProjectPost, "url" | "platform" | "creatorId" | "postedDate" | "source">;
-export type SheetRequest = { action: "read-layout"; tab?: string | null } | { action: "confirm-layout"; layout: SheetLayout } | { action: "sync" };
+export type SheetRequest = { action: "read-layout"; tab?: string | null } | { action: "confirm-layout"; layout: SheetLayout } | { action: "sync" } | { action: "hook" };
 export type NewProjectDocument = Pick<ProjectDocument, "kind" | "title" | "url">;
 
 export interface AppState {
@@ -46,7 +46,7 @@ export interface Actions {
   addProjectDocument(projectId: string, doc: NewProjectDocument, file?: File): Promise<void>;
   removeProjectDocument(projectId: string, docId: string): Promise<void>;
   /** The sheet agent: read the layout, confirm it, or sync the project's Google Sheet now. */
-  sheetAgent(projectId: string, request: SheetRequest): Promise<{ message: string; needsLayout?: boolean }>;
+  sheetAgent(projectId: string, request: SheetRequest): Promise<{ message: string; needsLayout?: boolean; token?: string }>;
   /** Search the whole database by name or handle (live: asks the server, so creators added since the page opened are found too). */
   searchCreators(query: string): Promise<Creator[]>;
   /** Read the numbers of this project's posts that are due a check, now. Returns what happened, in words. */

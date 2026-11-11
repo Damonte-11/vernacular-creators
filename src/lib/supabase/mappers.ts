@@ -221,7 +221,9 @@ export function campaignResultFromRow(r: CampaignResultRow): CampaignResult {
 
 /* ── Projects ────────────────────────────────────────────────── */
 
-export const PROJECT_SELECT = "*, project_creators(*), project_posts(*), project_documents(*)";
+/** Every project column except sheet_rows (a copy of the sheet, only needed on the server). */
+export const PROJECT_SELECT =
+  "id, name, client, chorus_type, vertical, start_date, end_date, guarantee, objective, brief, sheet_url, comment_cap, created_at, sheet_state, project_creators(*), project_posts(*), project_documents(*)";
 
 export interface ProjectRow {
   id: string;

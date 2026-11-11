@@ -13,15 +13,18 @@ import { matchRow, planWriteBack, postValues, readRows, rowLabel, squash, type P
 import type { Creator, Platform, PostCheck, Project, ProjectPost } from "../types";
 import { LookupError } from "./errors";
 import type { Fetcher } from "./fetched";
-import { columnLetter, readSheet, spreadsheetId, writeCells } from "./google";
+import { randomBytes } from "crypto";
+import { columnLetter, readSheet, serviceAccountEmail, spreadsheetId, writeCells } from "./google";
 import { matchRowsWithAI, proposeLayout } from "./sheet-ai";
 
 interface Loaded {
   id: string;
+  name: string;
   sheet_url: string | null;
   start_date: string;
   end_date: string;
   sheet_state: SheetState | null;
+  sheet_rows?: string[][] | null;
   project_creators: { creator_id: string; creators: { id: string; name: string; handle: string; platform: Platform } | null }[];
   project_posts: {
     id: string;
@@ -57,14 +60,11 @@ const empty = (message: string, needsLayout = false): SheetSyncResult => ({
   message,
 });
 
+const LOADED_SELECT =
+  "id, name, sheet_url, sheet_rows, start_date, end_date, sheet_state, project_creators(creator_id, creators(id, name, handle, platform)), project_posts(id, url, url_key, creator_id, checks, problem, posted_date)";
+
 async function load(db: SupabaseClient, projectId: string): Promise<Loaded> {
-  const { data, error } = await db
-    .from("projects")
-    .select(
-      "id, sheet_url, start_date, end_date, sheet_state, project_creators(creator_id, creators(id, name, handle, platform)), project_posts(id, url, url_key, creator_id, checks, problem, posted_date)",
-    )
-    .eq("id", projectId)
-    .single();
+  const { data, error } = await db.from("projects").select(LOADED_SELECT).eq("id", projectId).single();
   if (error) throw error;
   return data as unknown as Loaded;
 }
@@ -101,11 +101,81 @@ export async function readLayout(
 }
 
 /** The team confirmed (or corrected) the layout. */
-export async function confirmLayout(db: SupabaseClient, projectId: string, layout: SheetLayout, now = Date.now()): Promise<void> {
+export async function confirmLayout(db: SupabaseClient, projectId: string, layout: SheetLayout, now = Date.now()): Promise<SheetSyncResult | null> {
   const p = await load(db, projectId);
   if (layout.columns.link === null) throw new LookupError("not_found", "Pick which column has the post links.");
   const state = withLog({ ...(p.sheet_state ?? {}), layout, proposed: null }, `Layout confirmed for "${layout.tab}".`, now);
   await saveState(db, projectId, state);
+  // Rows the sheet's script already sent: add their links now; numbers are written on its next run.
+  if (p.sheet_rows?.length && state.lastRowsTab === layout.tab) return (await applyRows(db, p, state, layout, p.sheet_rows, false, now)).result;
+  return null;
+}
+
+/* ── The script inside the sheet (no Google Cloud key needed) ── */
+
+/** A new secret code for the project's sheet script. Replaces any earlier one. */
+export async function createHookToken(db: SupabaseClient, projectId: string): Promise<string> {
+  const p = await load(db, projectId);
+  const token = randomBytes(24).toString("base64url");
+  await saveState(db, projectId, { ...(p.sheet_state ?? {}), hookToken: token });
+  return token;
+}
+
+/** Most rows and columns kept from a sheet the script sends, and characters per cell. */
+const KEEP_ROWS = 2000;
+const KEEP_COLS = 40;
+const KEEP_CHARS = 500;
+
+export interface HookReply {
+  /** Which tab the script should send next time it asks. */
+  tab?: string;
+  cells?: { a1: string; value: string }[];
+  message?: string;
+}
+
+/**
+ * Called by the script inside a Google Sheet, hourly or from its menu. First
+ * call (no rows) asks which tab to send; the second sends that tab's rows and
+ * gets back the cells to write.
+ */
+export async function handleHook(
+  db: SupabaseClient,
+  body: { token: string; tabs: string[]; tab?: string; rows?: string[][] },
+  now = Date.now(),
+): Promise<HookReply | null> {
+  const { data, error } = await db.from("projects").select(LOADED_SELECT).eq("sheet_state->>hookToken", body.token).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const p = data as unknown as Loaded;
+  const state: SheetState = { ...(p.sheet_state ?? {}), tabs: body.tabs, lastHeardAt: new Date(now).toISOString() };
+  const wanted = state.layout?.tab ?? state.proposed?.tab ?? null;
+  if (!body.rows) return { tab: wanted && body.tabs.includes(wanted) ? wanted : body.tabs[0] };
+
+  const tab = body.tab ?? body.tabs[0] ?? "Sheet1";
+  const rows = body.rows.slice(0, KEEP_ROWS).map((r) => r.slice(0, KEEP_COLS).map((c) => String(c ?? "").slice(0, KEEP_CHARS)));
+  const kept = { ...state, lastRowsTab: tab };
+  const { error: rowsError } = await db.from("projects").update({ sheet_rows: rows }).eq("id", p.id);
+  if (rowsError) throw rowsError;
+
+  if (!state.layout) {
+    const { layout, byAI } = await proposeLayout(tab, rows);
+    await saveState(
+      db,
+      p.id,
+      withLog(
+        { ...kept, proposed: layout, headers: rows[layout.headerRow] ?? [] },
+        `The sheet connected and sent "${tab}"${byAI ? "; layout read with AI" : ""}. Waiting for the team to confirm the layout.`,
+        now,
+      ),
+    );
+    return { message: `Connected to "${p.name}". Now confirm which column is which on the project's Sheet tab in the app; links come in on the next sync.` };
+  }
+  if (tab !== state.layout.tab) {
+    await saveState(db, p.id, withLog(kept, `The sheet sent "${tab}", but the layout is for "${state.layout.tab}".`, now));
+    return { message: `This project reads the tab "${state.layout.tab}". Rename it back, or confirm a new layout in the app.` };
+  }
+  const { cells, result } = await applyRows(db, p, kept, state.layout, rows, true, now);
+  return { cells, message: result.message };
 }
 
 /** The team matched a sheet spelling to a creator: remember it for next time. */
@@ -129,8 +199,28 @@ export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: 
     await saveState(db, projectId, withLog(state, `The tab "${layout.tab}" is gone. Confirm the layout again.`, now));
     return empty(`The tab "${layout.tab}" isn't in the sheet any more. Confirm the layout again.`, true);
   }
+  const { cells, result } = await applyRows(db, p, state, layout, tab.rows, true, now);
+  await writeCells(id, layout.tab, cells, fetcher);
+  return result;
+}
+
+/**
+ * The agent's work on a set of sheet rows, however they arrived (read through
+ * Google's API, or sent by the script inside the sheet): add new links, match
+ * them, and work out which cells to write back. `write` false plans nothing to
+ * write (used when the rows are an earlier copy).
+ */
+async function applyRows(
+  db: SupabaseClient,
+  p: Loaded,
+  state: SheetState,
+  layout: SheetLayout,
+  sheetRows: string[][],
+  write: boolean,
+  now: number,
+): Promise<{ cells: { a1: string; value: string }[]; result: SheetSyncResult }> {
   const today = todayLagos(now);
-  const rows = readRows(tab.rows, layout);
+  const rows = readRows(sheetRows, layout);
 
   // The project as the matching rules expect it.
   const creators: Creator[] = p.project_creators.filter((c) => c.creators).map((c) => ({ ...(c.creators as Creator) }));
@@ -200,14 +290,9 @@ export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: 
     const status = !x.creator_id ? "Needs a creator in the app" : n.check ? `Day ${n.check.day}` : "Waiting for numbers";
     values.set(x.url_key, postValues(post, { views: n.views, engagements: n.engagements, er: n.er, checkedAt: n.check?.checkedAt ?? null }, status));
   }
-  const plan = planWriteBack(tab.rows, layout, rows, values, state.written ?? {});
-  await writeCells(
-    id,
-    layout.tab,
-    plan.cells.map((c) => ({ a1: `${columnLetter(c.col)}${c.row + 1}`, value: c.value })),
-    fetcher,
-  );
-  const numberCells = plan.cells.filter((c) => c.row !== layout.headerRow).length;
+  const plan = planWriteBack(sheetRows, layout, rows, values, state.written ?? {});
+  const cells = write ? plan.cells.map((c) => ({ a1: `${columnLetter(c.col)}${c.row + 1}`, value: c.value })) : [];
+  const numberCells = write ? plan.cells.filter((c) => c.row !== layout.headerRow).length : 0;
 
   const parts = [
     insert.length ? `Added ${insert.length} new ${insert.length === 1 ? "link" : "links"}` : "No new links",
@@ -222,12 +307,21 @@ export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: 
     db,
     p.id,
     withLog(
-      { ...state, written: plan.written, headers: tab.rows[layout.headerRow] ?? [], lastSyncAt: new Date(now).toISOString(), lastResult: message },
+      {
+        ...state,
+        written: write ? plan.written : state.written,
+        headers: sheetRows[layout.headerRow] ?? [],
+        lastSyncAt: new Date(now).toISOString(),
+        lastResult: message,
+      },
       message,
       now,
     ),
   );
-  return { needsLayout: false, added: insert.length, matched, guessed, unmatched, written: numberCells, handEdited: plan.handEdited.length, message };
+  return {
+    cells,
+    result: { needsLayout: false, added: insert.length, matched, guessed, unmatched, written: numberCells, handEdited: plan.handEdited.length, message },
+  };
 }
 
 /** Hourly: sync every project with a confirmed sheet that is running or ended in the last two weeks. */
@@ -237,8 +331,10 @@ export async function syncAllSheets(db: SupabaseClient, deadline: number, fetche
   if (error) throw error;
   const notes: string[] = [];
   let synced = 0;
+  // Sheets connected through their own script send their rows themselves.
+  if (!serviceAccountEmail()) return { synced: 0, notes };
   for (const p of (data ?? []) as { id: string; name: string; sheet_state: SheetState | null }[]) {
-    if (!p.sheet_state?.layout) continue;
+    if (!p.sheet_state?.layout || p.sheet_state.hookToken) continue;
     if (Date.now() > deadline) {
       notes.push("Out of time; the other sheets sync next hour.");
       break;

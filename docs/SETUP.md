@@ -246,20 +246,13 @@ Campaign posts are read automatically on their day 1, 3 and 7: views, likes, com
 
 Each project can be connected to the Google Sheet the team logs links in. Every hour the agent adds new links from the sheet to the project and writes the latest numbers into its own columns (VC Views, VC Engagements, VC ER by views, VC Last checked, VC Status). It runs inside the same hourly job as background imports, so there's nothing extra to schedule.
 
-It needs two things in Vercel (**Settings → Environment Variables**, Production and Preview, then redeploy):
+**Connecting a sheet (no Google Cloud setup):** on the project's **Sheet** tab, click **Get the sheet script** and follow the steps shown: paste it into the sheet's **Extensions → Apps Script**, save, pick **connect** and click **Run**, then allow it. The script sends the sheet's rows to the app every hour and writes back the numbers. The sheet adds a **Vernacular → Sync now** menu. Each project's script has its own private code; making a new one switches the old one off.
 
-- **`GOOGLE_SERVICE_ACCOUNT_JSON`**: the app's own Google identity.
-  1. Go to console.cloud.google.com, create a project (e.g. "vernacular-creators").
-  2. **APIs & Services → Library**: enable **Google Sheets API** and **Google Drive API**.
-  3. **IAM & Admin → Service Accounts → Create service account**, name it "sheet-agent", skip the optional steps.
-  4. Open it → **Keys → Add key → Create new key → JSON**. A file downloads.
-  5. Open the file in a text editor, copy everything, and paste it as the value of `GOOGLE_SERVICE_ACCOUNT_JSON`.
-  6. Share each project's sheet with the service account's email (shown on the project's **Sheet** tab) as **Editor**.
-- **`ANTHROPIC_API_KEY`**: AI for messy rows (and later the brief reader and comment analysis).
-  1. Go to console.anthropic.com and sign up or sign in.
-  2. **Billing**: add credit (from $5). **Limits**: set a monthly spend limit.
-  3. **API keys → Create key**, name it "vernacular-creators", copy it once (it isn't shown again).
-  4. Paste it as the value of `ANTHROPIC_API_KEY`.
+The sheet has to reach the live address (vernacular-creators.vercel.app). Preview deployments are behind Vercel's login, so the script can't reach them.
+
+**Optional: AI for messy rows.** Add **`ANTHROPIC_API_KEY`** in Vercel (console.anthropic.com → API keys; pay-as-you-go, set a spend limit under Limits).
+
+**Optional alternative to the script: a Google service account.** Only if your Google account allows service account keys (many don't). Add **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the JSON key file's contents) and share each sheet with the service account's email as Editor.
 
 Without the Anthropic key the agent still works with plain rules; rows it can't place wait in **Needs attention** for the team to match.
 

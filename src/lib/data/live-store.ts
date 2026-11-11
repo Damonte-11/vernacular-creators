@@ -388,11 +388,11 @@ export const liveBackend: Backend = {
     },
     async sheetAgent(projectId, request) {
       const res = await fetch(`/api/projects/${projectId}/sheet`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
-      const body = (await res.json().catch(() => ({}))) as { message?: string; needsLayout?: boolean; error?: string };
+      const body = (await res.json().catch(() => ({}))) as { message?: string; needsLayout?: boolean; error?: string; token?: string };
       const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
       if (data) setProject(projectId, () => projectFromRow(data));
       if (!res.ok) return { message: body.error ?? "The sheet agent didn't run. Please try again." };
-      return { message: body.message ?? "Done.", needsLayout: body.needsLayout };
+      return { message: body.message ?? "Done.", needsLayout: body.needsLayout, token: body.token };
     },
     async searchCreators(query) {
       // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.

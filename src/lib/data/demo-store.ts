@@ -240,6 +240,10 @@ export const demoBackend: Backend = {
       if (!p) return { message: "Project not found." };
       const rows = demoSheet(p, demoBackend.getSnapshot().creators);
       const state = p.sheetState ?? {};
+      if (request.action === "hook") {
+        setProject(projectId, (x) => ({ ...x, sheetState: { ...state, hookToken: "demo-code-not-for-real-sheets" } }));
+        return { message: "Demo: the live app gives a real code to paste into the sheet.", token: "demo-code-not-for-real-sheets" };
+      }
       if (request.action === "read-layout" || (!state.layout && request.action === "sync")) {
         const layout = guessLayout("Links tracker (sample)", rows);
         setProject(projectId, (x) => ({ ...x, sheetState: { ...state, proposed: layout, tabs: ["Links tracker (sample)"], headers: rows[layout.headerRow] ?? [] } }));

@@ -40,6 +40,12 @@ export interface SheetState {
   tabs?: string[];
   /** Header labels of the confirmed tab, for showing the layout. */
   headers?: string[];
+  /** Secret code the script inside the sheet sends (when connected that way). */
+  hookToken?: string;
+  /** When the sheet's script last sent rows. */
+  lastHeardAt?: string;
+  /** Which tab the sheet's script last sent (its rows are kept in projects.sheet_rows). */
+  lastRowsTab?: string;
 }
 
 /** Columns the agent owns and writes into. Headed so nobody mistakes them for the team's. */

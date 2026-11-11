@@ -2,7 +2,7 @@ import { z } from "zod";
 import { errorResponse } from "@/lib/server/lookup-service";
 import { serviceAccountEmail } from "@/lib/server/google";
 import { aiAvailable } from "@/lib/server/sheet-ai";
-import { confirmLayout, learnAlias, readLayout, syncSheet } from "@/lib/server/sheet-agent";
+import { confirmLayout, createHookToken, learnAlias, readLayout, syncSheet } from "@/lib/server/sheet-agent";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 
@@ -27,6 +27,7 @@ const Body = z.discriminatedUnion("action", [
     }),
   }),
   z.object({ action: z.literal("sync") }),
+  z.object({ action: z.literal("hook") }),
   z.object({ action: z.literal("learn"), label: z.string().min(1).max(300), creatorId: z.string().uuid() }),
 ]);
 
@@ -43,9 +44,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const b = parsed.data;
     if (b.action === "read-layout") return Response.json(await readLayout(db, id, fetch, b.tab ?? null));
     if (b.action === "confirm-layout") {
-      await confirmLayout(db, id, b.layout);
-      return Response.json(await syncSheet(db, id));
+      const fromScript = await confirmLayout(db, id, b.layout);
+      if (fromScript) return Response.json(fromScript);
+      // Connected by sharing with the service account: read the sheet now.
+      if (serviceAccountEmail()) return Response.json(await syncSheet(db, id));
+      return Response.json({ message: "Layout saved. Links come in on the sheet's next sync (Vernacular → Sync now in the sheet)." });
     }
+    if (b.action === "hook") return Response.json({ token: await createHookToken(db, id), message: "New sheet script made. Paste it into the sheet." });
     if (b.action === "learn") {
       await learnAlias(db, id, b.label, b.creatorId);
       return Response.json({ ok: true });

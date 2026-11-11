@@ -95,3 +95,14 @@ describe("writing numbers back", () => {
     expect(plan.cells.map((c) => c.value)).toEqual(["2026-11-10", "Day 3"]); // views kept, unchanged cells skipped
   });
 });
+
+describe("the sheet script", () => {
+  it("is valid JavaScript with the project's address and code inside, and can't be broken by the project name", async () => {
+    const { sheetScript } = await import("@/lib/sheet-script");
+    const s = sheetScript("https://vernacular-creators.vercel.app/", "abcdefghijklmnopqrstuvwx123", 'Launch */ alert("x") /*\nnext');
+    expect(() => new Function(s)).not.toThrow();
+    expect(s).toContain('const VC_URL = "https://vernacular-creators.vercel.app/api/sheet-hook";');
+    expect(s).toContain('const VC_CODE = "abcdefghijklmnopqrstuvwx123";');
+    expect(s).not.toContain("*/ alert");
+  });
+});
