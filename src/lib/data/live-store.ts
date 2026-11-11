@@ -11,18 +11,23 @@ import {
   creatorFromRow,
   settingsFromRow,
   settingsToRow,
+  PROJECT_SELECT,
+  projectFieldsToRow,
+  projectFromRow,
   shortlistFromRow,
   SHORTLIST_SELECT,
+  type ProjectRow,
   type CampaignResultRow,
   type CreatorRow,
   type SettingsRow,
   type ShortlistRow,
 } from "../supabase/mappers";
-import type { ListItemFields, Settings } from "../types";
-import { DEFAULT_SETTINGS, mergeItems, toggleItem } from "./demo-store";
+import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
+import type { ListItemFields, Project, ProjectPost, Settings } from "../types";
+import { DEFAULT_SETTINGS, mergeItems, toggleItem, upsertCreators } from "./demo-store";
 import type { AppState, Backend } from "./types";
 
-const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, shortlists: [], campaignResults: [] };
+const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, shortlists: [], campaignResults: [], projects: [] };
 /** Creators are loaded in pages of this size. */
 const PAGE = 500;
 
@@ -46,19 +51,24 @@ async function loadAll() {
       creators.push(...(data as CreatorRow[]).map(creatorFromRow));
       if (data.length < PAGE) break;
     }
-    const [settings, shortlists, results] = await Promise.all([
+    const [settings, shortlists, results, projects] = await Promise.all([
       db().from("settings").select("*").eq("id", 1).maybeSingle<SettingsRow>(),
       db().from("shortlists").select(SHORTLIST_SELECT).order("created_at"),
       db().from("campaign_results").select("*").order("logged_at"),
+      db().from("projects").select(PROJECT_SELECT).order("created_at"),
     ]);
     for (const r of [settings, shortlists, results]) if (r.error) throw r.error;
+    // Projects need migration 0012; until it's run, the rest of the app still works.
+    const projectsMissing = !!projects.error && /project/.test(projects.error.message);
+    if (projects.error && !projectsMissing) throw projects.error;
     set({
       ready: true,
-      error: null,
       creators,
       settings: settingsFromRow(settings.data),
       shortlists: ((shortlists.data ?? []) as ShortlistRow[]).map(shortlistFromRow),
       campaignResults: ((results.data ?? []) as CampaignResultRow[]).map(campaignResultFromRow),
+      projects: projectsMissing ? [] : ((projects.data ?? []) as ProjectRow[]).map(projectFromRow),
+      error: projectsMissing ? `Projects need a small database update: ${message(projects.error)}` : null,
     });
   } catch (e) {
     set({ ready: true, error: `Couldn't load data: ${message(e)}` });
@@ -92,6 +102,9 @@ function message(e: unknown): string {
   }
   if (/auto_link_from_bio/.test(text)) {
     return "the database needs a small update first. Run 0008_auto_link.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
+  }
+  if (/project/.test(text) && /(relation|table|schema cache|does not exist|could not find)/i.test(text)) {
+    return "run 0012_projects.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
   }
   if (/person_id/.test(text)) {
     return "the database needs a small update first. Run 0007_linked_accounts.sql from supabase/migrations in Supabase's SQL Editor (see docs/SETUP.md).";
@@ -246,12 +259,152 @@ export const liveBackend: Backend = {
       set({ campaignResults: state.campaignResults.filter((r) => r.id !== id) });
       await save("the result", () => db().from("campaign_results").delete().eq("id", id));
     },
+    async createProject(fields) {
+      const { data, error } = await db()
+        .from("projects")
+        .insert({ comment_cap: DEFAULT_COMMENT_CAP, brief: emptyBrief(), ...projectFieldsToRow(fields) })
+        .select(PROJECT_SELECT)
+        .single<ProjectRow>();
+      if (error) {
+        set({ error: `Couldn't create the project: ${message(error)}` });
+        return "";
+      }
+      const project = projectFromRow(data);
+      set({ projects: [...state.projects, project] });
+      return project.id;
+    },
+    async updateProject(id, fields) {
+      setProject(id, (p) => ({ ...p, ...fields }));
+      await save("the project", () => db().from("projects").update(projectFieldsToRow(fields)).eq("id", id));
+    },
+    async deleteProject(id) {
+      set({ projects: state.projects.filter((p) => p.id !== id) });
+      await save("the project", () => db().from("projects").delete().eq("id", id));
+    },
+    async upsertProjectCreators(projectId, items) {
+      if (items.length === 0) return;
+      setProject(projectId, (p) => ({ ...p, creators: upsertCreators(p.creators, items) }));
+      await save("the project", () =>
+        db()
+          .from("project_creators")
+          .upsert(items.map((i) => ({ project_id: projectId, creator_id: i.creatorId, due_date: i.dueDate, posts_agreed: i.postsAgreed }))),
+      );
+    },
+    async removeProjectCreators(projectId, creatorIds) {
+      if (creatorIds.length === 0) return;
+      const gone = new Set(creatorIds);
+      setProject(projectId, (p) => ({
+        ...p,
+        creators: p.creators.filter((c) => !gone.has(c.creatorId)),
+        posts: p.posts.map((x) => (x.creatorId && gone.has(x.creatorId) ? { ...x, creatorId: null } : x)),
+      }));
+      await save("the project", () => db().from("project_creators").delete().eq("project_id", projectId).in("creator_id", creatorIds));
+      await save("the project", () => db().from("project_posts").update({ creator_id: null }).eq("project_id", projectId).in("creator_id", creatorIds));
+    },
+    async addProjectPosts(projectId, posts) {
+      const project = state.projects.find((p) => p.id === projectId);
+      if (!project) return 0;
+      const have = new Set(project.posts.map((x) => normaliseUrl(x.url)));
+      const rows = [];
+      for (const x of posts) {
+        const key = normaliseUrl(x.url);
+        if (have.has(key)) continue;
+        have.add(key);
+        rows.push({
+          project_id: projectId,
+          creator_id: x.creatorId,
+          url: x.url,
+          url_key: key,
+          platform: x.platform,
+          posted_date: x.postedDate ?? todayLagos(),
+          source: x.source,
+        });
+      }
+      if (rows.length === 0) return 0;
+      const { data, error } = await db().from("project_posts").upsert(rows, { onConflict: "project_id,url_key", ignoreDuplicates: true }).select("*");
+      if (error) {
+        set({ error: `Couldn't add the links: ${message(error)}` });
+        return 0;
+      }
+      const added = projectFromRow({ ...(project as unknown as ProjectRow), project_posts: data as ProjectRow["project_posts"] }).posts;
+      setProject(projectId, (p) => ({ ...p, posts: [...p.posts, ...added] }));
+      return added.length;
+    },
+    async updateProjectPost(projectId, postId, patch) {
+      setProject(projectId, (p) => ({ ...p, posts: p.posts.map((x) => (x.id === postId ? { ...x, ...patch } : x)) }));
+      const row: Record<string, unknown> = {};
+      if (patch.creatorId !== undefined) row.creator_id = patch.creatorId;
+      if (patch.postedDate !== undefined) row.posted_date = patch.postedDate;
+      if (patch.problem !== undefined) row.problem = patch.problem;
+      await save("the post", () => db().from("project_posts").update(row).eq("id", postId));
+    },
+    async addPostCheck(projectId, postId, check) {
+      let checks: ProjectPost["checks"] = [];
+      setProject(projectId, (p) => ({
+        ...p,
+        posts: p.posts.map((x) => {
+          if (x.id !== postId) return x;
+          checks = [...x.checks.filter((c) => c.day !== check.day), check];
+          return { ...x, checks, problem: null };
+        }),
+      }));
+      await save("the numbers", () => db().from("project_posts").update({ checks, problem: null }).eq("id", postId));
+    },
+    async removeProjectPosts(projectId, postIds) {
+      if (postIds.length === 0) return;
+      const gone = new Set(postIds);
+      setProject(projectId, (p) => ({ ...p, posts: p.posts.filter((x) => !gone.has(x.id)) }));
+      await save("the posts", () => db().from("project_posts").delete().in("id", postIds));
+    },
+    async addProjectDocument(projectId, doc, file) {
+      let filePath: string | null = null;
+      if (file) {
+        filePath = `${projectId}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
+        const up = await db().storage.from("project-documents").upload(filePath, file, { contentType: file.type || undefined });
+        if (up.error) {
+          set({ error: `Couldn't upload the file: ${message(up.error)}` });
+          return;
+        }
+      }
+      const { data, error } = await db()
+        .from("project_documents")
+        .insert({ project_id: projectId, kind: doc.kind, title: doc.title, url: doc.url, file_path: filePath })
+        .select("*")
+        .single<NonNullable<ProjectRow["project_documents"]>[number]>();
+      if (error) {
+        set({ error: `Couldn't save the document: ${message(error)}` });
+        return;
+      }
+      setProject(projectId, (p) => ({
+        ...p,
+        documents: [...p.documents, { id: data.id, kind: data.kind, title: data.title, url: data.url, filePath: data.file_path, addedAt: data.added_at }],
+      }));
+    },
+    async removeProjectDocument(projectId, docId) {
+      const doc = state.projects.find((p) => p.id === projectId)?.documents.find((d) => d.id === docId);
+      setProject(projectId, (p) => ({ ...p, documents: p.documents.filter((d) => d.id !== docId) }));
+      await save("the document", () => db().from("project_documents").delete().eq("id", docId));
+      if (doc?.filePath) await db().storage.from("project-documents").remove([doc.filePath]);
+    },
+    async documentLink(doc) {
+      if (!doc.filePath) return doc.url || null;
+      const { data, error } = await db().storage.from("project-documents").createSignedUrl(doc.filePath, 600);
+      if (error) {
+        set({ error: `Couldn't open the file: ${message(error)}` });
+        return null;
+      }
+      return data.signedUrl;
+    },
     clearError() {
       set({ error: null });
     },
     resetEverything() {},
   },
 };
+
+function setProject(id: string, update: (p: Project) => Project) {
+  set({ projects: state.projects.map((p) => (p.id === id ? update(p) : p)) });
+}
 
 /** Only the list fields that were given, as database columns. */
 function itemRow(f: ListItemFields): Record<string, unknown> {

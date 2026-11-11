@@ -1,4 +1,8 @@
-import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Settings, Shortlist } from "../types";
+import type { CampaignResult, Creator, CreatorEdits, ListItemFields, PostCheck, Project, ProjectCreator, ProjectDocument, ProjectFields, ProjectPost, Settings, Shortlist } from "../types";
+
+/** A post link being added: everything except what the app fills in. */
+export type NewProjectPost = Pick<ProjectPost, "url" | "platform" | "creatorId" | "postedDate" | "source">;
+export type NewProjectDocument = Pick<ProjectDocument, "kind" | "title" | "url">;
 
 export interface AppState {
   /** False until this browser has loaded the data. */
@@ -9,6 +13,7 @@ export interface AppState {
   settings: Settings;
   shortlists: Shortlist[];
   campaignResults: CampaignResult[];
+  projects: Project[];
 }
 
 export interface Actions {
@@ -33,6 +38,24 @@ export interface Actions {
   removeCreators(ids: string[]): Promise<void>;
   logCampaignResult(result: Omit<CampaignResult, "id" | "loggedAt">): Promise<void>;
   deleteCampaignResult(id: string): Promise<void>;
+  /** Returns the new project's ID, or "" if it couldn't be saved. */
+  createProject(fields: ProjectFields & Pick<Project, "name" | "startDate" | "endDate">): Promise<string>;
+  updateProject(id: string, fields: ProjectFields): Promise<void>;
+  deleteProject(id: string): Promise<void>;
+  /** Book creators on a project, or change their due date and number of posts. */
+  upsertProjectCreators(projectId: string, items: ProjectCreator[]): Promise<void>;
+  removeProjectCreators(projectId: string, creatorIds: string[]): Promise<void>;
+  /** Add post links. Links already on the project are skipped. Returns how many were added. */
+  addProjectPosts(projectId: string, posts: NewProjectPost[]): Promise<number>;
+  updateProjectPost(projectId: string, postId: string, patch: Partial<Pick<ProjectPost, "creatorId" | "postedDate" | "problem">>): Promise<void>;
+  /** Save a reading of a post's numbers (typed in, or read automatically). */
+  addPostCheck(projectId: string, postId: string, check: PostCheck): Promise<void>;
+  removeProjectPosts(projectId: string, postIds: string[]): Promise<void>;
+  /** Keep a link (or, live only, an uploaded file) with the project. */
+  addProjectDocument(projectId: string, doc: NewProjectDocument, file?: File): Promise<void>;
+  removeProjectDocument(projectId: string, docId: string): Promise<void>;
+  /** A link to open an uploaded document (signed and short-lived in live mode). */
+  documentLink(doc: ProjectDocument): Promise<string | null>;
   clearError(): void;
   /** Demo only: wipe everything saved in this browser. */
   resetEverything(): void;

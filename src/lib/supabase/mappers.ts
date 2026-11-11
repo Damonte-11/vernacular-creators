@@ -2,7 +2,24 @@
 import { APP_DEFAULTS } from "@config/app";
 import { DISCOVERY_DEFAULTS, type DiscoverySettings } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
-import type { CampaignResult, Creator, ListStatus, Post, Settings, Shortlist, Snapshot } from "../types";
+import { emptyBrief } from "../projects";
+import type {
+  CampaignObjective,
+  CampaignResult,
+  ChorusType,
+  Creator,
+  DocumentKind,
+  ListStatus,
+  Platform,
+  Post,
+  PostCheck,
+  Project,
+  ProjectBrief,
+  ProjectFields,
+  Settings,
+  Shortlist,
+  Snapshot,
+} from "../types";
 
 export interface PostRow {
   platform_post_id: string;
@@ -199,4 +216,89 @@ export function campaignResultFromRow(r: CampaignResultRow): CampaignResult {
     loggedBy: r.logged_by,
     loggedAt: r.logged_at,
   };
+}
+
+/* ── Projects ────────────────────────────────────────────────── */
+
+export const PROJECT_SELECT = "*, project_creators(*), project_posts(*), project_documents(*)";
+
+export interface ProjectRow {
+  id: string;
+  name: string;
+  client: string;
+  chorus_type: ChorusType;
+  vertical: string;
+  start_date: string;
+  end_date: string;
+  guarantee: number | string | null;
+  objective: CampaignObjective;
+  brief: Partial<ProjectBrief> | null;
+  sheet_url: string | null;
+  comment_cap: number;
+  created_at: string;
+  project_creators?: { creator_id: string; due_date: string | null; posts_agreed: number }[];
+  project_posts?: {
+    id: string;
+    creator_id: string | null;
+    url: string;
+    platform: Platform | null;
+    posted_date: string | null;
+    added_at: string;
+    source: "app" | "sheet";
+    checks: PostCheck[] | null;
+    problem: string | null;
+  }[];
+  project_documents?: { id: string; kind: DocumentKind; title: string; url: string; file_path: string | null; added_at: string }[];
+}
+
+export function projectFromRow(r: ProjectRow): Project {
+  return {
+    id: r.id,
+    name: r.name,
+    client: r.client,
+    chorusType: r.chorus_type,
+    vertical: r.vertical,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    guarantee: r.guarantee === null ? null : Number(r.guarantee),
+    objective: r.objective,
+    brief: { ...emptyBrief(), ...(r.brief ?? {}) },
+    sheetUrl: r.sheet_url,
+    commentCap: r.comment_cap,
+    createdAt: r.created_at,
+    creators: (r.project_creators ?? []).map((c) => ({ creatorId: c.creator_id, dueDate: c.due_date, postsAgreed: c.posts_agreed })),
+    posts: (r.project_posts ?? [])
+      .map((x) => ({
+        id: x.id,
+        creatorId: x.creator_id,
+        url: x.url,
+        platform: x.platform,
+        postedDate: x.posted_date,
+        addedAt: x.added_at,
+        source: x.source,
+        checks: x.checks ?? [],
+        problem: x.problem,
+      }))
+      .sort((a, b) => a.addedAt.localeCompare(b.addedAt)),
+    documents: (r.project_documents ?? [])
+      .map((d) => ({ id: d.id, kind: d.kind, title: d.title, url: d.url, filePath: d.file_path, addedAt: d.added_at }))
+      .sort((a, b) => a.addedAt.localeCompare(b.addedAt)),
+  };
+}
+
+/** Only the project fields that were given, as database columns. */
+export function projectFieldsToRow(f: ProjectFields): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (f.name !== undefined) row.name = f.name;
+  if (f.client !== undefined) row.client = f.client;
+  if (f.chorusType !== undefined) row.chorus_type = f.chorusType;
+  if (f.vertical !== undefined) row.vertical = f.vertical;
+  if (f.startDate !== undefined) row.start_date = f.startDate;
+  if (f.endDate !== undefined) row.end_date = f.endDate;
+  if (f.guarantee !== undefined) row.guarantee = f.guarantee;
+  if (f.objective !== undefined) row.objective = f.objective;
+  if (f.brief !== undefined) row.brief = f.brief;
+  if (f.sheetUrl !== undefined) row.sheet_url = f.sheetUrl;
+  if (f.commentCap !== undefined) row.comment_cap = f.commentCap;
+  return row;
 }

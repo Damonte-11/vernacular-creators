@@ -208,3 +208,101 @@ export interface CreatorEdits {
   personId?: string | null;
   email?: string | null;
 }
+
+/* ── Projects (Chorus campaigns) ─────────────────────────────── */
+
+/** How a Chorus campaign is run: many small creators, a few big ones, or both. */
+export type ChorusType = "seedlings" | "headliners" | "salad";
+
+/** What the campaign is for. Decides which comment signals lead the report. */
+export type CampaignObjective = "awareness" | "consideration" | "conversion";
+
+/** The brief, in fields the app can check posts and comments against. */
+export interface ProjectBrief {
+  brand: string;
+  product: string;
+  keyMessage: string;
+  mustSay: string[];
+  hashtags: string[];
+  dos: string[];
+  donts: string[];
+  competitors: string[];
+  notes: string;
+}
+
+/** A creator booked on a project. */
+export interface ProjectCreator {
+  creatorId: string;
+  /** Date (YYYY-MM-DD) their first post is due. */
+  dueDate: string | null;
+  postsAgreed: number;
+}
+
+/** One reading of a post's public numbers. `day` is days since it went up (1, 3, 7…). */
+export interface PostCheck {
+  day: number;
+  checkedAt: string;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  /** "manual" when someone typed the numbers in. */
+  source: "auto" | "manual";
+}
+
+/** A campaign post: a link, who posted it, and its numbers over time. */
+export interface ProjectPost {
+  id: string;
+  /** Null until it's matched to a creator on the project. */
+  creatorId: string | null;
+  url: string;
+  platform: Platform | null;
+  /** Date (YYYY-MM-DD) it went up. */
+  postedDate: string | null;
+  addedAt: string;
+  /** Where the link came from. */
+  source: "app" | "sheet";
+  checks: PostCheck[];
+  /** Why numbers couldn't be read, e.g. the post was deleted. */
+  problem: string | null;
+}
+
+export type DocumentKind = "brief" | "contract" | "guidelines" | "deck" | "other";
+
+/** A file or link kept with the project. Team-only. */
+export interface ProjectDocument {
+  id: string;
+  kind: DocumentKind;
+  title: string;
+  /** A Google Slides, Docs or Drive link, or any web link. Empty for an uploaded file. */
+  url: string;
+  /** Path of an uploaded file in storage (live only). */
+  filePath: string | null;
+  addedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  client: string;
+  chorusType: ChorusType;
+  vertical: string;
+  /** First and last day of the campaign window (YYYY-MM-DD). */
+  startDate: string;
+  endDate: string;
+  /** Views promised in writing. */
+  guarantee: number | null;
+  objective: CampaignObjective;
+  brief: ProjectBrief;
+  /** Google Sheet the team logs links in, for the sheet agent. */
+  sheetUrl: string | null;
+  /** Most comments read per post for the analysis. */
+  commentCap: number;
+  createdAt: string;
+  creators: ProjectCreator[];
+  posts: ProjectPost[];
+  documents: ProjectDocument[];
+}
+
+/** The project fields edited on the project form. */
+export type ProjectFields = Partial<Pick<Project, "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "brief" | "sheetUrl" | "commentCap">>;

@@ -230,6 +230,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0009_lists.sql`: Lists: status, rate, labels and notes per creator on each list, and creator emails
 - `0010_discovery.sql`: automatic discovery of new creators (and its settings)
 - `0011_import_queue.sql`: background imports, looked up about 150 an hour
+- `0012_projects.sql`: Projects (Chorus campaigns): booked creators, post links and their numbers, documents, and a private storage space for uploaded files
 
 ## What happens after setup
 
