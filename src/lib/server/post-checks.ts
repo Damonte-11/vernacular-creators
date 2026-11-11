@@ -10,7 +10,7 @@ import "server-only";
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TIKTOK_LIMITS } from "@config/app";
-import { dueCheckDay, instagramShortcode, isShortTikTokLink, lagosDate, postAge, tiktokVideoId, youtubeVideoId } from "../post-links";
+import { dueCheckDay, instagramShortcode, lagosDate, postAge, youtubeVideoId } from "../post-links";
 import { todayLagos } from "../projects";
 import type { Platform, PostCheck } from "../types";
 import { LookupError } from "./errors";
@@ -18,6 +18,7 @@ import type { Fetcher } from "./fetched";
 import { fetchInstagramCreator, IG_MEDIA_LIMIT, instagramConfigFromEnv } from "./instagram";
 import { loadSettings, saveFetchedCreator } from "./repository";
 import { apifyTokenFromEnv, mapApifyError, type ApifyTikTokItem } from "./tiktok";
+import { resolveTikTok } from "./tiktok-oembed";
 import { youtubeKeyFromEnv } from "./youtube";
 
 /** Instagram creators read per run, leaving most of the ~200 an hour for lookups and imports. */
@@ -254,21 +255,17 @@ async function checkTikTok(
   if (list.length > room) summary.notes.push(`TikTok: ${list.length - room} posts wait for the next run or next month's allowance.`);
   const token = apifyTokenFromEnv();
 
-  // Short links (vm.tiktok.com) are opened first to find the video they point to.
+  // Every link is turned into a full one with its video ID (short vm./vt. links included) through TikTok's free oEmbed.
   const targets: { d: Due; url: string; id: string | null }[] = [];
   for (const d of batch) {
-    let url = d.row.url;
-    if (isShortTikTokLink(url)) {
-      try {
-        const res = await fetcher(url, { redirect: "follow", cache: "no-store" });
-        url = res.url || url;
-      } catch {
-        // Left as is; Apify may still open it.
-      }
+    const ref = await resolveTikTok(d.row.url, fetcher);
+    if (!ref) {
+      await save(d, { problem: "TikTok says this video doesn't exist or is private. Check the link, or type the numbers in." });
+      continue;
     }
-    targets.push({ d, url, id: tiktokVideoId(url) });
+    targets.push({ d, url: ref.url, id: ref.id });
   }
-
+  if (targets.length === 0) return;
   const run = new URL("https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
   run.searchParams.set("timeout", "150");
   run.searchParams.set("maxTotalChargeUsd", "0.5");

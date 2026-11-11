@@ -162,3 +162,32 @@ describe("Check numbers now", () => {
     expect(checks[1].views).toBe(9000);
   });
 });
+
+describe("short TikTok links", () => {
+  it("are turned into full links through TikTok's oEmbed, and their numbers read", async () => {
+    process.env.APIFY_TOKEN = "apify";
+    const { runPostChecks } = await import("@/lib/server/post-checks");
+    const now = Date.UTC(2026, 10, 12, 12);
+    const rows = [
+      { id: "s1", project_id: "p", url: "https://vt.tiktok.com/ZSxebVjvo/", platform: "tiktok", posted_date: "2026-11-11", checks: [], last_tried_at: null, creator_id: "c", creators: { handle: "nunu", platform: "tiktok" } },
+      { id: "s2", project_id: "p", url: "https://vt.tiktok.com/GONE/", platform: "tiktok", posted_date: "2026-11-11", checks: [], last_tried_at: null, creator_id: "c", creators: { handle: "nunu", platform: "tiktok" } },
+    ];
+    const { db, updates } = fakeDb(rows);
+    const apifyBodies: string[] = [];
+    const fetcher = vi.fn(async (url: URL | string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes("/oembed")) {
+        return u.includes("GONE")
+          ? new Response("{}", { status: 404 })
+          : new Response(JSON.stringify({ author_unique_id: "nunu", embed_product_id: "7300000000000000001" }));
+      }
+      if (u.includes("vt.tiktok.com/GONE")) return new Response("", { status: 404 });
+      apifyBodies.push(String(init?.body));
+      return new Response(JSON.stringify([{ id: "7300000000000000001", playCount: 5000, diggCount: 400, commentCount: 30, shareCount: 5 }]));
+    });
+    await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never });
+    expect(JSON.parse(apifyBodies[0]).postURLs).toEqual(["https://www.tiktok.com/@nunu/video/7300000000000000001"]);
+    expect((updates.find((u) => u.id === "s1")!.patch.checks as PostCheck[])[0]).toMatchObject({ views: 5000, likes: 400 });
+    expect(updates.find((u) => u.id === "s2")!.patch.problem).toMatch(/doesn't exist or is private/);
+  });
+});

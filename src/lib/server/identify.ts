@@ -18,6 +18,7 @@ import type { Fetcher } from "./fetched";
 import { assertTikTokAllowance, fetchFromPlatform } from "./lookup-service";
 import { CREATOR_SELECT, creatorFromRow, type CreatorRow } from "../supabase/mappers";
 import { findCreator, saveFetchedCreator } from "./repository";
+import { resolveTikTok } from "./tiktok-oembed";
 import { youtubeKeyFromEnv } from "./youtube";
 
 /** New-creator lookups allowed in one sync, per platform (Instagram's hourly limit, TikTok's cost). */
@@ -96,7 +97,8 @@ export async function identifyCreator(
     return lookUp(db, "youtube", channelId, settings, "the video's channel");
   }
 
-  const fromLink = handleInUrl(row.url);
+  // TikTok links without the handle in them (short vt./vm. links): TikTok's free oEmbed says whose video it is.
+  const fromLink = handleInUrl(row.url) ?? (platform === "tiktok" ? ((await resolveTikTok(row.url, fetcher))?.handle ?? null) : null);
   const fromSheet = cleanHandle(row.handle, platform);
   const handle = fromLink ?? fromSheet;
   // No handle anywhere: a full name that matches exactly one saved creator on this platform is enough.
