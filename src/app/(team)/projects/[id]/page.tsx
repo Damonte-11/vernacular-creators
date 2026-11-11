@@ -29,6 +29,8 @@ export default function ProjectPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
   const [focusPost, setFocusPost] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkNote, setCheckNote] = useState<string | null>(null);
 
   // Deep links like ?tab=creators (used right after creating a project).
   useEffect(() => {
@@ -102,11 +104,35 @@ export default function ProjectPage() {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          {p.posts.length > 0 && (
+            <button
+              className={buttonClass.secondary}
+              disabled={checking}
+              title="Numbers are read automatically every hour: each post on its day 1, 3 and 7"
+              onClick={async () => {
+                setChecking(true);
+                setCheckNote(null);
+                setCheckNote(await actions.checkPostNumbers(p.id));
+                setChecking(false);
+              }}
+            >
+              {checking ? "Reading numbers…" : "Check numbers now"}
+            </button>
+          )}
           <button className={buttonClass.secondary} onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
             {editing ? "Close" : "Edit project"}
           </button>
         </div>
       </div>
+
+      {checkNote && (
+        <p role="status" className="fade-enter mt-3 flex items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
+          <span>{checkNote}</span>
+          <button className="shrink-0 text-xs font-medium underline" onClick={() => setCheckNote(null)}>
+            Dismiss
+          </button>
+        </p>
+      )}
 
       {editing && (
         <Card className="fade-enter mt-4 p-4 sm:p-5">

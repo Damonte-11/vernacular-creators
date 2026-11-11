@@ -386,6 +386,20 @@ export const liveBackend: Backend = {
       await save("the document", () => db().from("project_documents").delete().eq("id", docId));
       if (doc?.filePath) await db().storage.from("project-documents").remove([doc.filePath]);
     },
+    async checkPostNumbers(projectId) {
+      const res = await fetch(`/api/projects/${projectId}/check`, { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { checked?: number; problems?: number; waiting?: number; notes?: string[]; error?: string };
+      if (!res.ok) return body.error ?? "The check didn't run. Please try again.";
+      const { data, error } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
+      if (!error && data) setProject(projectId, () => projectFromRow(data));
+      const parts = [
+        body.checked ? `Read ${body.checked} ${body.checked === 1 ? "post" : "posts"}.` : "",
+        body.problems ? `${body.problems} couldn't be read (see Needs attention).` : "",
+        body.waiting ? `${body.waiting} still waiting.` : "",
+        ...(body.notes ?? []),
+      ].filter(Boolean);
+      return parts.length ? parts.join(" ") : "Nothing is due a check right now. Posts are read on day 1, 3 and 7.";
+    },
     async documentLink(doc) {
       if (!doc.filePath) return doc.url || null;
       const { data, error } = await db().storage.from("project-documents").createSignedUrl(doc.filePath, 600);

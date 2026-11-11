@@ -87,6 +87,8 @@ export const NICHE_KEYWORDS: Record<string, string[]> = {
 export const TIKTOK_LIMITS = {
   /** Most TikTok lookups and refreshes per calendar month. Override with TIKTOK_MONTHLY_LOOKUPS in Vercel. */
   monthlyLookups: 30,
+  /** Most automatic TikTok post checks per calendar month (each post is checked on day 1, 3 and 7). Override with TIKTOK_POST_CHECKS_PER_MONTH. */
+  postChecksPerMonth: 300,
   /** Saved TikTok creators are reused for this long (the daily refresh skips TikTok). */
   refreshDays: 30,
 };

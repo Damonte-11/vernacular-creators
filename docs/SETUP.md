@@ -231,6 +231,15 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0010_discovery.sql`: automatic discovery of new creators (and its settings)
 - `0011_import_queue.sql`: background imports, looked up about 150 an hour
 - `0012_projects.sql`: Projects (Chorus campaigns): booked creators, post links and their numbers, documents, and a private storage space for uploaded files
+- `0013_post_checks.sql`: automatic post numbers for Projects (remembers when each post was last read)
+
+## Automatic post numbers (Projects)
+
+Campaign posts are read automatically on their day 1, 3 and 7: views, likes, comments, and shares on TikTok. It runs inside the hourly job set up under "Background imports" (no extra setup), before the import queue, using at most 40 of Instagram's ~200 lookups an hour. **Check numbers now** on a project runs it straight away.
+
+- **Instagram:** the post must be among the creator's 45 latest posts and the account must be business or creator; otherwise it's flagged and the numbers can be typed in.
+- **YouTube:** any public video.
+- **TikTok:** through Apify, capped at 300 post checks a month (change with `TIKTOK_POST_CHECKS_PER_MONTH` in Vercel). Separate from the 30 TikTok profile lookups.
 
 ## What happens after setup
 

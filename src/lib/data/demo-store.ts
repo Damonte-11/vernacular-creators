@@ -6,6 +6,7 @@ import { DISCOVERY_DEFAULTS } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
 import { sampleProjects } from "@/sample-data/projects";
+import { dueCheckDay } from "../post-links";
 import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
 import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Project, ProjectCreator, Settings, Shortlist } from "../types";
 import type { AppState, Backend } from "./types";
@@ -220,6 +221,24 @@ export const demoBackend: Backend = {
     },
     async documentLink(doc) {
       return doc.url || null;
+    },
+    async checkPostNumbers(projectId) {
+      // Demo: made-up numbers for posts that are due, as the live job would read them.
+      const today = todayLagos();
+      let n = 0;
+      setProject(projectId, (p) => ({
+        ...p,
+        posts: p.posts.map((x) => {
+          const day = dueCheckDay(x, today, null, Date.now());
+          if (day === null) return x;
+          n++;
+          const base = [...x.url].reduce((a, c) => a + c.charCodeAt(0), 0);
+          const views = Math.round((8_000 + (base % 40) * 1_500) * (day >= 7 ? 1 : day >= 3 ? 0.84 : 0.62));
+          const check = { day, checkedAt: new Date().toISOString(), views, likes: Math.round(views * 0.05), comments: Math.round(views * 0.005), shares: x.platform === "tiktok" ? Math.round(views * 0.002) : null, source: "auto" as const };
+          return { ...x, problem: null, checks: [...x.checks.filter((c) => c.day !== day), check] };
+        }),
+      }));
+      return n ? `Read ${n} ${n === 1 ? "post" : "posts"} (made-up numbers in the demo).` : "Nothing is due a check right now. Posts are read on day 1, 3 and 7.";
     },
     updateSettings(patch) {
       set((d) => ({ ...d, settings: { ...d.settings, ...patch } }));

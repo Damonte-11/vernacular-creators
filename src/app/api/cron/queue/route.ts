@@ -1,13 +1,15 @@
 import { errorResponse } from "@/lib/server/lookup-service";
-import { processQueue } from "@/lib/server/queue";
+import { runPostChecks } from "@/lib/server/post-checks";
+import { processQueue, QUEUE_LOOKUPS_PER_RUN } from "@/lib/server/queue";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
 
 /**
- * Hourly: work through the background import queue. Called by Supabase's
- * scheduler (see docs/SETUP.md, "Background imports") with the CRON_SECRET.
+ * Hourly (called by Supabase's scheduler with the CRON_SECRET, see docs/SETUP.md):
+ * first read the numbers of campaign posts that are due a check, then work
+ * through the background import queue with what's left of Instagram's hourly allowance.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -15,8 +17,19 @@ export async function GET(request: Request) {
     return Response.json({ error: "Not allowed." }, { status: 401 });
   }
   if (!IS_LIVE) return Response.json({ skipped: "demo mode" });
+  const db = supabaseAdmin();
+  const start = Date.now();
+  let postChecks = null;
   try {
-    return Response.json(await processQueue(supabaseAdmin(), Date.now() + 240_000));
+    postChecks = await runPostChecks(db, { deadline: start + 110_000 });
+  } catch (e) {
+    // Projects not set up yet (or another problem): imports still run.
+    postChecks = { error: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    const igUsed = postChecks && "instagramCalls" in postChecks ? postChecks.instagramCalls : 0;
+    const queue = await processQueue(db, start + 270_000, Math.max(0, QUEUE_LOOKUPS_PER_RUN - igUsed));
+    return Response.json({ ...queue, postChecks });
   } catch (e) {
     return errorResponse(e);
   }

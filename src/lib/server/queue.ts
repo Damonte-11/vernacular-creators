@@ -34,7 +34,7 @@ export interface QueueSummary {
  * saved, and added to their list. A platform that says "slow down" is left
  * for the next run.
  */
-export async function processQueue(db: SupabaseClient, deadline: number): Promise<QueueSummary> {
+export async function processQueue(db: SupabaseClient, deadline: number, maxLookups: number = QUEUE_LOOKUPS_PER_RUN): Promise<QueueSummary> {
   const settings = await loadSettings(db);
   const summary: QueueSummary = { done: 0, failed: 0, lookups: 0, waiting: 0, stopped: null };
   const { data, error } = await db.from("import_queue").select("id, platform, handle, email, list_id, fields, attempts").eq("status", "waiting").order("id").limit(1000);
@@ -51,8 +51,8 @@ export async function processQueue(db: SupabaseClient, deadline: number): Promis
       // The database first: no lookup for creators already saved.
       let creator = await findCreator(db, row.platform, row.handle);
       if (!creator) {
-        if (summary.lookups >= QUEUE_LOOKUPS_PER_RUN) {
-          summary.stopped = `Looked up ${QUEUE_LOOKUPS_PER_RUN} this hour (the safe limit); the rest continue next hour`;
+        if (summary.lookups >= maxLookups) {
+          summary.stopped = `Looked up ${maxLookups} this hour (the safe limit); the rest continue next hour`;
           break;
         }
         if (row.platform === "tiktok") await assertTikTokAllowance(db);
