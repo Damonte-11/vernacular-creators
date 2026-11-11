@@ -232,6 +232,7 @@ When the app gains a feature that needs a database change, there's a new numbere
 - `0011_import_queue.sql`: background imports, looked up about 150 an hour
 - `0012_projects.sql`: Projects (Chorus campaigns): booked creators, post links and their numbers, documents, and a private storage space for uploaded files
 - `0013_post_checks.sql`: automatic post numbers for Projects (remembers when each post was last read)
+- `0014_sheet_agent.sql`: the sheet agent (each project's Google Sheet layout, remembered spellings, and its guesses)
 
 ## Automatic post numbers (Projects)
 
@@ -240,6 +241,27 @@ Campaign posts are read automatically on their day 1, 3 and 7: views, likes, com
 - **Instagram:** the post must be among the creator's 45 latest posts and the account must be business or creator; otherwise it's flagged and the numbers can be typed in.
 - **YouTube:** any public video.
 - **TikTok:** through Apify, capped at 300 post checks a month (change with `TIKTOK_POST_CHECKS_PER_MONTH` in Vercel). Separate from the 30 TikTok profile lookups.
+
+## Sheet agent (Projects ↔ Google Sheets)
+
+Each project can be connected to the Google Sheet the team logs links in. Every hour the agent adds new links from the sheet to the project and writes the latest numbers into its own columns (VC Views, VC Engagements, VC ER by views, VC Last checked, VC Status). It runs inside the same hourly job as background imports, so there's nothing extra to schedule.
+
+It needs two things in Vercel (**Settings → Environment Variables**, Production and Preview, then redeploy):
+
+- **`GOOGLE_SERVICE_ACCOUNT_JSON`**: the app's own Google identity.
+  1. Go to console.cloud.google.com, create a project (e.g. "vernacular-creators").
+  2. **APIs & Services → Library**: enable **Google Sheets API** and **Google Drive API**.
+  3. **IAM & Admin → Service Accounts → Create service account**, name it "sheet-agent", skip the optional steps.
+  4. Open it → **Keys → Add key → Create new key → JSON**. A file downloads.
+  5. Open the file in a text editor, copy everything, and paste it as the value of `GOOGLE_SERVICE_ACCOUNT_JSON`.
+  6. Share each project's sheet with the service account's email (shown on the project's **Sheet** tab) as **Editor**.
+- **`ANTHROPIC_API_KEY`**: AI for messy rows (and later the brief reader and comment analysis).
+  1. Go to console.anthropic.com and sign up or sign in.
+  2. **Billing**: add credit (from $5). **Limits**: set a monthly spend limit.
+  3. **API keys → Create key**, name it "vernacular-creators", copy it once (it isn't shown again).
+  4. Paste it as the value of `ANTHROPIC_API_KEY`.
+
+Without the Anthropic key the agent still works with plain rules; rows it can't place wait in **Needs attention** for the team to match.
 
 ## What happens after setup
 

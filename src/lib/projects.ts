@@ -243,7 +243,14 @@ export function attentionItems(p: Project, today: string, nameOf: (creatorId: st
   }
   for (const post of p.posts) {
     if (!post.creatorId) {
-      items.push({ id: `who-${post.id}`, tone: "warn", title: "A link isn't matched to a creator", detail: shortUrl(post.url), postId: post.id });
+      const guess = post.suggestedCreatorId ? nameOf(post.suggestedCreatorId) : null;
+      items.push({
+        id: `who-${post.id}`,
+        tone: "warn",
+        title: guess ? `Is this ${guess}'s post?` : "A link isn't matched to a creator",
+        detail: post.sheetLabel ? `Sheet says "${post.sheetLabel}"` : shortUrl(post.url),
+        postId: post.id,
+      });
       continue;
     }
     const name = nameOf(post.creatorId);

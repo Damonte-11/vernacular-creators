@@ -317,8 +317,22 @@ export const liveBackend: Backend = {
       return added.length;
     },
     async updateProjectPost(projectId, postId, patch) {
-      setProject(projectId, (p) => ({ ...p, posts: p.posts.map((x) => (x.id === postId ? { ...x, ...patch } : x)) }));
+      const post = state.projects.find((p) => p.id === projectId)?.posts.find((x) => x.id === postId);
+      const confirming = !!patch.creatorId;
+      setProject(projectId, (p) => ({
+        ...p,
+        posts: p.posts.map((x) => (x.id === postId ? { ...x, ...patch, ...(confirming ? { suggestedCreatorId: null, matchNote: null } : {}) } : x)),
+      }));
+      // A spelling from the sheet the team just matched: the agent remembers it.
+      if (confirming && post?.sheetLabel) {
+        void fetch(`/api/projects/${projectId}/sheet`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "learn", label: post.sheetLabel, creatorId: patch.creatorId }),
+        });
+      }
       const row: Record<string, unknown> = {};
+      if (confirming) Object.assign(row, { suggested_creator_id: null, match_note: null });
       if (patch.creatorId !== undefined) row.creator_id = patch.creatorId;
       if (patch.postedDate !== undefined) row.posted_date = patch.postedDate;
       if (patch.problem !== undefined) row.problem = patch.problem;
@@ -371,6 +385,14 @@ export const liveBackend: Backend = {
       setProject(projectId, (p) => ({ ...p, documents: p.documents.filter((d) => d.id !== docId) }));
       await save("the document", () => db().from("project_documents").delete().eq("id", docId));
       if (doc?.filePath) await db().storage.from("project-documents").remove([doc.filePath]);
+    },
+    async sheetAgent(projectId, request) {
+      const res = await fetch(`/api/projects/${projectId}/sheet`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+      const body = (await res.json().catch(() => ({}))) as { message?: string; needsLayout?: boolean; error?: string };
+      const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
+      if (data) setProject(projectId, () => projectFromRow(data));
+      if (!res.ok) return { message: body.error ?? "The sheet agent didn't run. Please try again." };
+      return { message: body.message ?? "Done.", needsLayout: body.needsLayout };
     },
     async searchCreators(query) {
       // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.

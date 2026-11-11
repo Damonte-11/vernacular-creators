@@ -265,6 +265,12 @@ export interface ProjectPost {
   checks: PostCheck[];
   /** Why numbers couldn't be read, e.g. the post was deleted. */
   problem: string | null;
+  /** The sheet agent's guess at the creator, for the team to confirm. */
+  suggestedCreatorId?: string | null;
+  /** Why the agent guessed (or couldn't). */
+  matchNote?: string | null;
+  /** The handle or name written next to the link in the sheet. */
+  sheetLabel?: string | null;
 }
 
 export type DocumentKind = "brief" | "contract" | "guidelines" | "deck" | "other";
@@ -298,6 +304,8 @@ export interface Project {
   sheetUrl: string | null;
   /** Most comments read per post for the analysis. */
   commentCap: number;
+  /** What the sheet agent knows about the project's sheet. */
+  sheetState?: import("./sheet-sync").SheetState;
   createdAt: string;
   creators: ProjectCreator[];
   posts: ProjectPost[];

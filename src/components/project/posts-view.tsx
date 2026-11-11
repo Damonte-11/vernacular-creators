@@ -70,19 +70,7 @@ export function PostsView({ p, today, byId, focusPostId }: { p: Project; today: 
                         <Icon name={c.platform} size={12} className="text-muted" /> <span className="truncate">{c.name}</span>
                       </span>
                     ) : (
-                      <select
-                        aria-label={`Creator for ${shortUrl(post.url)}`}
-                        className={cx(inputClass, "border-warn")}
-                        value=""
-                        onChange={(e) => e.target.value && actions.updateProjectPost(p.id, post.id, { creatorId: e.target.value })}
-                      >
-                        <option value="">Pick the creator…</option>
-                        {onProject.map((x) => (
-                          <option key={x.id} value={x.id}>
-                            {x.name}
-                          </option>
-                        ))}
-                      </select>
+                      <Unmatched p={p} post={post} onProject={onProject} byId={byId} />
                     )}
                     <span className={cx("shrink-0 text-xs", post.problem ? "text-bad" : !n.check ? "text-warn" : "text-muted")}>{checkLabel(post, today)}</span>
                   </div>
@@ -146,19 +134,7 @@ export function PostsView({ p, today, byId, focusPostId }: { p: Project; today: 
                             <span className="font-medium">{c.name}</span>
                           </span>
                         ) : (
-                          <select
-                            aria-label={`Creator for ${shortUrl(post.url)}`}
-                            className={cx(inputClass, "w-44 border-warn")}
-                            value=""
-                            onChange={(e) => e.target.value && actions.updateProjectPost(p.id, post.id, { creatorId: e.target.value })}
-                          >
-                            <option value="">Pick the creator…</option>
-                            {onProject.map((x) => (
-                              <option key={x.id} value={x.id}>
-                                {x.name} (@{x.handle})
-                              </option>
-                            ))}
-                          </select>
+                          <Unmatched p={p} post={post} onProject={onProject} byId={byId} />
                         )}
                       </td>
                       <td className="max-w-56 px-3 py-1.5">
@@ -210,6 +186,41 @@ export function PostsView({ p, today, byId, focusPostId }: { p: Project; today: 
         </>
       )}
     </div>
+  );
+}
+
+/** A link with no creator yet: the agent's guess (if any) to confirm, or a list to pick from. */
+function Unmatched({ p, post, onProject, byId }: { p: Project; post: ProjectPost; onProject: Creator[]; byId: Map<string, Creator> }) {
+  const guess = post.suggestedCreatorId ? byId.get(post.suggestedCreatorId) : undefined;
+  return (
+    <span className="flex min-w-0 flex-col gap-1">
+      {guess && (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-warn">Is this {guess.name}?</span>
+          <button className="rounded-md bg-brand px-1.5 py-0.5 text-[11px] font-medium text-brand-ink" onClick={() => actions.updateProjectPost(p.id, post.id, { creatorId: guess.id })}>
+            Yes
+          </button>
+        </span>
+      )}
+      <select
+        aria-label={`Creator for ${shortUrl(post.url)}`}
+        className={cx(inputClass, "max-w-52 border-warn")}
+        value=""
+        onChange={(e) => e.target.value && actions.updateProjectPost(p.id, post.id, { creatorId: e.target.value })}
+      >
+        <option value="">{guess ? "No, it's…" : "Pick the creator…"}</option>
+        {onProject.map((x) => (
+          <option key={x.id} value={x.id}>
+            {x.name} (@{x.handle})
+          </option>
+        ))}
+      </select>
+      {(post.sheetLabel || post.matchNote) && (
+        <span className="max-w-56 text-[11px] text-muted" title={post.matchNote ?? undefined}>
+          {post.sheetLabel ? `Sheet says "${post.sheetLabel}"` : post.matchNote}
+        </span>
+      )}
+    </span>
   );
 }
 

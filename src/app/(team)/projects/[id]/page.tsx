@@ -9,13 +9,14 @@ import { CreatorsView } from "@/components/project/creators-view";
 import { DocumentsView } from "@/components/project/documents-view";
 import { PostsView } from "@/components/project/posts-view";
 import { ProjectForm } from "@/components/project/project-form";
+import { SheetView } from "@/components/project/sheet-view";
 import { ProjectSummary } from "@/components/project/summary";
 import { buttonClass, Card, cx, EmptyState, Loading, tabClass, tabCountClass, tabListClass } from "@/components/ui";
 import { useCreators } from "@/lib/data/creators";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
 import { chorusLabel, OBJECTIVES, projectPhase, projectWindow, shortDate, todayLagos, type AttentionItem } from "@/lib/projects";
 
-type Tab = "overview" | "creators" | "posts" | "brief" | "documents";
+type Tab = "overview" | "creators" | "posts" | "sheet" | "brief" | "documents";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ export default function ProjectPage() {
   // Deep links like ?tab=creators (used right after creating a project).
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (t && ["overview", "creators", "posts", "brief", "documents"].includes(t)) setTab(t);
+    if (t && ["overview", "creators", "posts", "sheet", "brief", "documents"].includes(t)) setTab(t);
   }, []);
 
   if (!p && !hydrated) return <Loading />;
@@ -59,6 +60,7 @@ export default function ProjectPage() {
     { id: "overview", label: "Overview" },
     { id: "creators", label: "Creators", count: p.creators.length },
     { id: "posts", label: "Posts", count: p.posts.length },
+    { id: "sheet", label: "Sheet" },
     { id: "brief", label: "Brief" },
     { id: "documents", label: "Documents", count: p.documents.length },
   ];
@@ -191,6 +193,7 @@ export default function ProjectPage() {
             <PostsView p={p} today={today} byId={byId} focusPostId={focusPost} />
           </>
         )}
+        {tab === "sheet" && <SheetView p={p} />}
         {tab === "brief" && <BriefView p={p} />}
         {tab === "documents" && <DocumentsView p={p} />}
       </div>
