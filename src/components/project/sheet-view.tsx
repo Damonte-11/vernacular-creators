@@ -22,6 +22,8 @@ export function SheetView({ p }: { p: Project }) {
   const [script, setScript] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const state = p.sheetState ?? {};
+  // With the app's Google service account set up, sharing the sheet is the simplest way in.
+  const shared = IS_LIVE && !!info?.serviceEmail;
   const draftFrom = state.proposed ?? state.layout ?? null;
   const [draft, setDraft] = useState<SheetLayout | null>(draftFrom);
   useEffect(() => setDraft(state.proposed ?? state.layout ?? null), [state.proposed, state.layout]);
@@ -64,7 +66,11 @@ export function SheetView({ p }: { p: Project }) {
         <Card className="p-4 sm:p-5">
           <SectionHeader
             title="1. Connect the sheet"
-            description="The Google Sheet your team logs post links in. A small script inside the sheet does the syncing: no Google Cloud setup needed."
+            description={
+              shared
+                ? "The Google Sheet your team logs post links in. Share it with the app, and the agent reads it every hour."
+                : "The Google Sheet your team logs post links in. A small script inside the sheet does the syncing: no Google Cloud setup needed."
+            }
           />
           {state.lastHeardAt && (
             <p className="mt-3 flex items-center gap-1.5 text-[13px] text-good">
@@ -72,87 +78,189 @@ export function SheetView({ p }: { p: Project }) {
               {new Date(state.lastHeardAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
             </p>
           )}
-          {script ? (
+          {shared ? (
             <div className="mt-3 space-y-3">
               <ol className="list-decimal space-y-1.5 pl-5 text-[13px] text-ink-2">
+                <li>Paste the sheet&apos;s link below and save.</li>
                 <li>
-                  Open the Google Sheet, then <b>Extensions → Apps Script</b>.
-                </li>
-                <li>Delete what&apos;s in the editor, then paste the script below (use Copy script).</li>
-                <li>
-                  Click the save icon. In the box at the top next to <b>Debug</b>, pick <b>connect</b>, then click <b>Run</b>.
+                  In Google Sheets, click <b>Share</b> and add <b className="select-all break-all font-semibold text-ink">{info!.serviceEmail}</b> as{" "}
+                  <b>Editor</b>, so the agent can write numbers into its own columns.
                 </li>
                 <li>
-                  Google asks to allow it: <b>Review permissions</b> → pick your account → <b>Advanced</b> → <b>Go to … (unsafe)</b> → <b>Allow</b>. Google
-                  shows that warning for any script that isn&apos;t published; this one is yours.
+                  Click <b>Read the sheet</b> in step 2.
                 </li>
-                <li>Come back here: step 2 shows the sheet&apos;s columns to confirm.</li>
               </ol>
-              <div className="relative">
-                <textarea
-                  readOnly
-                  rows={8}
-                  value={script}
-                  className={cx(inputClass, "font-mono text-[11px] leading-relaxed")}
-                  aria-label="Sheet script"
-                  onFocus={(e) => e.target.select()}
+              <form
+                className="mt-2 flex flex-col gap-2 sm:flex-row"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (url.trim() && !/docs\.google\.com\/spreadsheets/.test(url))
+                    return setNote("That isn't a Google Sheets link (docs.google.com/spreadsheets/…).");
+                  await actions.updateProject(p.id, { sheetUrl: url.trim() || null });
+                  setNote(url.trim() ? "Sheet link saved." : "Sheet link removed.");
+                }}
+              >
+                <input
+                  className={inputClass}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/…"
+                  aria-label="Google Sheet link"
                 />
-                <button
-                  className={cx(buttonClass.primary, "absolute right-2 top-2")}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(script).catch(() => undefined);
-                    setCopied(true);
-                  }}
-                >
-                  {copied ? "Copied" : "Copy script"}
+                <button className={buttonClass.secondary} disabled={url.trim() === (p.sheetUrl ?? "")}>
+                  Save link
                 </button>
-              </div>
-              <p className="text-xs text-muted">
-                The script contains a private code for this project. Don&apos;t share it outside the team. Making a new script switches the old one off.
-              </p>
+              </form>
+              {p.sheetUrl && (
+                <a
+                  href={p.sheetUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-ink-2 underline"
+                >
+                  Open the sheet <Icon name="link" size={11} />
+                </a>
+              )}
+              <details>
+                <summary className="cursor-pointer text-xs font-medium text-ink-2">
+                  Sharing outside your company isn&apos;t allowed? Connect with a script instead
+                </summary>
+                <div className="mt-2">
+                  {script ? (
+                    <div className="mt-3 space-y-3">
+                      <ol className="list-decimal space-y-1.5 pl-5 text-[13px] text-ink-2">
+                        <li>
+                          Open the Google Sheet, then <b>Extensions → Apps Script</b>.
+                        </li>
+                        <li>Delete what&apos;s in the editor, then paste the script below (use Copy script).</li>
+                        <li>
+                          Click the save icon. In the box at the top next to <b>Debug</b>, pick <b>connect</b>, then click <b>Run</b>.
+                        </li>
+                        <li>
+                          Google asks to allow it: <b>Review permissions</b> → pick your account → <b>Advanced</b> → <b>Go to … (unsafe)</b> → <b>Allow</b>.
+                          Google shows that warning for any script that isn&apos;t published; this one is yours.
+                        </li>
+                        <li>Come back here: step 2 shows the sheet&apos;s columns to confirm.</li>
+                      </ol>
+                      <div className="relative">
+                        <textarea
+                          readOnly
+                          rows={8}
+                          value={script}
+                          className={cx(inputClass, "font-mono text-[11px] leading-relaxed")}
+                          aria-label="Sheet script"
+                          onFocus={(e) => e.target.select()}
+                        />
+                        <button
+                          className={cx(buttonClass.primary, "absolute right-2 top-2")}
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(script).catch(() => undefined);
+                            setCopied(true);
+                          }}
+                        >
+                          {copied ? "Copied" : "Copy script"}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted">
+                        The script contains a private code for this project. Don&apos;t share it outside the team. Making a new script switches the old one off.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button className={buttonClass.primary} disabled={!!busy} onClick={makeScript}>
+                        {busy === "hook" ? "Making the script…" : state.hookToken ? "Show the script again" : "Get the sheet script"}
+                      </button>
+                      {!IS_LIVE && <span className="text-xs text-muted">Demo: the live app makes a real script for your sheet.</span>}
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           ) : (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button className={buttonClass.primary} disabled={!!busy} onClick={makeScript}>
-                {busy === "hook" ? "Making the script…" : state.hookToken ? "Show the script again" : "Get the sheet script"}
-              </button>
-              {!IS_LIVE && <span className="text-xs text-muted">Demo: the live app makes a real script for your sheet.</span>}
-            </div>
+            <>
+              {script ? (
+                <div className="mt-3 space-y-3">
+                  <ol className="list-decimal space-y-1.5 pl-5 text-[13px] text-ink-2">
+                    <li>
+                      Open the Google Sheet, then <b>Extensions → Apps Script</b>.
+                    </li>
+                    <li>Delete what&apos;s in the editor, then paste the script below (use Copy script).</li>
+                    <li>
+                      Click the save icon. In the box at the top next to <b>Debug</b>, pick <b>connect</b>, then click <b>Run</b>.
+                    </li>
+                    <li>
+                      Google asks to allow it: <b>Review permissions</b> → pick your account → <b>Advanced</b> → <b>Go to … (unsafe)</b> → <b>Allow</b>. Google
+                      shows that warning for any script that isn&apos;t published; this one is yours.
+                    </li>
+                    <li>Come back here: step 2 shows the sheet&apos;s columns to confirm.</li>
+                  </ol>
+                  <div className="relative">
+                    <textarea
+                      readOnly
+                      rows={8}
+                      value={script}
+                      className={cx(inputClass, "font-mono text-[11px] leading-relaxed")}
+                      aria-label="Sheet script"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <button
+                      className={cx(buttonClass.primary, "absolute right-2 top-2")}
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(script).catch(() => undefined);
+                        setCopied(true);
+                      }}
+                    >
+                      {copied ? "Copied" : "Copy script"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted">
+                    The script contains a private code for this project. Don&apos;t share it outside the team. Making a new script switches the old one off.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button className={buttonClass.primary} disabled={!!busy} onClick={makeScript}>
+                    {busy === "hook" ? "Making the script…" : state.hookToken ? "Show the script again" : "Get the sheet script"}
+                  </button>
+                  {!IS_LIVE && <span className="text-xs text-muted">Demo: the live app makes a real script for your sheet.</span>}
+                </div>
+              )}
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs font-medium text-ink-2">Sheet link (optional, for opening it from here)</summary>
+                <form
+                  className="mt-2 flex flex-col gap-2 sm:flex-row"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (url.trim() && !/docs\.google\.com\/spreadsheets/.test(url))
+                      return setNote("That isn't a Google Sheets link (docs.google.com/spreadsheets/…).");
+                    await actions.updateProject(p.id, { sheetUrl: url.trim() || null });
+                    setNote(url.trim() ? "Sheet link saved." : "Sheet link removed.");
+                  }}
+                >
+                  <input
+                    className={inputClass}
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/…"
+                    aria-label="Google Sheet link"
+                  />
+                  <button className={buttonClass.secondary} disabled={url.trim() === (p.sheetUrl ?? "")}>
+                    Save link
+                  </button>
+                </form>
+                {p.sheetUrl && (
+                  <a
+                    href={p.sheetUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-ink-2 underline"
+                  >
+                    Open the sheet <Icon name="link" size={11} />
+                  </a>
+                )}
+              </details>
+            </>
           )}
-          <details className="mt-4">
-            <summary className="cursor-pointer text-xs font-medium text-ink-2">Sheet link (optional, for opening it from here)</summary>
-            <form
-              className="mt-2 flex flex-col gap-2 sm:flex-row"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (url.trim() && !/docs\.google\.com\/spreadsheets/.test(url))
-                  return setNote("That isn't a Google Sheets link (docs.google.com/spreadsheets/…).");
-                await actions.updateProject(p.id, { sheetUrl: url.trim() || null });
-                setNote(url.trim() ? "Sheet link saved." : "Sheet link removed.");
-              }}
-            >
-              <input
-                className={inputClass}
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/…"
-                aria-label="Google Sheet link"
-              />
-              <button className={buttonClass.secondary} disabled={url.trim() === (p.sheetUrl ?? "")}>
-                Save link
-              </button>
-            </form>
-            {p.sheetUrl && (
-              <a
-                href={p.sheetUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-ink-2 underline"
-              >
-                Open the sheet <Icon name="link" size={11} />
-              </a>
-            )}
-          </details>
         </Card>
 
         {/* 2. Layout */}
