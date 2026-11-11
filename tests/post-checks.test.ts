@@ -150,10 +150,29 @@ describe("Check numbers now", () => {
     const now = Date.UTC(2026, 10, 20, 12);
     const rows = [
       // Day-7 reading already in and tried an hour ago: the scheduled run would skip it.
-      { id: "y1", project_id: "p", url: "https://youtu.be/AAAAAAAAAAA", platform: "youtube", posted_date: "2026-11-10", checks: [{ day: 7, views: 1 }], last_tried_at: new Date(now - 3_600_000).toISOString(), creator_id: "c1", creators: { handle: "a", platform: "youtube" } },
+      {
+        id: "y1",
+        project_id: "p",
+        url: "https://youtu.be/AAAAAAAAAAA",
+        platform: "youtube",
+        posted_date: "2026-11-10",
+        checks: [{ day: 7, views: 1 }],
+        last_tried_at: new Date(now - 3_600_000).toISOString(),
+        creator_id: "c1",
+        creators: { handle: "a", platform: "youtube" },
+      },
     ];
     const { db, updates } = fakeDb(rows);
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({ items: [{ id: "AAAAAAAAAAA", snippet: { publishedAt: "2026-11-10T10:00:00Z" }, statistics: { viewCount: "9000", likeCount: "500", commentCount: "40" } }] })));
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            items: [
+              { id: "AAAAAAAAAAA", snippet: { publishedAt: "2026-11-10T10:00:00Z" }, statistics: { viewCount: "9000", likeCount: "500", commentCount: "40" } },
+            ],
+          }),
+        ),
+    );
     expect((await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never })).checked).toBe(0);
     const summary = await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never, force: true });
     expect(summary.checked).toBe(1);
@@ -164,13 +183,33 @@ describe("Check numbers now", () => {
 });
 
 describe("short TikTok links", () => {
-  it("are turned into full links through TikTok's oEmbed, and their numbers read", async () => {
+  it("are turned into full links through TikTok's oEmbed where it can, and sent as they are where it can't", async () => {
     process.env.APIFY_TOKEN = "apify";
     const { runPostChecks } = await import("@/lib/server/post-checks");
     const now = Date.UTC(2026, 10, 12, 12);
     const rows = [
-      { id: "s1", project_id: "p", url: "https://vt.tiktok.com/ZSxebVjvo/", platform: "tiktok", posted_date: "2026-11-11", checks: [], last_tried_at: null, creator_id: "c", creators: { handle: "nunu", platform: "tiktok" } },
-      { id: "s2", project_id: "p", url: "https://vt.tiktok.com/GONE/", platform: "tiktok", posted_date: "2026-11-11", checks: [], last_tried_at: null, creator_id: "c", creators: { handle: "nunu", platform: "tiktok" } },
+      {
+        id: "s1",
+        project_id: "p",
+        url: "https://vt.tiktok.com/ZSxebVjvo/",
+        platform: "tiktok",
+        posted_date: "2026-11-11",
+        checks: [],
+        last_tried_at: null,
+        creator_id: "c",
+        creators: { handle: "nunu", platform: "tiktok" },
+      },
+      {
+        id: "s2",
+        project_id: "p",
+        url: "https://vt.tiktok.com/GONE/",
+        platform: "tiktok",
+        posted_date: "2026-11-11",
+        checks: [],
+        last_tried_at: null,
+        creator_id: "c",
+        creators: { handle: "nunu", platform: "tiktok" },
+      },
     ];
     const { db, updates } = fakeDb(rows);
     const apifyBodies: string[] = [];
@@ -183,11 +222,54 @@ describe("short TikTok links", () => {
       }
       if (u.includes("vt.tiktok.com/GONE")) return new Response("", { status: 404 });
       apifyBodies.push(String(init?.body));
-      return new Response(JSON.stringify([{ id: "7300000000000000001", playCount: 5000, diggCount: 400, commentCount: 30, shareCount: 5 }]));
+      const asked: string[] = JSON.parse(String(init?.body)).postURLs;
+      // Apify only returns the video it could open; a broken link gives nothing.
+      return new Response(
+        JSON.stringify(
+          asked.some((x) => x.includes("7300000000000000001"))
+            ? [{ id: "7300000000000000001", playCount: 5000, diggCount: 400, commentCount: 30, shareCount: 5 }]
+            : [],
+        ),
+      );
     });
     await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never });
-    expect(JSON.parse(apifyBodies[0]).postURLs).toEqual(["https://www.tiktok.com/@nunu/video/7300000000000000001"]);
+    // The resolved link goes as a full link; the one TikTok wouldn't explain goes as it is, then once more on its own.
+    expect(JSON.parse(apifyBodies[0]).postURLs).toEqual(["https://www.tiktok.com/@nunu/video/7300000000000000001", "https://vt.tiktok.com/GONE/"]);
+    expect(JSON.parse(apifyBodies[1]).postURLs).toEqual(["https://vt.tiktok.com/GONE/"]);
     expect((updates.find((u) => u.id === "s1")!.patch.checks as PostCheck[])[0]).toMatchObject({ views: 5000, likes: 400 });
-    expect(updates.find((u) => u.id === "s2")!.patch.problem).toMatch(/doesn't exist or is private/);
+    expect(updates.find((u) => u.id === "s2")!.patch.problem).toMatch(/didn't return this video/);
+  });
+});
+
+describe("short TikTok links TikTok won't explain", () => {
+  it("are read through Apify and matched back by the link Apify says it opened", async () => {
+    process.env.APIFY_TOKEN = "apify";
+    const { runPostChecks } = await import("@/lib/server/post-checks");
+    const now = Date.UTC(2026, 10, 12, 12);
+    const rows = ["A1", "B2"].map((c) => ({
+      id: c,
+      project_id: "p",
+      url: `https://vt.tiktok.com/${c}/`,
+      platform: "tiktok",
+      posted_date: "2026-11-11",
+      checks: [],
+      last_tried_at: null,
+      creator_id: "c",
+      creators: { handle: "x", platform: "tiktok" },
+    }));
+    const { db, updates } = fakeDb(rows);
+    const fetcher = vi.fn(async (url: URL | string) => {
+      const u = String(url);
+      if (u.includes("/oembed") || u.includes("vt.tiktok.com")) return new Response("blocked", { status: 403 });
+      return new Response(
+        JSON.stringify([
+          { id: "222", playCount: 2000, submittedVideoUrl: "https://vt.tiktok.com/B2/" },
+          { id: "111", playCount: 1000, submittedVideoUrl: "https://vt.tiktok.com/A1/" },
+        ]),
+      );
+    });
+    await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never });
+    expect((updates.find((u) => u.id === "A1")!.patch.checks as PostCheck[])[0].views).toBe(1000);
+    expect((updates.find((u) => u.id === "B2")!.patch.checks as PostCheck[])[0].views).toBe(2000);
   });
 });

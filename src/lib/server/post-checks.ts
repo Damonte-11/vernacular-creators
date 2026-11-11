@@ -11,7 +11,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TIKTOK_LIMITS } from "@config/app";
 import { dueCheckDay, instagramShortcode, lagosDate, postAge, youtubeVideoId } from "../post-links";
-import { todayLagos } from "../projects";
+import { normaliseUrl, todayLagos } from "../projects";
 import type { Platform, PostCheck } from "../types";
 import { LookupError } from "./errors";
 import type { Fetcher } from "./fetched";
@@ -248,47 +248,58 @@ async function checkTikTok(
   const used = await tiktokChecksThisMonth(db, now);
   const room = Math.max(0, Math.min(limit - used, TIKTOK_POSTS_PER_RUN));
   if (room === 0) {
-    summary.notes.push(`TikTok: the app's own limit of ${limit} post checks this month is reached (not Apify running out). It resets on the 1st, or raise TIKTOK_POST_CHECKS_PER_MONTH in Vercel.`);
+    summary.notes.push(
+      `TikTok: the app's own limit of ${limit} post checks this month is reached (not Apify running out). It resets on the 1st, or raise TIKTOK_POST_CHECKS_PER_MONTH in Vercel.`,
+    );
     return;
   }
   const batch = list.slice(0, room);
   if (list.length > room) summary.notes.push(`TikTok: ${list.length - room} posts wait for the next run or next month's allowance.`);
   const token = apifyTokenFromEnv();
 
-  // Every link is turned into a full one with its video ID (short vm./vt. links included) through TikTok's free oEmbed.
+  // Every link is turned into a full one with its video ID through TikTok's free oEmbed where possible.
+  // Short links TikTok won't explain to the server go to Apify as they are: Apify opens them like a browser.
   const targets: { d: Due; url: string; id: string | null }[] = [];
   for (const d of batch) {
     const ref = await resolveTikTok(d.row.url, fetcher);
-    if (!ref) {
-      await save(d, { problem: "TikTok says this video doesn't exist or is private. Check the link, or type the numbers in." });
-      continue;
-    }
-    targets.push({ d, url: ref.url, id: ref.id });
+    targets.push(ref ? { d, url: ref.url, id: ref.id } : { d, url: d.row.url, id: null });
   }
-  if (targets.length === 0) return;
-  const run = new URL("https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
-  run.searchParams.set("timeout", "150");
-  run.searchParams.set("maxTotalChargeUsd", "0.5");
-  run.searchParams.set("maxItems", String(targets.length + 5));
-  const res = await fetcher(run, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      postURLs: targets.map((t) => t.url),
-      shouldDownloadVideos: false,
-      shouldDownloadCovers: false,
-      shouldDownloadAvatars: false,
-      shouldDownloadMusicCovers: false,
-      shouldDownloadSlideshowImages: false,
-    }),
-    cache: "no-store",
-  });
-  const body = (await res.json().catch(() => null)) as (ApifyTikTokItem & { shareCount?: number })[] | { error?: { type?: string; message?: string } } | null;
-  if (!res.ok || !Array.isArray(body)) throw mapApifyError(res.status, body && !Array.isArray(body) ? body.error : undefined);
-
-  const byId = new Map(body.filter((i) => i.id && !i.errorCode).map((i) => [String(i.id), i]));
+  type Item = ApifyTikTokItem & { shareCount?: number; submittedVideoUrl?: string; inputUrl?: string };
+  const items: Item[] = (
+    await apifyPosts(
+      token,
+      targets.map((t) => t.url),
+      fetcher,
+    )
+  ).filter((i) => i.id && !i.errorCode);
+  const byId = new Map(items.map((i) => [String(i.id), i]));
+  const claimed = new Set<string>();
+  for (const t of targets) if (t.id && byId.has(t.id)) claimed.add(t.id);
+  // Links sent without an ID: match the result Apify says came from that link, or the only result left over.
+  const unclaimed = () => items.filter((i) => !claimed.has(String(i.id)));
+  const fromLink = (url: string) =>
+    unclaimed().find((i) => {
+      const asked = i.submittedVideoUrl ?? i.inputUrl;
+      return asked && normaliseUrl(asked) === normaliseUrl(url);
+    });
+  const found = new Map<Due, Item>();
   for (const t of targets) {
-    const item = t.id ? byId.get(t.id) : undefined;
+    const item = t.id ? byId.get(t.id) : fromLink(t.url);
+    if (item) {
+      found.set(t.d, item);
+      claimed.add(String(item.id));
+    }
+  }
+  const left = targets.filter((t) => !found.has(t.d));
+  if (left.length === 1 && !left[0].id && unclaimed().length === 1) found.set(left[0].d, unclaimed()[0]);
+  // Still unsure which result is which: ask for those links one at a time (a few per run).
+  for (const t of targets.filter((x) => !found.has(x.d) && !x.id).slice(0, 5)) {
+    const [one] = (await apifyPosts(token, [t.url], fetcher)).filter((i) => i.id && !i.errorCode);
+    if (one) found.set(t.d, one);
+  }
+
+  for (const t of targets) {
+    const item = found.get(t.d);
     if (!item) {
       await save(t.d, { problem: "TikTok didn't return this video (deleted, private or a broken link). Type the numbers in." });
       continue;
@@ -303,6 +314,34 @@ async function checkTikTok(
       postedAt: item.createTimeISO ?? (item.createTime ? new Date(item.createTime * 1000).toISOString() : undefined),
     });
   }
+}
+
+/** One Apify run reading these TikTok post links. */
+async function apifyPosts(
+  token: string,
+  urls: string[],
+  fetcher: Fetcher,
+): Promise<(ApifyTikTokItem & { shareCount?: number; submittedVideoUrl?: string; inputUrl?: string })[]> {
+  const run = new URL("https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
+  run.searchParams.set("timeout", "150");
+  run.searchParams.set("maxTotalChargeUsd", "0.5");
+  run.searchParams.set("maxItems", String(urls.length + 5));
+  const res = await fetcher(run, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      postURLs: urls,
+      shouldDownloadVideos: false,
+      shouldDownloadCovers: false,
+      shouldDownloadAvatars: false,
+      shouldDownloadMusicCovers: false,
+      shouldDownloadSlideshowImages: false,
+    }),
+    cache: "no-store",
+  });
+  const body = (await res.json().catch(() => null)) as ApifyTikTokItem[] | { error?: { type?: string; message?: string } } | null;
+  if (!res.ok || !Array.isArray(body)) throw mapApifyError(res.status, body && !Array.isArray(body) ? body.error : undefined);
+  return body;
 }
 
 /** Automatic TikTok readings saved since the 1st of this month (UTC). */

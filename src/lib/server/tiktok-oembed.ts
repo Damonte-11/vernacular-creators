@@ -22,7 +22,8 @@ export async function resolveTikTok(url: string, fetcher: Fetcher = fetch): Prom
   const handleInLink = url.match(/tiktok\.com\/@([\w.]+)/i)?.[1] ?? null;
   if (direct && handleInLink) return { id: direct, handle: handleInLink, url: `https://www.tiktok.com/@${handleInLink}/video/${direct}` };
   try {
-    const res = await fetcher(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`, { cache: "no-store" });
+    const res = await fetcher(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) console.warn("TikTok oEmbed", res.status, url);
     if (res.ok) {
       const body = (await res.json().catch(() => ({}))) as { author_unique_id?: string; embed_product_id?: string; html?: string; author_url?: string };
       const id = body.embed_product_id ?? body.html?.match(/data-video-id="(\d+)"/)?.[1] ?? direct;
@@ -38,6 +39,7 @@ export async function resolveTikTok(url: string, fetcher: Fetcher = fetch): Prom
       const id = tiktokVideoId(res.url);
       const handle = res.url.match(/tiktok\.com\/@([\w.]+)/i)?.[1] ?? null;
       if (id) return { id, handle, url: handle ? `https://www.tiktok.com/@${handle}/video/${id}` : res.url };
+      console.warn("TikTok short link didn't lead to a video", res.status, res.url.slice(0, 120));
     } catch {
       // Nothing more to try.
     }
