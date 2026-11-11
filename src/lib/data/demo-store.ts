@@ -6,6 +6,7 @@ import { DISCOVERY_DEFAULTS } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
 import { sampleProjects } from "@/sample-data/projects";
+import { searchSaved } from "../people";
 import { dueCheckDay } from "../post-links";
 import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
 import type { CampaignResult, Creator, CreatorEdits, ListItemFields, Project, ProjectCreator, Settings, Shortlist } from "../types";
@@ -221,6 +222,9 @@ export const demoBackend: Backend = {
     },
     async documentLink(doc) {
       return doc.url || null;
+    },
+    async searchCreators(query) {
+      return searchSaved(demoBackend.getSnapshot().creators, query, 8);
     },
     async checkPostNumbers(projectId) {
       // Demo: made-up numbers for posts that are due, as the live job would read them.

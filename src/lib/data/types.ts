@@ -54,6 +54,8 @@ export interface Actions {
   /** Keep a link (or, live only, an uploaded file) with the project. */
   addProjectDocument(projectId: string, doc: NewProjectDocument, file?: File): Promise<void>;
   removeProjectDocument(projectId: string, docId: string): Promise<void>;
+  /** Search the whole database by name or handle (live: asks the server, so creators added since the page opened are found too). */
+  searchCreators(query: string): Promise<Creator[]>;
   /** Read the numbers of this project's posts that are due a check, now. Returns what happened, in words. */
   checkPostNumbers(projectId: string): Promise<string>;
   /** A link to open an uploaded document (signed and short-lived in live mode). */

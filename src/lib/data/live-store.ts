@@ -386,6 +386,22 @@ export const liveBackend: Backend = {
       await save("the document", () => db().from("project_documents").delete().eq("id", docId));
       if (doc?.filePath) await db().storage.from("project-documents").remove([doc.filePath]);
     },
+    async searchCreators(query) {
+      // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.
+      const q = query.trim().replace(/^@/, "").replace(/[^\w. -]/g, "").slice(0, 60);
+      if (q.length < 2) return [];
+      const { data, error } = await db().from("creators").select(CREATOR_SELECT).or(`handle.ilike.%${q}%,name.ilike.%${q}%`).order("followers", { ascending: false }).limit(8);
+      if (error) {
+        set({ error: `Couldn't search the database: ${message(error)}` });
+        return [];
+      }
+      const found = (data as CreatorRow[]).map(creatorFromRow);
+      // Keep this browser's copy up to date with creators added elsewhere (e.g. background imports).
+      const have = new Set(state.creators.map((c) => c.id));
+      const fresh = found.filter((c) => !have.has(c.id));
+      if (fresh.length) set({ creators: [...state.creators, ...fresh] });
+      return found;
+    },
     async checkPostNumbers(projectId) {
       const res = await fetch(`/api/projects/${projectId}/check`, { method: "POST" });
       const body = (await res.json().catch(() => ({}))) as { checked?: number; problems?: number; waiting?: number; notes?: string[]; error?: string };

@@ -1,11 +1,14 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { normalizeHandle } from "@/lib/data/creators";
+import { lookupCreator } from "@/lib/data/lookup";
 import { actions } from "@/lib/data/store";
 import { formatFull, formatNumber } from "@/lib/format";
 import { searchSaved } from "@/lib/people";
 import { platformName } from "@/lib/platforms";
 import { addDays, creatorState, CREATOR_STATES, daysBetween, postNumbers, postsBy, projectWindow, shortDate, type CreatorState } from "@/lib/projects";
-import type { Creator, Project, ProjectCreator } from "@/lib/types";
+import type { Creator, Platform, Project, ProjectCreator } from "@/lib/types";
+import { PlatformToggle } from "../lookup-form";
 import { Icon } from "../icons";
 import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, inputClass, labelClass, tabClass, tabCountClass } from "../ui";
 
@@ -100,17 +103,61 @@ function AddCreators({ p, allCreators, today }: { p: Project; allCreators: Creat
   const [q, setQ] = useState("");
   const [due, setDue] = useState(p.startDate > today ? p.startDate : today);
   const [count, setCount] = useState(1);
+  const [remote, setRemote] = useState<Creator[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [looking, setLooking] = useState(false);
+  const [lookError, setLookError] = useState<string | null>(null);
   const booked = new Set(p.creators.map((c) => c.creatorId));
-  const matches = useMemo(() => searchSaved(allCreators, q, 8), [allCreators, q]);
+  // A pasted profile link counts as its handle.
+  const key = normalizeHandle(q) || q.trim();
+  const local = useMemo(() => searchSaved(allCreators, key, 8), [allCreators, key]);
+
+  // Also ask the database itself, so creators added since this page opened are found.
+  useEffect(() => {
+    setRemote([]);
+    if (key.replace(/^@/, "").length < 2) return;
+    let live = true;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const found = await actions.searchCreators(key);
+      if (live) {
+        setRemote(found);
+        setSearching(false);
+      }
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(t);
+      setSearching(false);
+    };
+  }, [key]);
+
+  const matches = useMemo(() => {
+    const seen = new Set<string>();
+    return [...local, ...remote].filter((c) => !seen.has(c.id) && seen.add(c.id)).slice(0, 8);
+  }, [local, remote]);
   const add = (c: Creator) => actions.upsertProjectCreators(p.id, [{ creatorId: c.id, dueDate: due, postsAgreed: count }]);
+
+  async function lookUp() {
+    setLooking(true);
+    setLookError(null);
+    const r = await lookupCreator(platform, key, allCreators);
+    setLooking(false);
+    if (r.status === "error") return setLookError(r.error);
+    await add(r.creator);
+    setQ("");
+  }
+
+  const handle = key.replace(/^@/, "");
   return (
     <Card className="p-4">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_110px]">
         <label>
-          <span className={labelClass}>Find a saved creator</span>
+          <span className={labelClass}>Find a creator</span>
           <span className="relative block">
             <Icon name="search" size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-            <input className={cx(inputClass, "pl-8")} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or handle" autoFocus />
+            <input className={cx(inputClass, "pl-8")} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, @handle or profile link" autoFocus />
           </span>
         </label>
         <label>
@@ -122,34 +169,50 @@ function AddCreators({ p, allCreators, today }: { p: Project; allCreators: Creat
           <input type="number" min={1} max={20} className={inputClass} value={count} onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))} />
         </label>
       </div>
-      {q.trim().length >= 2 && (
-        <ul className="mt-3 divide-y divide-line rounded-lg border border-line">
-          {matches.length === 0 && (
-            <li className="px-3 py-2.5 text-[13px] text-muted">No saved creator matches. Look them up on Add creators first, then add them here.</li>
-          )}
-          {matches.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <Avatar name={c.name} photoUrl={c.photoUrl} size={26} />
-                <span className="min-w-0 text-[13px]">
-                  <span className="block truncate font-medium">{c.name}</span>
-                  <span className="flex items-center gap-1 text-xs text-muted">
-                    <Icon name={c.platform} size={11} /> @{c.handle} · {formatNumber(c.followers)}
+      {handle.length >= 2 && (
+        <div className="mt-3 overflow-hidden rounded-lg border border-line">
+          {matches.length > 0 && (
+            <ul className="divide-y divide-line">
+              {matches.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <Avatar name={c.name} photoUrl={c.photoUrl} size={26} />
+                    <span className="min-w-0 text-[13px]">
+                      <span className="block truncate font-medium">{c.name}</span>
+                      <span className="flex items-center gap-1 text-xs text-muted">
+                        <Icon name={c.platform} size={11} /> @{c.handle} · {formatNumber(c.followers)}
+                      </span>
+                    </span>
                   </span>
-                </span>
-              </span>
-              {booked.has(c.id) ? (
-                <span className="inline-flex items-center gap-1 text-xs text-good">
-                  <Icon name="check" size={12} /> On this project
-                </span>
-              ) : (
-                <button className={buttonClass.secondary} onClick={() => add(c)}>
-                  <Icon name="plus" size={14} /> Add
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+                  {booked.has(c.id) ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-good">
+                      <Icon name="check" size={12} /> On this project
+                    </span>
+                  ) : (
+                    <button className={buttonClass.secondary} onClick={() => add(c)}>
+                      <Icon name="plus" size={14} /> Add
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {searching && matches.length === 0 && <p className="px-3 py-2.5 text-[13px] text-muted">Searching the database…</p>}
+          {!searching && (
+            <div className={cx("flex flex-col gap-2 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-center", matches.length > 0 && "border-t border-line")}>
+              <p className="min-w-0 flex-1 text-[13px] text-ink-2">{matches.length ? "Not the right one? Look them up:" : "Not in the database yet. Look them up and add them:"}</p>
+              <PlatformToggle value={platform} onChange={setPlatform} />
+              <button className={buttonClass.primary} onClick={lookUp} disabled={looking}>
+                {looking ? (platform === "tiktok" ? "Looking up (up to 2 min)…" : "Looking up…") : `Look up @${handle}`}
+              </button>
+            </div>
+          )}
+          {lookError && (
+            <p role="alert" className="border-t border-line px-3 py-2 text-[13px] text-bad">
+              {lookError}
+            </p>
+          )}
+        </div>
       )}
     </Card>
   );
