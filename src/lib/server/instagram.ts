@@ -12,7 +12,9 @@ import type { FetchedCreator, Fetcher } from "./fetched";
 export const IG_MEDIA_LIMIT = 45;
 
 const MEDIA_FIELDS = "id,caption,like_count,comments_count,view_count,media_type,media_product_type,timestamp,permalink";
-const USER_FIELDS = `id,username,name,biography,profile_picture_url,followers_count,media_count,media.limit(${IG_MEDIA_LIMIT}){${MEDIA_FIELDS}}`;
+const userFields = (limit: number) => `id,username,name,biography,profile_picture_url,followers_count,media_count,media.limit(${limit}){${MEDIA_FIELDS}}`;
+/** When Instagram says "reduce the amount of data", ask again for fewer posts. */
+const SMALLER_LIMITS = [IG_MEDIA_LIMIT, 25, 12];
 
 interface IgMedia {
   id: string;
@@ -65,8 +67,26 @@ export async function fetchInstagramCreator(username: string, config: InstagramC
   if (!isValidInstagramUsername(username)) {
     throw new LookupError("not_found", "That isn't a valid Instagram username. Use letters, numbers, dots and underscores only.");
   }
+  for (const [i, limit] of SMALLER_LIMITS.entries()) {
+    try {
+      return await fetchWithLimit(username, config, fetcher, limit);
+    } catch (e) {
+      // Big accounts sometimes make Instagram refuse 45 posts at once; fewer usually works.
+      if (!(e instanceof TooMuchData) || i === SMALLER_LIMITS.length - 1) throw e instanceof TooMuchData ? e.error : e;
+    }
+  }
+  throw new LookupError("upstream", "Instagram had a temporary problem. Please try again shortly.");
+}
+
+class TooMuchData extends Error {
+  constructor(public error: LookupError) {
+    super("too much data");
+  }
+}
+
+async function fetchWithLimit(username: string, config: InstagramConfig, fetcher: Fetcher, limit: number): Promise<FetchedCreator> {
   const url = new URL(`https://graph.facebook.com/${config.apiVersion}/${config.igUserId}`);
-  url.searchParams.set("fields", `business_discovery.username(${username}){${USER_FIELDS}}`);
+  url.searchParams.set("fields", `business_discovery.username(${username}){${userFields(limit)}}`);
   url.searchParams.set("access_token", config.accessToken);
 
   let res: Response;
@@ -80,7 +100,9 @@ export async function fetchInstagramCreator(username: string, config: InstagramC
   if (!res.ok || body.error) {
     // Logged for Vercel's runtime logs; contains no token.
     console.warn("Instagram Graph error", res.status, body.error?.code, body.error?.error_subcode, body.error?.message);
-    throw mapGraphError(body.error, res.status, username, regainSeconds(res.headers));
+    const mapped = mapGraphError(body.error, res.status, username, regainSeconds(res.headers));
+    if (/reduce the amount of data/i.test(body.error?.message ?? "")) throw new TooMuchData(mapped);
+    throw mapped;
   }
   const user = body.business_discovery;
   if (!user) throw notProfessional(username);

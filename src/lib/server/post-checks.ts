@@ -70,7 +70,7 @@ export async function runPostChecks(
 
   let query = db
     .from("project_posts")
-    .select("id, project_id, url, platform, posted_date, checks, last_tried_at, creator_id, creators(handle, platform)")
+    .select("id, project_id, url, platform, posted_date, checks, last_tried_at, creator_id, creators!project_posts_creator_id_fkey(handle, platform)")
     .not("creator_id", "is", null)
     .gte("posted_date", addDaysStr(today, -45))
     .limit(2000);

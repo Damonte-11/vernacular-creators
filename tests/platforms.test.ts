@@ -235,3 +235,20 @@ describe("retrying", () => {
     expect(m).toBe(1); // "not found" is never retried
   });
 });
+
+describe("Instagram: too much data", () => {
+  it("asks again for fewer posts when Instagram says to reduce the amount of data", async () => {
+    const limits: string[] = [];
+    const fetcher = async (url: URL | string) => {
+      const fields = new URL(String(url)).searchParams.get("fields") ?? "";
+      limits.push(fields.match(/media\.limit\((\d+)\)/)?.[1] ?? "");
+      if (limits.length === 1) {
+        return new Response(JSON.stringify({ error: { code: 1, message: "Please reduce the amount of data you're asking for, then retry your request" } }), { status: 500 });
+      }
+      return new Response(JSON.stringify({ business_discovery: { id: "1", username: "big", followers_count: 5, media_count: 1, media: { data: [] } } }));
+    };
+    const c = await fetchInstagramCreator("big", { accessToken: "t", igUserId: "1", apiVersion: "v25.0" }, fetcher as never);
+    expect(c.handle).toBe("big");
+    expect(limits).toEqual(["45", "25"]);
+  });
+});

@@ -12,7 +12,8 @@ import "server-only";
 import type { z } from "zod";
 import type { Fetcher } from "./fetched";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+/** Google retired gemini-2.5-flash for new keys (November 2026) and pointed to this one. */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export function geminiKey(): string | null {
