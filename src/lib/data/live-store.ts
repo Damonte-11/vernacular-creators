@@ -42,8 +42,54 @@ function set(patch: Partial<AppState>) {
 
 const db = () => supabaseBrowser();
 
+/** When this browser last fetched creators, so later checks only ask for what changed since. */
+let syncedAt: string | null = null;
+/** How often to look for creators added or refreshed elsewhere while the tab is open. */
+const SYNC_EVERY_MS = 120_000;
+
+/**
+ * Pick up creators that were added or refreshed since the last load: by the
+ * hourly background import, discovery, the daily refresh or a teammate.
+ */
+async function syncCreators() {
+  if (!state.ready || !syncedAt) return;
+  const since = syncedAt;
+  const startedAt = new Date().toISOString();
+  const changed = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db()
+      .from("creators")
+      .select(CREATOR_SELECT)
+      .or(`created_at.gt.${since},last_fetched_at.gt.${since}`)
+      .order("created_at")
+      .range(from, from + PAGE - 1);
+    if (error) return; // a passing network problem: try again next time
+    changed.push(...(data as CreatorRow[]).map(creatorFromRow));
+    if (data.length < PAGE) break;
+  }
+  syncedAt = startedAt;
+  if (changed.length === 0) return;
+  const byId = new Map(changed.map((c) => [c.id, c]));
+  const kept = state.creators.map((c) => byId.get(c.id) ?? c);
+  const have = new Set(state.creators.map((c) => c.id));
+  set({ creators: [...kept, ...changed.filter((c) => !have.has(c.id))] });
+}
+
+let syncTimer: ReturnType<typeof setInterval> | null = null;
+function startSyncing() {
+  if (syncTimer || typeof window === "undefined") return;
+  syncTimer = setInterval(() => {
+    if (document.visibilityState === "visible") void syncCreators();
+  }, SYNC_EVERY_MS);
+  // Coming back to the tab after a while: check straight away.
+  const onVisible = () => document.visibilityState === "visible" && void syncCreators();
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("focus", onVisible);
+}
+
 async function loadAll() {
   try {
+    syncedAt = new Date().toISOString();
     const creators = [];
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await db().from("creators").select(CREATOR_SELECT).order("created_at").range(from, from + PAGE - 1);
@@ -125,6 +171,7 @@ export const liveBackend: Backend = {
   subscribe(listener) {
     listeners.add(listener);
     loading ??= loadAll();
+    startSyncing();
     return () => listeners.delete(listener);
   },
   getSnapshot: () => state,

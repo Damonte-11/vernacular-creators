@@ -84,6 +84,9 @@ export const NICHE_KEYWORDS: Record<string, string[]> = {
  * TikTok goes through Apify, which is paid per video (about $0.13 a lookup).
  * Apify's free plan gives $5 of credit a month, so lookups are capped.
  */
+/** "Top creators right now" on Home only shows creators with at least this many followers. */
+export const TOP_CREATORS_MIN_FOLLOWERS = 200_000;
+
 export const TIKTOK_LIMITS = {
   /** Most TikTok lookups and refreshes per calendar month. Override with TIKTOK_MONTHLY_LOOKUPS in Vercel. */
   monthlyLookups: 30,

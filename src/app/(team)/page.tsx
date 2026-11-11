@@ -9,12 +9,13 @@ import { buttonClass, Card, EmptyState, PageHeader, SectionHeader, StatStrip, St
 import { useAnalyses } from "@/lib/data/creators";
 import { useAppState } from "@/lib/data/store";
 import { sortAnalyses } from "@/lib/filter";
-import { formatFull } from "@/lib/format";
+import { formatFull, formatNumber } from "@/lib/format";
+import { TOP_CREATORS_MIN_FOLLOWERS } from "@config/app";
 
 export default function HomePage() {
   const all = useAnalyses();
   const { shortlists } = useAppState();
-  const top = useMemo(() => sortAnalyses(all, "score").slice(0, 8), [all]);
+  const top = useMemo(() => sortAnalyses(all.filter((a) => a.creator.followers >= TOP_CREATORS_MIN_FOLLOWERS), "score").slice(0, 8), [all]);
   const flagged = all.filter((a) => a.flags.some((f) => f.severity !== "low")).length;
   const scored = all.filter((a) => a.score.total !== null);
   const weekAgo = Date.now() - 7 * 86_400_000;
@@ -48,7 +49,7 @@ export default function HomePage() {
         <section className="min-w-0">
           <SectionHeader
             title="Top creators right now"
-            description="Highest Creator Scores across everyone saved."
+            description={`Highest Creator Scores among creators with ${formatNumber(TOP_CREATORS_MIN_FOLLOWERS)}+ followers.`}
             className="mb-3"
             action={
               <Link href="/leaderboards" className={buttonClass.ghost}>
@@ -56,7 +57,17 @@ export default function HomePage() {
               </Link>
             }
           />
-          {top.length === 0 ? (
+          {top.length === 0 && all.length > 0 ? (
+            <EmptyState
+              title={`No creators with ${formatNumber(TOP_CREATORS_MIN_FOLLOWERS)}+ followers yet`}
+              body="Smaller creators are on the Leaderboards, ranked against others of their size."
+              action={
+                <Link href="/leaderboards" className={buttonClass.secondary}>
+                  Leaderboards
+                </Link>
+              }
+            />
+          ) : top.length === 0 ? (
             <EmptyState
               title="No creators yet"
               body="Look someone up above, or paste a whole list of handles on the Add creators page. Everyone you look up is saved."
