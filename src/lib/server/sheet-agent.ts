@@ -112,7 +112,7 @@ export async function confirmLayout(db: SupabaseClient, projectId: string, layou
   const state = withLog({ ...(p.sheet_state ?? {}), layout, proposed: null }, `Layout confirmed for "${layout.tab}".`, now);
   await saveState(db, projectId, state);
   // Rows the sheet's script already sent: add their links now; numbers are written on its next run.
-  if (p.sheet_rows?.length && state.lastRowsTab === layout.tab) return (await applyRows(db, p, state, layout, p.sheet_rows, false, now)).result;
+  if (p.sheet_rows?.length && state.lastRowsTab === layout.tab) return (await applyRows(db, p, state, layout, p.sheet_rows, false, now, true)).result;
   return null;
 }
 
@@ -192,7 +192,7 @@ export async function learnAlias(db: SupabaseClient, projectId: string, label: s
   await saveState(db, projectId, { ...state, aliases });
 }
 
-export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: Fetcher = fetch, now = Date.now()): Promise<SheetSyncResult> {
+export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: Fetcher = fetch, now = Date.now(), manual = false): Promise<SheetSyncResult> {
   const p = await load(db, projectId);
   const id = p.sheet_url ? spreadsheetId(p.sheet_url) : null;
   if (!id) return empty("Add the project's Google Sheet link first (Edit project).");
@@ -204,7 +204,7 @@ export async function syncSheet(db: SupabaseClient, projectId: string, fetcher: 
     await saveState(db, projectId, withLog(state, `The tab "${layout.tab}" is gone. Confirm the layout again.`, now));
     return empty(`The tab "${layout.tab}" isn't in the sheet any more. Confirm the layout again.`, true);
   }
-  const { cells, result } = await applyRows(db, p, state, layout, tab.rows, true, now);
+  const { cells, result } = await applyRows(db, p, state, layout, tab.rows, true, now, manual);
   await writeCells(id, layout.tab, cells, fetcher);
   return result;
 }
@@ -223,6 +223,7 @@ async function applyRows(
   sheetRows: string[][],
   write: boolean,
   now: number,
+  manual = false,
 ): Promise<{ cells: { a1: string; value: string }[]; result: SheetSyncResult }> {
   const today = todayLagos(now);
   const rows = readRows(sheetRows, layout);
@@ -247,7 +248,8 @@ async function applyRows(
   // Not booked yet? Work out who posted it (database first, then their platform) and book them.
   const postByKey = new Map(p.project_posts.map((x) => [x.url_key, x]));
   // Links already waiting for a creator are tried again, except ones that can't work until someone changes the sheet.
-  const dead = /^(Couldn't find|Found @.* isn't among|".*" isn't a handle|The sheet has no handle|Couldn't tell|YouTube didn't say)/;
+  // (Rows with no usable handle are cheap to retry, a database check only, so they're always retried.)
+  const dead = /^(Couldn't find|Found @.* isn't among|Couldn't tell|YouTube didn't say)/;
   const waitingOnes = rows.filter((r) => {
     const post = postByKey.get(r.urlKey);
     if (!post || post.creator_id !== null) return false;
@@ -259,7 +261,7 @@ async function applyRows(
   let found = 0;
   if (toIdentify.length) {
     const settings = await loadSettings(db);
-    const budget = defaultBudget();
+    const budget = defaultBudget(manual);
     for (const r of toIdentify) {
       const id = await identifyCreator(db, r, settings, budget);
       identifyNotes.set(r.urlKey, id.note);

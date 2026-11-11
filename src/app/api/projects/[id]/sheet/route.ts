@@ -48,7 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const fromScript = await confirmLayout(db, id, b.layout);
       if (fromScript) return Response.json(fromScript);
       // Connected by sharing with the service account: read the sheet now.
-      if (serviceAccountEmail()) return Response.json(await syncSheet(db, id));
+      if (serviceAccountEmail()) return Response.json(await syncSheet(db, id, fetch, Date.now(), true));
       return Response.json({ message: "Layout saved. Links come in on the sheet's next sync (Vernacular → Sync now in the sheet)." });
     }
     if (b.action === "hook") return Response.json({ token: await createHookToken(db, id), message: "New sheet script made. Paste it into the sheet." });
@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await learnAlias(db, id, b.label, b.creatorId);
       return Response.json({ ok: true });
     }
-    return Response.json(await syncSheet(db, id));
+    return Response.json(await syncSheet(db, id, fetch, Date.now(), true));
   } catch (e) {
     return errorResponse(e);
   }

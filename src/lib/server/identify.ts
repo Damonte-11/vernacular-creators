@@ -16,6 +16,7 @@ import type { Creator, Platform, Settings } from "../types";
 import { LookupError } from "./errors";
 import type { Fetcher } from "./fetched";
 import { assertTikTokAllowance, fetchFromPlatform } from "./lookup-service";
+import { CREATOR_SELECT, creatorFromRow, type CreatorRow } from "../supabase/mappers";
 import { findCreator, saveFetchedCreator } from "./repository";
 import { youtubeKeyFromEnv } from "./youtube";
 
@@ -27,8 +28,11 @@ export interface LookupBudget {
   deadline: number;
 }
 
-export function defaultBudget(): LookupBudget {
-  return { instagram: 10, tiktok: 1, youtube: 20, deadline: Date.now() + 45_000 };
+/** Hourly runs stay small; a "Sync now" someone clicked can do more (it has up to 5 minutes). */
+export function defaultBudget(manual = false): LookupBudget {
+  return manual
+    ? { instagram: 30, tiktok: 3, youtube: 50, deadline: Date.now() + 200_000 }
+    : { instagram: 10, tiktok: 1, youtube: 20, deadline: Date.now() + 45_000 };
 }
 
 export interface Identified {
@@ -41,15 +45,38 @@ export interface Identified {
 
 const USERNAME = /^[A-Za-z0-9._]{2,30}$/;
 
-/** A handle as typed in a sheet ("@Kemi.Cooks ", "kemi.cooks") when it could be a real username. */
-export function cleanHandle(s: string): string | null {
-  const h = s.trim().replace(/^@/, "").replace(/\s+/g, "");
-  return USERNAME.test(h) ? h : null;
+/**
+ * A handle as people write it in a sheet: "@Kemi.Cooks ", "kemi.cooks",
+ * a profile link (instagram.com/kemi.cooks, tiktok.com/@kemi.cooks), or
+ * several platforms in one cell ("IG: @kemi / TT: @kemi.cooks"), in which case
+ * the one for this platform is used.
+ */
+export function cleanHandle(s: string, platform: Platform | null = null): string | null {
+  const text = s.trim();
+  if (!text) return null;
+  // A profile link.
+  const link =
+    text.match(/instagram\.com\/([A-Za-z0-9._]{2,30})(?:[/?#]|$)/i)?.[1] ??
+    text.match(/tiktok\.com\/@([A-Za-z0-9._]{2,30})/i)?.[1] ??
+    text.match(/youtube\.com\/@([A-Za-z0-9._-]{2,30})/i)?.[1];
+  if (link && !["p", "reel", "reels", "tv", "stories", "explore"].includes(link.toLowerCase())) return link;
+  // Several platforms in one cell: take the part labelled for this one.
+  if (platform) {
+    const label = { instagram: "(?:ig|insta(?:gram)?)", tiktok: "(?:tt|tik\\s*tok)", youtube: "(?:yt|you\\s*tube)" }[platform];
+    const m = text.match(new RegExp(`\\b${label}\\s*[:\\-]?\\s*@?([A-Za-z0-9._]{2,30})`, "i"));
+    if (m) return m[1];
+  }
+  // Otherwise the first thing that looks like a username, preferring one written with @.
+  const at = text.match(/@([A-Za-z0-9._]{2,30})/)?.[1];
+  if (at) return at.replace(/\.+$/, "");
+  // Words with spaces are a name, not a handle.
+  if (/\s/.test(text)) return null;
+  return USERNAME.test(text) ? text : null;
 }
 
 export async function identifyCreator(
   db: SupabaseClient,
-  row: { url: string; platform: Platform | null; handle: string },
+  row: { url: string; platform: Platform | null; handle: string; name?: string },
   settings: Settings,
   budget: LookupBudget,
   fetcher: Fetcher = fetch,
@@ -70,8 +97,13 @@ export async function identifyCreator(
   }
 
   const fromLink = handleInUrl(row.url);
-  const fromSheet = cleanHandle(row.handle);
+  const fromSheet = cleanHandle(row.handle, platform);
   const handle = fromLink ?? fromSheet;
+  // No handle anywhere: a full name that matches exactly one saved creator on this platform is enough.
+  if (!handle && row.name && /\s/.test(row.name.trim())) {
+    const byName = await findByExactName(db, platform, row.name);
+    if (byName) return { creator: byName, note: "Found in the database by the full name in the sheet." };
+  }
   if (!handle)
     return {
       creator: null,
@@ -141,6 +173,29 @@ function lookupProblem(e: unknown, handle: string, platform: string): string {
     return e.message;
   }
   return `The ${platform} lookup failed; trying again next sync.`;
+}
+
+/** The one saved creator on this platform whose name is exactly this (ignoring case and punctuation), if only one is. */
+async function findByExactName(db: SupabaseClient, platform: Platform, name: string): Promise<Creator | null> {
+  const words = name
+    .trim()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < 2) return null;
+  const { data, error } = await db
+    .from("creators")
+    .select("id")
+    .eq("platform", platform)
+    .ilike("name", `%${words.join("%")}%`)
+    .limit(5);
+  if (error || !data) return null;
+  const squash = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const ids = (data as { id: string }[]).map((r) => r.id);
+  if (ids.length === 0) return null;
+  const { data: full } = await db.from("creators").select(CREATOR_SELECT).in("id", ids);
+  const exact = ((full ?? []) as CreatorRow[]).map(creatorFromRow).filter((c) => squash(c.name) === squash(name));
+  return exact.length === 1 ? exact[0] : null;
 }
 
 async function youtubeChannelOf(videoId: string, fetcher: Fetcher): Promise<string | null> {

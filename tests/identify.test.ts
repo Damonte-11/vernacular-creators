@@ -62,3 +62,18 @@ describe("finding who posted a link", () => {
     expect(fetchFromPlatform).not.toHaveBeenCalled();
   });
 });
+
+describe("reading handles the way people write them", () => {
+  it("handles @, spaces, profile links and several platforms in one cell", async () => {
+    const { cleanHandle } = await import("@/lib/server/identify");
+    expect(cleanHandle(" @Kemi.Cooks ")).toBe("Kemi.Cooks");
+    expect(cleanHandle("kemi_cooks")).toBe("kemi_cooks");
+    expect(cleanHandle("https://www.instagram.com/tolukitchen/?hl=en")).toBe("tolukitchen");
+    expect(cleanHandle("https://www.tiktok.com/@kemi.cooks")).toBe("kemi.cooks");
+    expect(cleanHandle("IG: @tolu_k / TT: @tolu.tt", "tiktok")).toBe("tolu.tt");
+    expect(cleanHandle("IG: @tolu_k / TT: @tolu.tt", "instagram")).toBe("tolu_k");
+    expect(cleanHandle("Big Tolu (@tolu_k)", "instagram")).toBe("tolu_k");
+    expect(cleanHandle("Tolu Bankole")).toBeNull();
+    expect(cleanHandle("https://www.instagram.com/reel/C1/")).toBeNull();
+  });
+});
