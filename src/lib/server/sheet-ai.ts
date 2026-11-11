@@ -1,13 +1,15 @@
 import "server-only";
 /**
- * The AI half of the sheet agent (Claude). Used only where plain rules aren't
+ * The AI half of the sheet agent: Gemini (free tier) when GEMINI_API_KEY is
+ * set, otherwise Claude when ANTHROPIC_API_KEY is set. Used only where plain rules aren't
  * enough: reading an unfamiliar sheet layout once, and matching rows whose
  * handle or name doesn't line up with a booked creator.
- * Needs ANTHROPIC_API_KEY; without it the agent falls back to plain rules.
+ * With neither key the agent falls back to plain rules.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
+import { askGemini, geminiKey, geminiModel, type GeminiSchema } from "./gemini";
 import { COLUMN_ROLES, guessLayout, type SheetLayout, type SheetRow } from "../sheet-sync";
 import type { Creator } from "../types";
 
@@ -16,7 +18,14 @@ const MODEL = "claude-opus-5-5";
 const MATCH_BATCH = 60;
 
 export function aiAvailable(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return !!geminiKey() || !!process.env.ANTHROPIC_API_KEY;
+}
+
+/** Which AI the agent uses, in words for the Sheet tab. */
+export function aiName(): string | null {
+  if (geminiKey()) return `Google Gemini (${geminiModel()})`;
+  if (process.env.ANTHROPIC_API_KEY) return "Claude";
+  return null;
 }
 
 let client: Anthropic | null = null;
@@ -32,7 +41,9 @@ const SYSTEM = [
 ].join(" ");
 
 /** Ask Claude for a structured answer; null when it can't help (refusal, bad output, API trouble). */
-async function ask<T extends z.ZodType>(schema: T, prompt: string): Promise<z.infer<T> | null> {
+async function ask<T extends z.ZodType>(schema: T, prompt: string, geminiSchema: GeminiSchema): Promise<z.infer<T> | null> {
+  if (geminiKey()) return askGemini(SYSTEM, prompt, geminiSchema, schema);
+  if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
     const response = await anthropic().beta.messages.parse({
       model: MODEL,
@@ -51,6 +62,32 @@ async function ask<T extends z.ZodType>(schema: T, prompt: string): Promise<z.in
     return null;
   }
 }
+
+const int = (nullable = false): GeminiSchema => ({ type: "INTEGER", nullable });
+const LAYOUT_SCHEMA: GeminiSchema = {
+  type: "OBJECT",
+  properties: { headerRow: int(), link: int(true), handle: int(true), name: int(true), platform: int(true), date: int(true) },
+  required: ["headerRow", "link", "handle", "name", "platform", "date"],
+};
+const MATCH_SCHEMA: GeminiSchema = {
+  type: "OBJECT",
+  properties: {
+    matches: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          index: int(),
+          creatorId: { type: "STRING", nullable: true },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+          reason: { type: "STRING" },
+        },
+        required: ["index", "creatorId", "confidence", "reason"],
+      },
+    },
+  },
+  required: ["matches"],
+};
 
 const LayoutAnswer = z.object({
   headerRow: z.number().int(),
@@ -76,6 +113,7 @@ export async function proposeLayout(tab: string, rows: string[][]): Promise<{ la
     `Here are the first rows of a tab called "${tab}" from a campaign tracking sheet. Row and column numbers start at 0.\n\n${JSON.stringify(sample)}\n\n` +
       `Say which row holds the column headings (headerRow), and for each of these roles which column holds it, or null if the sheet has no such column:\n${roles}\n` +
       `The link column is the one holding links to the creators' Instagram, TikTok or YouTube posts.`,
+    LAYOUT_SCHEMA,
   );
   if (!answer) return { layout: fallback, byAI: false };
   const width = Math.max(1, ...rows.map((r) => r.length));
@@ -132,6 +170,7 @@ export async function matchRowsWithAI(rows: SheetRow[], booked: Creator[]): Prom
         `For each row, say which booked creator posted it (creatorId from the list, or null if none fits). Use the handle, the name, the link and the platform; ` +
         `allow for typos, nicknames, missing or extra dots and underscores, and first names only. A creator only posts on their own platform. ` +
         `confidence: "high" only when you are sure; "medium" for a likely guess; "low" when unsure. Give a short reason a person can check, in plain English.`,
+      MATCH_SCHEMA,
     );
     for (const m of answer?.matches ?? []) {
       const row = batch[m.index];

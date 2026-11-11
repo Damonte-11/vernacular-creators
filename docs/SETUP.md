@@ -250,7 +250,7 @@ Each project can be connected to the Google Sheet the team logs links in. Every 
 
 The sheet has to reach the live address (vernacular-creators.vercel.app). Preview deployments are behind Vercel's login, so the script can't reach them.
 
-**Optional: AI for messy rows.** Add **`ANTHROPIC_API_KEY`** in Vercel (console.anthropic.com → API keys; pay-as-you-go, set a spend limit under Limits).
+**Optional: AI for messy rows (free with Gemini).** Go to aistudio.google.com, sign in, click **Get API key → Create API key**, and add it in Vercel as **`GEMINI_API_KEY`** (Production and Preview, then redeploy). The free tier needs no card; Google may use free-tier requests to improve its products, so the app only sends it sheet rows and creator names and handles, never briefs or contracts. The model defaults to `gemini-2.5-flash`; if Google renames or retires it, set **`GEMINI_MODEL`** to a current model name. If both keys are set, Gemini is used. Claude instead: add **`ANTHROPIC_API_KEY`** (console.anthropic.com, pay-as-you-go) and no Gemini key.
 
 **Optional alternative to the script: a Google service account.** Only if your Google account allows service account keys (many don't). Add **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the JSON key file's contents) and share each sheet with the service account's email as Editor.
 

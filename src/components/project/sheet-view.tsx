@@ -15,7 +15,7 @@ import { buttonClass, Card, cx, inputClass, labelClass, SectionHeader } from "..
  * column is which once, then the agent keeps the project and the sheet in step.
  */
 export function SheetView({ p }: { p: Project }) {
-  const [info, setInfo] = useState<{ serviceEmail: string | null; ai: boolean } | null>(null);
+  const [info, setInfo] = useState<{ serviceEmail: string | null; ai: boolean; aiName?: string | null; aiProblem?: string | null } | null>(null);
   const [url, setUrl] = useState(p.sheetUrl ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function SheetView({ p }: { p: Project }) {
     if (!IS_LIVE) return setInfo({ serviceEmail: null, ai: false });
     fetch(`/api/projects/${p.id}/sheet`)
       .then((r) => r.json())
-      .then((b) => setInfo({ serviceEmail: b.serviceEmail ?? null, ai: !!b.ai }))
+      .then((b) => setInfo({ serviceEmail: b.serviceEmail ?? null, ai: !!b.ai, aiName: b.aiName ?? null, aiProblem: b.aiProblem ?? null }))
       .catch(() => setInfo({ serviceEmail: null, ai: false }));
   }, [p.id]);
 
@@ -389,8 +389,9 @@ export function SheetView({ p }: { p: Project }) {
           <li className="flex gap-2">
             <Icon name="info" size={14} className="mt-0.5 shrink-0 text-muted" />
             {info?.ai || !IS_LIVE
-              ? "Messy rows are matched by AI. Anything it isn't sure of shows in Needs attention as a guess to confirm."
-              : "Messy rows show in Needs attention for you to match (AI matching switches on with ANTHROPIC_API_KEY)."}
+              ? `Messy rows are matched by AI${info?.aiName ? ` (${info.aiName})` : ""}. Anything it isn't sure of shows in Needs attention as a guess to confirm.`
+              : "Messy rows show in Needs attention for you to match. AI matching switches on with a free GEMINI_API_KEY in Vercel."}
+            {info?.aiProblem && <span className="mt-1 block text-xs text-warn">{info.aiProblem}</span>}
           </li>
           <li className="flex gap-2">
             <Icon name="star" size={14} className="mt-0.5 shrink-0 text-accent" /> When you confirm a spelling, it&apos;s remembered for next time.

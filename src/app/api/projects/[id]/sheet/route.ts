@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { errorResponse } from "@/lib/server/lookup-service";
 import { serviceAccountEmail } from "@/lib/server/google";
-import { aiAvailable } from "@/lib/server/sheet-ai";
+import { lastGeminiProblem } from "@/lib/server/gemini";
+import { aiAvailable, aiName } from "@/lib/server/sheet-ai";
 import { confirmLayout, createHookToken, learnAlias, readLayout, syncSheet } from "@/lib/server/sheet-agent";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
@@ -12,7 +13,7 @@ export const maxDuration = 300;
 export async function GET() {
   if (!IS_LIVE) return Response.json({ serviceEmail: null, ai: false, demo: true });
   if (!(await currentUser())) return Response.json({ error: "Please sign in." }, { status: 401 });
-  return Response.json({ serviceEmail: serviceAccountEmail(), ai: aiAvailable() });
+  return Response.json({ serviceEmail: serviceAccountEmail(), ai: aiAvailable(), aiName: aiName(), aiProblem: lastGeminiProblem });
 }
 
 const col = z.number().int().min(0).max(500).nullable();
