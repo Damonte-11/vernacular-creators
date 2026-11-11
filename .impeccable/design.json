@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T00:00:00Z",
+  "title": "Design System: Vernacular Creators",
+  "extensions": {
+    "colorMeta": {
+      "brand": { "role": "primary", "displayName": "Eerie Black", "canonical": "#171715" },
+      "accent": { "role": "accent", "displayName": "Vernacular Orange", "canonical": "#f75115", "tonalRamp": ["#feeee8", "#f75115", "#c64111"] },
+      "rail": { "role": "neutral", "displayName": "Alabaster", "canonical": "#f2eee3", "tonalRamp": ["#ffffff", "#f8f6f1", "#f2eee3", "#e9e5da", "#d6d0c1"] }
+    },
+    "typographyMeta": {
+      "page-title": { "displayName": "Page title", "purpose": "One per page, in PageHeader." },
+      "stat": { "displayName": "Stat value", "purpose": "Numbers in a StatStrip." }
+    },
+    "shadows": [
+      { "name": "nav-active", "value": "0 0 0 1px #e9e5da, 0 1px 2px rgb(23 23 21 / 0.06)", "purpose": "The active item in the side menu." },
+      { "name": "floating", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1)", "purpose": "Menus and the phone drawer only." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Page rise (220ms) and drawer slide (240ms)." },
+      { "name": "control", "value": "150ms", "purpose": "Colour transitions on buttons, inputs, rows." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a view.",
+      "html": "<button class=\"ds-btn\">Add creators</button>",
+      "css": ".ds-btn { height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: #171715; color: #fff; font: 500 13px Outfit, system-ui, sans-serif; } .ds-btn:hover { background: rgb(23 23 21 / 0.85); }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text fields and selects.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search by name or handle\">",
+      "css": ".ds-input { height: 32px; padding: 6px 10px; border: 1px solid #d6d0c1; border-radius: 6px; font: 400 13px Outfit, system-ui, sans-serif; color: #171715; } .ds-input:focus { outline: none; border-color: #f75115; box-shadow: 0 0 0 2px rgb(247 81 21 / 0.2); }"
+    },
+    {
+      "name": "Score badge",
+      "kind": "chip",
+      "description": "Creator Score out of 100, tinted by band.",
+      "html": "<span class=\"ds-score\">88</span>",
+      "css": ".ds-score { display: inline-flex; align-items: center; justify-content: center; height: 24px; min-width: 36px; padding: 0 6px; border-radius: 5px; background: #d3fdd9; color: #068116; font: 600 13px Outfit, system-ui, sans-serif; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The data is the loudest thing on the page.",
+    "overview": "A compact, data-first working tool in the family of Modash, HypeAuditor and Linear, wearing the Vernacular brand: Alabaster side menu, Eerie Black actions, Orange only on what is active or measured.",
+    "keyCharacteristics": ["White pages, Alabaster menu", "Flat hairline panels, no shadows", "32px controls, 13-14px type", "Underlined tabs", "Status colour always with a word"],
+    "rules": [
+      { "name": "Orange is a pointer, not a paint", "body": "It marks what is active or measured; never large fills or more than one button.", "section": "colors" },
+      { "name": "Weight before size", "body": "Rank is carried by weight and colour first; nothing is larger than 24px except the sign-in headline.", "section": "typography" }
+    ],
+    "dos": ["Do put numbers in tables and strips", "Do write status in words next to its colour", "Do keep one primary button per view"],
+    "donts": ["Don't add shadows, gradients or pills", "Don't put Alabaster behind content", "Don't show team-only data on client views"]
+  }
+}

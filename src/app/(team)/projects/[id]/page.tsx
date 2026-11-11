@@ -56,9 +56,9 @@ export default function ProjectPage() {
       <Link href="/projects" className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
         <Icon name="back" size={14} /> Projects
       </Link>
-      <div className="mb-6 flex flex-col gap-1">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">{p.name}</h1>
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-ink-2">
+      <div className="mb-5 flex flex-col gap-1 border-b border-line pb-4">
+        <h1 className="text-xl font-semibold leading-7 tracking-tight">{p.name}</h1>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-2">
           <span>{p.client}</span>
           <span className="text-line-strong" aria-hidden>·</span>
           <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-semibold text-accent-ink">Chorus {p.type}</span>
@@ -74,8 +74,8 @@ export default function ProjectPage() {
       <div className="flex flex-col gap-4">
         <ProjectSummary p={p} />
         {p.today < p.days && <PasteLinks p={p} />}
-        <section aria-label="Creators and posts" className="mt-4">
-          <h2 className="mb-3 text-base font-semibold">{layout === "posts" ? "Posts" : "Creators"}</h2>
+        <section aria-label="Creators and posts" className="mt-2">
+          <h2 className="mb-3 text-sm font-semibold">{layout === "posts" ? "Posts" : "Creators"}</h2>
           {layout === "lanes" && <LanesView p={p} />}
           {layout === "calendar" && <CalendarView p={p} />}
           {layout === "posts" && <PostsView p={p} />}

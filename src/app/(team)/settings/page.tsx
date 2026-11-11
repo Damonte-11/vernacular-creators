@@ -21,10 +21,25 @@ export default function SettingsPage() {
         subtitle={IS_LIVE ? "Shared by the whole team. Changes apply straight away to every score." : "Changes apply straight away to every score on the site."}
       />
 
-      <Card className="mb-6 p-5 sm:p-6">
+      <div className="flex items-start gap-8">
+        <nav className="sticky top-6 hidden w-44 shrink-0 flex-col gap-0.5 xl:flex" aria-label="Settings sections">
+          {[
+            ["score-weights", "Creator Score weights"],
+            ["data", "Data"],
+            ["discovery", "Automatic discovery"],
+            ["benchmarks", "Benchmarks"],
+          ].map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">
+              {label}
+            </a>
+          ))}
+        </nav>
+        <div className="min-w-0 flex-1">
+
+      <Card id="score-weights" className="mb-5 scroll-mt-6 p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold">Creator Score weights</h2>
+            <h2 className="text-sm font-semibold">Creator Score weights</h2>
             <p className="mt-0.5 max-w-2xl text-sm text-muted">
               How much each factor counts. For a brand that cares most about views, turn up &quot;Views&quot;. Weights are re-balanced automatically, so they
               don&apos;t need to add up to 100.
@@ -65,8 +80,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="mb-6 p-5 sm:p-6">
-        <h2 className="mb-4 text-base font-semibold">Data</h2>
+      <Card id="data" className="mb-5 scroll-mt-6 p-4 sm:p-5">
+        <h2 className="mb-4 text-sm font-semibold">Data</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberSetting
             label="Recent posts to use"
@@ -126,10 +141,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="mb-6 scroll-mt-6 p-5 sm:p-6">
-        <div id="discovery" className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <Card id="discovery" className="mb-5 scroll-mt-6 p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold">Automatic discovery</h2>
+            <h2 className="text-sm font-semibold">Automatic discovery</h2>
             <p className="mt-0.5 max-w-2xl text-sm text-muted">
               Every night the app looks at accounts your saved creators tag, and YouTube channels for the niches and cities below. Clear matches are added;
               borderline ones go to Discovered → Worth a look.
@@ -200,8 +215,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="mb-6 p-5 sm:p-6">
-        <h2 className="text-base font-semibold">Benchmarks and thresholds</h2>
+      <Card id="benchmarks" className="mb-5 scroll-mt-6 p-4 sm:p-5">
+        <h2 className="text-sm font-semibold">Benchmarks and thresholds</h2>
         <p className="mb-4 text-sm text-ink-2">
           These are kept in the <code className="rounded bg-canvas px-1">config</code> folder so they&apos;re easy to adjust. Tell me (or a developer) what to
           change. Each size&apos;s numbers apply at its typical follower count and blend smoothly in between, so there&apos;s no sudden jump between sizes.
@@ -286,8 +301,8 @@ export default function SettingsPage() {
         </ul>
       </Card>
 
-      {!IS_LIVE && <Card className="p-5 sm:p-6">
-        <h2 className="text-base font-semibold">Demo data</h2>
+      {!IS_LIVE && <Card className="p-4 sm:p-5">
+        <h2 className="text-sm font-semibold">Demo data</h2>
         <p className="mb-3 text-sm text-ink-2">Clear everything saved in this browser (added creators, notes, shortlists, settings) and start the demo fresh.</p>
         <button
           className={buttonClass.danger}
@@ -296,6 +311,8 @@ export default function SettingsPage() {
           Reset demo data
         </button>
       </Card>}
+        </div>
+      </div>
     </>
   );
 }

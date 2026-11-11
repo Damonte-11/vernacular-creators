@@ -10,39 +10,52 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 }
 
 /*
- * Design system, in one place:
- * - Radius: 12px for cards and panels, 8px for buttons, inputs and pills inside them.
- * - Text: page titles 28–32px semibold; section titles 16px semibold; labels 13px medium, sentence case.
+ * Design system, in one place (the full write-up is in DESIGN.md):
+ * - Ground: white page, Alabaster side menu. Panels are flat with a hairline border, never a shadow.
+ * - Radius: 8px panels, 6px buttons and inputs.
+ * - Text: 14px body. Page titles 20px semibold; section titles 14px semibold; labels 12px medium.
+ * - Controls: 32px tall buttons and inputs, so tables and toolbars stay compact.
  * - Colour: Eerie Black for primary actions, Orange only for highlights (chart bars, focus, active nav),
  *   green / yellow / red only for status, always with a word next to it.
  */
 const BUTTON_BASE =
-  "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-[13px] font-medium transition-colors duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50";
 
 export const buttonClass = {
-  primary: `${BUTTON_BASE} bg-brand px-4 py-2.5 text-brand-ink hover:bg-brand/85`,
-  secondary: `${BUTTON_BASE} border border-line-strong bg-surface px-4 py-2.5 text-ink hover:bg-surface-2`,
-  ghost: `${BUTTON_BASE} px-2.5 py-1.5 text-ink-2 hover:bg-ink/5 hover:text-ink`,
-  danger: `${BUTTON_BASE} border border-bad/30 bg-surface px-4 py-2.5 text-bad hover:bg-bad-soft`,
+  primary: `${BUTTON_BASE} h-8 bg-brand px-3 text-brand-ink hover:bg-brand/85`,
+  secondary: `${BUTTON_BASE} h-8 border border-line-strong bg-surface px-3 text-ink hover:bg-surface-2`,
+  ghost: `${BUTTON_BASE} h-8 px-2 text-ink-2 hover:bg-ink/5 hover:text-ink`,
+  danger: `${BUTTON_BASE} h-8 border border-bad/30 bg-surface px-3 text-bad hover:bg-bad-soft`,
   /** Square icon-only button; always pair with aria-label. */
-  icon: `${BUTTON_BASE} h-9 w-9 text-ink-2 hover:bg-ink/5 hover:text-ink`,
+  icon: `${BUTTON_BASE} h-8 w-8 text-ink-2 hover:bg-ink/5 hover:text-ink`,
 };
 
+/** Underlined tabs: put `tabListClass` on the row and `tabClass(active)` on each button. */
+export const tabListClass = "flex gap-5 overflow-x-auto border-b border-line";
+export function tabClass(active: boolean): string {
+  return cx(
+    "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 pb-2.5 pt-1 text-[13px] font-medium transition-colors duration-150",
+    active ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink",
+  );
+}
+/** The small count that follows a tab's label. */
+export const tabCountClass = "text-xs tabular-nums text-muted";
+
 export const inputClass =
-  "w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted transition-colors hover:border-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:bg-surface-2";
+  "min-h-8 w-full rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-[13px] text-ink placeholder:text-muted transition-colors duration-150 hover:border-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:bg-surface-2";
 
-export const labelClass = "mb-1.5 block text-[13px] font-medium text-ink-2";
+export const labelClass = "mb-1 block text-xs font-medium text-ink-2";
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgb(23_23_21/0.04)]", className)}>{children}</div>;
+export function Card({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
+  return <div id={id} className={cx("rounded-xl border border-line bg-surface", className)}>{children}</div>;
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between lg:mb-8">
+    <div className="mb-5 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">{title}</h1>
-        {subtitle && <p className="mt-1.5 max-w-2xl text-[15px] text-ink-2">{subtitle}</p>}
+        <h1 className="text-xl font-semibold leading-7 tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-0.5 max-w-2xl text-[13px] text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
     </div>
@@ -54,8 +67,8 @@ export function SectionHeader({ title, description, action, className }: { title
   return (
     <div className={cx("flex flex-wrap items-start justify-between gap-x-4 gap-y-2", className)}>
       <div className="min-w-0">
-        <h2 className="text-base font-semibold">{title}</h2>
-        {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
       </div>
       {action}
     </div>
@@ -127,11 +140,11 @@ const TONE_DOT = { good: "bg-good", warn: "bg-warn", bad: "bg-bad", none: "bg-mu
 
 export function ScoreBadge({ score, size = "md", limited }: { score: number | null; size?: "sm" | "md" | "lg"; limited?: boolean }) {
   const tone = scoreTone(score);
-  const dims = { sm: "h-9 w-9 text-sm", md: "h-11 w-11 text-base", lg: "h-20 w-20 text-3xl" }[size];
+  const dims = { sm: "h-6 min-w-9 rounded-md px-1.5 text-[13px]", md: "h-8 min-w-11 rounded-lg px-2 text-[15px]", lg: "h-16 w-16 rounded-xl text-[28px]" }[size];
   return (
     <span className="relative inline-flex shrink-0">
       <span
-        className={cx("inline-flex items-center justify-center rounded-full font-semibold tabular-nums", dims, TONE_CLASSES[tone])}
+        className={cx("inline-flex items-center justify-center font-semibold tabular-nums", dims, TONE_CLASSES[tone])}
         title={score === null ? "Not enough data to score" : `Creator Score ${score} out of 100${limited ? " (limited data: treat with care)" : ""}`}
       >
         {score ?? "–"}
@@ -218,22 +231,36 @@ export function FlagCount({ flags }: { flags: Flag[] }) {
   );
 }
 
+/**
+ * One bordered row of numbers split by hairlines. Put StatTiles inside it.
+ * `cols` is the number of tiles on a wide screen; phones always get two per row.
+ */
+export function StatStrip({ children, cols = 4, className }: { children: ReactNode; cols?: 3 | 4 | 5; className?: string }) {
+  // An odd tile left alone on the last row stretches across, so no empty grey cell shows.
+  const wide = {
+    3: "sm:grid-cols-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2",
+    4: "lg:grid-cols-4 max-lg:[&>*:last-child:nth-child(odd)]:col-span-2",
+    5: "lg:grid-cols-5 max-lg:[&>*:last-child:nth-child(odd)]:col-span-2",
+  }[cols];
+  return <div className={cx("grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line", wide, className)}>{children}</div>;
+}
+
 export function StatTile({ label, value, hint, estimate }: { label: string; value: ReactNode; hint?: ReactNode; estimate?: boolean }) {
   return (
-    <Card className="flex flex-col p-4 sm:p-5">
+    <div className="flex min-w-0 flex-col bg-surface px-4 py-3">
       <div className="flex items-center gap-2">
-        <p className="text-[13px] font-medium text-muted">{label}</p>
+        <p className="truncate text-xs font-medium text-muted">{label}</p>
         {estimate && <EstimateTag />}
       </div>
-      <p className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums sm:text-[28px] sm:leading-9">{value}</p>
-      {hint && <div className="mt-1 text-xs leading-relaxed text-muted">{hint}</div>}
-    </Card>
+      <p className="mt-1 text-xl font-semibold leading-7 tracking-tight tabular-nums">{value}</p>
+      {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
+    </div>
   );
 }
 
 export function EmptyState({ title, body, action }: { title: string; body?: ReactNode; action?: ReactNode }) {
   return (
-    <Card className="flex flex-col items-center gap-2 border-dashed px-6 py-14 text-center shadow-none">
+    <Card className="flex flex-col items-center gap-1.5 border-dashed px-6 py-12 text-center">
       <span className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-muted ring-1 ring-line">
         <Icon name="search" size={18} />
       </span>

@@ -40,22 +40,21 @@ export function LinkedProfiles({ creator, autoFind }: { creator: Creator; autoFi
           </button>
         )}
       </div>
-      <div className="mt-2 hidden items-center gap-3 px-3 text-[11px] font-medium text-muted sm:flex" aria-hidden>
+      <div className="mt-2 hidden items-center gap-2.5 px-2.5 text-[11px] font-medium text-muted sm:flex" aria-hidden>
         <span className="flex-1">Account</span>
-        <span className="w-16 text-right">Followers</span>
-        <span className="w-14 text-right">Eng. rate</span>
+        <span className="w-14 text-right">Followers</span>
+        <span className="w-12 text-right">Eng. rate</span>
         {rows.length > 1 && <span className="w-9" />}
       </div>
-      <ul className="mt-1 space-y-1">
+      <ul className="mt-1 space-y-0.5">
         {rows.map((c) => {
           const current = c.id === creator.id;
           const body = (
             <>
               <Icon name={c.platform} size={16} className="shrink-0 text-ink-2" />
-              <Avatar name={c.name} photoUrl={c.photoUrl} size={28} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">@{c.handle}</span>
-              <span className="shrink-0 text-right text-sm font-semibold tabular-nums sm:w-16">{formatNumber(c.followers)}</span>
-              <span className="hidden w-14 shrink-0 text-right text-sm tabular-nums text-ink-2 sm:block" title="Engagement rate by followers">
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium" title={`@${c.handle}`}>@{c.handle}</span>
+              <span className="shrink-0 text-right text-[13px] font-medium tabular-nums sm:w-14">{formatNumber(c.followers)}</span>
+              <span className="hidden w-12 shrink-0 text-right text-[13px] tabular-nums text-ink-2 sm:block" title="Engagement rate by followers">
                 {formatPercent(er.get(c.id) ?? null)}
               </span>
             </>
@@ -63,11 +62,11 @@ export function LinkedProfiles({ creator, autoFind }: { creator: Creator; autoFi
           return (
             <li key={c.id} className="flex items-center gap-1">
               {current ? (
-                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-surface-2 px-3 py-2 ring-1 ring-line" aria-current="page">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-surface-2 px-2.5 py-1.5 ring-1 ring-line" aria-current="page">
                   {body}
                 </div>
               ) : (
-                <CreatorLink id={c.id} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-2">
+                <CreatorLink id={c.id} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-surface-2">
                   {body}
                 </CreatorLink>
               )}

@@ -23,7 +23,9 @@ import {
   FoundBadge,
   PlatformBadge,
   SectionHeader,
-  StatTile,
+  StatStrip, StatTile,
+  tabClass,
+  tabListClass,
   TrendLine,
   VerifiedBadge,
 } from "@/components/ui";
@@ -66,6 +68,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
   const bandName = sizeBandLabel(m.band);
   // Just looked up (?discover=1): look for their other platforms straight away.
   const [autoFind, setAutoFind] = useState(false);
+  const [tab, setTab] = useState<Tab>("overview");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("discover") === "1") {
@@ -75,187 +78,216 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
     }
   }, []);
 
+  const posts = [...c.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt));
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "posts", label: "Posts", count: posts.length },
+    { key: "team", label: "Team notes & history" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <Link href="/creators" className={cx(buttonClass.ghost, "-ml-2.5")}>
-        <Icon name="back" size={16} /> All creators
+    <div>
+      <Link href="/creators" className="mb-3 inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
+        <Icon name="back" size={14} /> All creators
       </Link>
 
       {/* Header */}
-      <Card className="p-5 sm:p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-start">
-          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-5">
-            <Avatar name={c.name} photoUrl={c.photoUrl} size={64} />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{c.name}</h1>
-                <VerifiedBadge verified={c.verified} />
-                <FoundBadge via={c.discoveredVia} />
-                {c.isSample && <span className="rounded-md bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn">Sample</span>}
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-2">
-                <PlatformBadge platform={c.platform} />
-                <span className="font-medium">@{c.handle}</span>
-                <span className="text-muted" aria-hidden>
-                  ·
-                </span>
-                <span className="text-muted">{ACCOUNT_LABEL[c.accountType]}</span>
-              </div>
-              {c.bio && <p className="mt-3 max-w-2xl whitespace-pre-line text-sm text-ink-2">{c.bio}</p>}
-              <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-                <Icon name="info" size={13} className="mt-px shrink-0" />
-                <span>
-                  Updated {timeAgo(c.lastFetchedAt, NOW)}.{" "}
-                  {c.platform === "tiktok"
-                    ? `TikTok isn't refreshed automatically (each refresh uses Apify credit); saved data is reused for ${TIKTOK_LIMITS.refreshDays} days.`
-                    : `Refreshes automatically when older than ${settings.refreshIntervalHours} hours.`}
-                </span>
-              </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 gap-3.5">
+          <Avatar name={c.name} photoUrl={c.photoUrl} size={52} />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold leading-7 tracking-tight">{c.name}</h1>
+              <VerifiedBadge verified={c.verified} />
+              <FoundBadge via={c.discoveredVia} />
+              {c.isSample && <span className="rounded-md bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn">Sample</span>}
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
-            <AddToShortlist creatorId={c.id} />
-            <RefreshButton creatorId={c.id} />
-            {!c.isSample && (
-              <a href={profileLink(c.platform, c.handle, c.platformId)} target="_blank" rel="noreferrer noopener" className={buttonClass.ghost}>
-                Open on {platformName(c.platform)} <span aria-hidden>↗</span>
-              </a>
-            )}
-          </div>
-        </div>
-        <div className="mt-5 max-w-2xl border-t border-line pt-4">
-          <LinkedProfiles creator={c} autoFind={autoFind} />
-        </div>
-      </Card>
-
-      {/* Key numbers */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Followers" value={formatNumber(c.followers)} hint={`${bandName} creator · ${formatNumber(c.mediaCount)} posts`} />
-        <StatTile
-          label="Engagement rate"
-          value={formatPercent(m.engagementRate, 2)}
-          hint={
-            m.engagementRate === null ? (
-              m.likesHidden ? (
-                "Likes are hidden, so we can't work this out."
-              ) : (
-                "Not enough posts yet."
-              )
-            ) : (
-              <span className="block space-y-1">
-                <span className="flex flex-wrap items-center gap-x-1.5">
-                  <EngagementChip label={m.engagementLabel} /> for this size, by followers
-                </span>
-                {m.viewEngagementRate !== null && (
-                  <span className="flex flex-wrap items-center gap-x-1.5">
-                    <span className="font-semibold text-ink">{formatPercent(m.viewEngagementRate)}</span> by views
-                    <EngagementChip label={m.viewEngagementLabel} />
-                  </span>
-                )}
-                {m.lowConfidence && <LowConfidence count={m.typicalPosts.length} />}
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-2">
+              <PlatformBadge platform={c.platform} />
+              <span className="font-medium">@{c.handle}</span>
+              <span className="text-muted" aria-hidden>
+                ·
               </span>
-            )
-          }
-        />
-        <StatTile label="Expected engagements" value={formatRange(m.expectedEngagements)} hint="Likes + comments per post (middle 50% of recent posts)" />
-        <StatTile label="Reach per post" value={formatRange(reach)} estimate hint={reach.method === "views" ? "From public views" : "From size benchmarks"} />
+              <span className="text-muted">{ACCOUNT_LABEL[c.accountType]}</span>
+              <span className="text-muted" aria-hidden>
+                ·
+              </span>
+              <span
+                className="text-muted"
+                title={
+                  c.platform === "tiktok"
+                    ? `TikTok isn't refreshed automatically (each refresh uses Apify credit); saved data is reused for ${TIKTOK_LIMITS.refreshDays} days.`
+                    : `Refreshes automatically when older than ${settings.refreshIntervalHours} hours.`
+                }
+              >
+                Updated {timeAgo(c.lastFetchedAt, NOW)}
+              </span>
+            </div>
+            {c.bio && <p className="mt-2 max-w-2xl whitespace-pre-line text-[13px] text-ink-2">{c.bio}</p>}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {!c.isSample && (
+            <a href={profileLink(c.platform, c.handle, c.platformId)} target="_blank" rel="noreferrer noopener" className={buttonClass.ghost}>
+              Open on {platformName(c.platform)} <span aria-hidden>↗</span>
+            </a>
+          )}
+          <RefreshButton creatorId={c.id} />
+          <AddToShortlist creatorId={c.id} />
+        </div>
       </div>
 
-      {/* Phones: score first, then the detail, then team fields. Desktop: detail on the left, score and team fields on the right. */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
-        <Card className="p-5 sm:p-6 lg:col-start-3 lg:row-start-1 lg:self-start">
-          <ScoreBreakdown score={score} />
-        </Card>
+      {/* Sections */}
+      <div className={cx(tabListClass, "mb-5 mt-4")} role="tablist" aria-label="Profile sections">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            id={`tab-${t.key}`}
+            aria-selected={tab === t.key}
+            aria-controls={`panel-${t.key}`}
+            onClick={() => setTab(t.key)}
+            className={tabClass(tab === t.key)}
+          >
+            {t.label}
+            {t.count !== undefined && <span className="ml-1.5 tabular-nums text-muted">{t.count}</span>}
+          </button>
+        ))}
+      </div>
 
-        <div className="space-y-6 lg:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <Card className="p-5 sm:p-6">
-            <SectionHeader
-              title="Typical post"
-              description={`Average of the latest ${m.typicalPosts.length} normal posts, after dropping the most extreme. Posts newer than ${
-                c.platform === "youtube" ? Math.round(settings.minPostAgeHoursYoutube / 24) : Math.round(settings.minPostAgeHours / 24)
-              } days are left out while their numbers grow.`}
-            />
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-line pt-5">
-              <Avg label="Likes" value={m.likesHidden ? null : m.avgLikes} empty={m.likesHidden ? "Hidden by creator" : "—"} />
-              <Avg label="Comments" value={m.avgComments} />
-              <Avg
-                label="Views"
-                value={m.avgViews}
-                empty={c.platform === "instagram" ? "No recent Reels" : "—"}
-                hint={m.viewPostCount > 0 ? `Middle ${c.platform === "instagram" ? "Reel" : "video"} of the last ${m.viewPostCount}` : undefined}
-                note={
-                  m.viewsAdjustment < 1
-                    ? `${Math.round(m.viewsAdjustment * 100)}% of Instagram's count, which also includes Facebook and paid views (Settings → Instagram views counted).`
-                    : undefined
-                }
-              />
-            </dl>
-            {m.trend && (
-              <p className="mt-4">
-                <TrendLine trend={m.trend} />
-              </p>
-            )}
-            {m.setAside.length > 0 && (
-              <p className="mt-4 rounded-lg bg-surface-2 px-3 py-2.5 text-xs leading-relaxed text-ink-2 ring-1 ring-line">
-                <span className="font-semibold">
-                  {m.setAside.length} {m.setAside.length === 1 ? "post" : "posts"} set aside
-                </span>{" "}
-                and not counted: {summariseSetAside(m.setAside)}. Older posts took their place
-                {m.typicalPosts.length < settings.recentPostCount && ` where possible (only ${m.typicalPosts.length} posts available in the last 6 months)`}.
-                They&apos;re marked in Recent posts below.
-              </p>
-            )}
-          </Card>
-
-          <Card className="p-5 sm:p-6">
-            <SectionHeader
-              title={
-                <span className="flex items-center gap-2">
-                  Estimated reach per post <EstimateTag />
-                </span>
+      {tab === "overview" && (
+        <div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" className="fade-enter space-y-5">
+          <StatStrip>
+            <StatTile label="Followers" value={formatNumber(c.followers)} hint={`${bandName} creator · ${formatNumber(c.mediaCount)} posts`} />
+            <StatTile
+              label="Engagement rate"
+              value={formatPercent(m.engagementRate, 2)}
+              hint={
+                m.engagementRate === null ? (
+                  m.likesHidden ? (
+                    "Likes are hidden, so we can't work this out."
+                  ) : (
+                    "Not enough posts yet."
+                  )
+                ) : (
+                  <span className="block space-y-1">
+                    <span className="flex flex-wrap items-center gap-x-1.5">
+                      <EngagementChip label={m.engagementLabel} /> for this size, by followers
+                    </span>
+                    {m.viewEngagementRate !== null && (
+                      <span className="flex flex-wrap items-center gap-x-1.5">
+                        <span className="font-semibold text-ink">{formatPercent(m.viewEngagementRate)}</span> by views
+                        <EngagementChip label={m.viewEngagementLabel} />
+                      </span>
+                    )}
+                    {m.lowConfidence && <LowConfidence count={m.typicalPosts.length} />}
+                  </span>
+                )
               }
             />
-            <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
-              {formatNumber(reach.low)} – {formatNumber(reach.high)}
-            </p>
-            <p className="mt-2 max-w-2xl text-sm text-ink-2">{reach.note}</p>
-            {c.platform !== "youtube" && reach.method !== "views" && (
-              <p className="mt-2 text-xs text-muted">The range is wider because it isn&apos;t based on this creator&apos;s own view counts.</p>
-            )}
-          </Card>
+            <StatTile label="Expected engagements" value={formatRange(m.expectedEngagements)} hint="Likes + comments per post (middle 50% of recent posts)" />
+            <StatTile label="Reach per post" value={formatRange(reach)} estimate hint={reach.method === "views" ? "From public views" : "From size benchmarks"} />
+          </StatStrip>
 
-          <Card className="p-5 sm:p-6">
-            <SectionHeader title="Engagement across recent posts" className="mb-4" />
-            {m.postsUsed.length > 0 ? (
-              <EngagementChart posts={m.postsUsed} likesHidden={m.likesHidden} />
-            ) : (
-              <p className="text-sm text-muted">No posts to show yet.</p>
-            )}
-          </Card>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-5">
+              <Card className="p-4 sm:p-5">
+                <SectionHeader
+                  title="Typical post"
+                  description={`Average of the latest ${m.typicalPosts.length} normal posts, after dropping the most extreme. Posts newer than ${
+                    c.platform === "youtube" ? Math.round(settings.minPostAgeHoursYoutube / 24) : Math.round(settings.minPostAgeHours / 24)
+                  } days are left out while their numbers grow.`}
+                />
+                <dl className="mt-4 grid grid-cols-3 gap-4 border-t border-line pt-4">
+                  <Avg label="Likes" value={m.likesHidden ? null : m.avgLikes} empty={m.likesHidden ? "Hidden by creator" : "—"} />
+                  <Avg label="Comments" value={m.avgComments} />
+                  <Avg
+                    label="Views"
+                    value={m.avgViews}
+                    empty={c.platform === "instagram" ? "No recent Reels" : "—"}
+                    hint={m.viewPostCount > 0 ? `Middle ${c.platform === "instagram" ? "Reel" : "video"} of the last ${m.viewPostCount}` : undefined}
+                    note={
+                      m.viewsAdjustment < 1
+                        ? `${Math.round(m.viewsAdjustment * 100)}% of Instagram's count, which also includes Facebook and paid views (Settings → Instagram views counted).`
+                        : undefined
+                    }
+                  />
+                </dl>
+                {m.trend && (
+                  <p className="mt-3">
+                    <TrendLine trend={m.trend} />
+                  </p>
+                )}
+                {m.setAside.length > 0 && (
+                  <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-relaxed text-ink-2 ring-1 ring-line">
+                    <span className="font-semibold">
+                      {m.setAside.length} {m.setAside.length === 1 ? "post" : "posts"} set aside
+                    </span>{" "}
+                    and not counted: {summariseSetAside(m.setAside)}. Older posts took their place
+                    {m.typicalPosts.length < settings.recentPostCount && ` where possible (only ${m.typicalPosts.length} posts available in the last 6 months)`}.
+                    They&apos;re marked on the{" "}
+                    <button className="font-medium underline" onClick={() => setTab("posts")}>
+                      Posts tab
+                    </button>
+                    .
+                  </p>
+                )}
+                <div className="mt-4 border-t border-line pt-3.5">
+                  <p className="flex items-center gap-2 text-[13px] font-medium">
+                    How reach of {formatNumber(reach.low)} – {formatNumber(reach.high)} is estimated <EstimateTag />
+                  </p>
+                  <p className="mt-1 max-w-2xl text-[13px] text-ink-2">{reach.note}</p>
+                  {c.platform !== "youtube" && reach.method !== "views" && (
+                    <p className="mt-1 text-xs text-muted">The range is wider because it isn&apos;t based on this creator&apos;s own view counts.</p>
+                  )}
+                </div>
+              </Card>
 
-          <Card className="p-5 sm:p-6">
-            <SectionHeader
-              title={flags.length ? `Warning flags (${flags.length})` : "Warning flags"}
-              description="Public numbers only. Prompts to look closer, not proof of fraud."
-              className="mb-4"
-            />
-            <FlagList flags={flags} />
-          </Card>
+              <Card className="p-4 sm:p-5">
+                <SectionHeader title="Engagement across recent posts" className="mb-3" />
+                {m.postsUsed.length > 0 ? <EngagementChart posts={m.postsUsed} likesHidden={m.likesHidden} /> : <p className="text-[13px] text-muted">No posts to show yet.</p>}
+              </Card>
 
-          <Card className="p-5 sm:p-6">
-            <SectionHeader title="Recent posts" description="Faded posts aren't counted. Exclude a post you know was a paid ad." className="mb-4" />
-            <PostGrid creatorId={c.id} posts={[...c.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt))} metrics={m} />
-          </Card>
+              <Card className="p-4 sm:p-5">
+                <SectionHeader
+                  title={flags.length ? `Warning flags (${flags.length})` : "Warning flags"}
+                  description="Public numbers only. Prompts to look closer, not proof of fraud."
+                  className="mb-3"
+                />
+                <FlagList flags={flags} />
+              </Card>
+            </div>
+
+            <div className="space-y-5 max-lg:row-start-1">
+              <Card className="p-4 sm:p-5">
+                <ScoreBreakdown score={score} />
+              </Card>
+              <Card className="p-4 sm:p-5">
+                <LinkedProfiles creator={c} autoFind={autoFind} />
+              </Card>
+            </div>
+          </div>
         </div>
+      )}
 
-        <div className="space-y-6 lg:col-start-3 lg:row-start-2 lg:self-start">
+      {tab === "posts" && (
+        <div id="panel-posts" role="tabpanel" aria-labelledby="tab-posts" className="fade-enter">
+          <p className="mb-3 text-[13px] text-muted">Faded posts aren&apos;t counted. Exclude a post you know was a paid ad.</p>
+          <PostGrid creatorId={c.id} posts={posts} metrics={m} />
+        </div>
+      )}
+
+      {tab === "team" && (
+        <div id="panel-team" role="tabpanel" aria-labelledby="tab-team" className="fade-enter grid items-start gap-5 lg:grid-cols-2">
           <TeamFields key={c.id} creator={c} />
           <FollowerHistory creator={c} />
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
+type Tab = "overview" | "posts" | "team";
 
 function LowConfidence({ count }: { count: number }) {
   return (
@@ -271,8 +303,8 @@ function LowConfidence({ count }: { count: number }) {
 function Avg({ label, value, empty = "—", hint, note }: { label: string; value: number | null; empty?: string; hint?: string; note?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[13px] font-medium text-muted">{label}</dt>
-      <dd className="mt-1 flex items-center gap-1 text-2xl font-semibold tracking-tight tabular-nums">
+      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dd className="mt-0.5 flex items-center gap-1 text-xl font-semibold tracking-tight tabular-nums">
         {value === null ? <span className="text-sm font-medium text-muted">{empty}</span> : formatNumber(value)}
         {note && value !== null && (
           <span className="cursor-help text-muted" title={note}>
@@ -316,7 +348,7 @@ function PostGrid({ creatorId, posts, metrics: m }: { creatorId: string; posts: 
   if (posts.length === 0) return <p className="text-sm text-muted">No posts saved for this creator yet.</p>;
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
         {shown.map((p) => {
           const reason = p.excluded ? "team" : reasons.get(p.id);
           const counted = typical.has(p.id) || views.has(p.id);
@@ -432,7 +464,7 @@ function TeamFields({ creator: c }: { creator: Creator }) {
   const suggestions = suggestNiches(c.bio).filter((n) => n !== c.niche);
 
   return (
-    <Card className="space-y-4 p-5 sm:p-6">
+    <Card className="space-y-4 p-4 sm:p-5">
       <SectionHeader title="Team details" description="Only the team sees these. Not shown in client reports." />
       <label className="block">
         <span className={labelClass}>Niche</span>
@@ -524,7 +556,7 @@ function TeamFields({ creator: c }: { creator: Creator }) {
 function FollowerHistory({ creator: c }: { creator: Creator }) {
   const snaps = [...c.snapshots].sort((a, b) => b.capturedAt.localeCompare(a.capturedAt));
   return (
-    <Card className="p-5 sm:p-6">
+    <Card className="p-4 sm:p-5">
       <SectionHeader title="Follower history" description="Saved at every refresh, to spot growth and sudden jumps." />
       {snaps.length < 2 && <p className="mt-3 text-sm text-ink-2">Only one count saved so far. Growth will show once there&apos;s more history.</p>}
       <ul className="mt-3 divide-y divide-line text-sm">

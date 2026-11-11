@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
-import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, Loading, PageHeader, StatTile } from "@/components/ui";
+import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, Loading, PageHeader, StatStrip, StatTile, tabClass, tabCountClass } from "@/components/ui";
 import { useAnalyses } from "@/lib/data/creators";
 import { actions, useAppState } from "@/lib/data/store";
 import { businessSignal, mediaSignal, qualityProblem } from "@/lib/discovery-rules";
@@ -198,12 +198,12 @@ export default function DiscoveredPage() {
         </Card>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatStrip className="mb-6">
         <StatTile label="Added this week" value={lists.added.filter(recent).length} hint={`${lists.added.length} in total`} />
         <StatTile label="Worth a look" value={lists.review.length} hint="Ignored on their own after 14 days" />
         <StatTile label="Skipped this week" value={lists.skipped.filter(recent).length} hint="Too small, inactive, a business or not Nigerian" />
         <StatTile label="Last run" value={lastRun ? formatDate(lastRun) : "Not yet"} hint={cfg.enabled ? "Runs every night at 4am Lagos time" : "Switched off in Settings"} />
-      </div>
+      </StatStrip>
 
       <p className="mb-4 text-sm text-ink-2">
         <Icon name="info" size={14} className="mr-1.5 inline align-[-2px] text-muted" />
@@ -214,8 +214,8 @@ export default function DiscoveredPage() {
         </Link>
       </p>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex gap-1 rounded-xl bg-surface p-1 ring-1 ring-line" role="tablist">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-3 gap-y-2 border-b border-line">
+        <div className="flex gap-5" role="tablist" aria-label="Discovery results">
           {(
             [
               ["review", "Worth a look"],
@@ -228,18 +228,15 @@ export default function DiscoveredPage() {
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={cx(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium",
-                tab === id ? "bg-brand text-brand-ink" : "text-ink-2 hover:bg-surface-2",
-              )}
+              className={tabClass(tab === id)}
             >
               {label}
-              <span className={cx("rounded-md px-1.5 text-xs tabular-nums", tab === id ? "bg-white/15" : "bg-surface-2 text-muted")}>{lists[id].length}</span>
+              <span className={tabCountClass}>{lists[id].length}</span>
             </button>
           ))}
         </div>
         {tab === "review" && lists.review.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 pb-2">
             <button className={buttonClass.secondary} onClick={() => act(lists.review.map((c) => c.id), "add")} disabled={busy.size > 0}>
               Add all {lists.review.length}
             </button>

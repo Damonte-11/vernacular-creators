@@ -48,7 +48,7 @@ export default function CampaignResultsPage() {
         title="Campaign results"
         subtitle="Optional. Log what a post really achieved (from the creator's screenshot or report). Reach estimates get more accurate as results build up."
       />
-      <Card className="mb-8 p-5 sm:p-6">
+      <Card className="mb-8 p-4 sm:p-5">
         <SectionHeader title="Log a result" description="Enter whichever numbers the creator shared. At least one is needed." className="mb-5" />
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block sm:col-span-2 lg:col-span-1">

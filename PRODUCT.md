@@ -40,6 +40,8 @@ Vernacular markets through communities, not at people ("Where others buy reach, 
 
 Vernacular brand: Eerie Black, Alabaster and Orange, the Outfit typeface, the official wordmark (from the Vernacular Brand Identity Guidelines in Figma). Brand lines: "We don't market at people. We market through communities." and "Where others buy reach, we build belief."
 
+Standing visual preference (chosen by the team, November 2026): the familiar look of the best tools in this category, done properly. The app should sit alongside Modash, HypeAuditor and Linear (with Stripe and Vercel as the craft bar): compact tables, a slim side menu, filters at the side, clean charts. Expressive or themed directions were offered and declined. DESIGN.md holds the system.
+
 ## Evidence on Hand
 
 - Introduction to Vernacular (team guide, PDF) for services and terms.

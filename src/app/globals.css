@@ -12,11 +12,12 @@
   --color-accent-ink: #c64111; /* Orange 600: orange text on light backgrounds (readable contrast) */
   --color-accent-soft: #feeee8; /* Orange 50: light orange backgrounds */
 
-  --color-surface: #ffffff; /* cards */
-  --color-surface-2: #faf8f3; /* quiet panels inside cards: table headers, notes */
-  --color-canvas: #f2eee3; /* Alabaster: page background */
-  --color-line: #e6e1d4; /* borders */
-  --color-line-strong: #d3ccba; /* input borders, dividers that need to show */
+  --color-surface: #ffffff; /* panels, tables, inputs */
+  --color-surface-2: #f8f6f1; /* quiet areas: table headers, hover rows, notes */
+  --color-canvas: #ffffff; /* page background: white, so data is the loudest thing */
+  --color-rail: #f2eee3; /* Alabaster: the side menu and the sign-in page */
+  --color-line: #e9e5da; /* hairlines between rows and around panels */
+  --color-line-strong: #d6d0c1; /* input borders, dividers that need to show */
   --color-ink: #171715; /* main text */
   --color-ink-2: #45443f; /* secondary text */
   --color-muted: #6c6a62; /* hints, labels */
@@ -33,6 +34,12 @@
   --color-info: #0249b3; /* brand Blue ramp: "Contacted" and other in-progress states */
   --color-info-soft: #e6eefc;
 
+  /* Tighter corners than Tailwind's defaults: 8px panels, 6px controls. */
+  --radius-md: 0.3125rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.625rem;
+
   --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -41,9 +48,66 @@ html {
   font-feature-settings: "tnum" 1;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.45;
+  caret-color: var(--color-accent);
+}
+
+/* Phones zoom the page when a field's text is under 16px, so fields stay 16px there. */
+@media (max-width: 639px) {
+  input,
+  select:not(.keep-size),
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Quiet, quick movement; none for people who ask for less motion. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.page-enter {
+  animation: rise-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.drawer-enter {
+  animation: slide-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-enter {
+  animation: fade-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 ::selection {

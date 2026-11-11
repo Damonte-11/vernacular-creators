@@ -8,7 +8,7 @@ import type { Creator, CreatorAnalysis, ListStatus, Shortlist, ShortlistItem } f
 import { AlsoOn } from "./creator-table";
 import { Icon } from "./icons";
 import { isLimited } from "./score-breakdown";
-import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, inputClass, PlatformBadge, ScoreBadge } from "./ui";
+import { Avatar, buttonClass, Card, CreatorLink, cx, EmptyState, inputClass, PlatformBadge, ScoreBadge, tabClass, tabCountClass, tabListClass } from "./ui";
 
 type Column = "status" | "followers" | "engagement" | "score" | "email" | "rate" | "labels" | "notes";
 const COLUMNS: { id: Column; label: string; align?: "right" | "center" }[] = [
@@ -180,7 +180,7 @@ export function ListTable({ list, analyses, creators }: { list: Shortlist; analy
     <div className="space-y-3">
       {/* Status filter */}
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="inline-flex gap-1 rounded-xl bg-surface p-1 ring-1 ring-line" role="tablist" aria-label="Status">
+        <div className={cx(tabListClass, "min-w-full")} role="tablist" aria-label="Status">
           <StatusTab active={status === ""} onClick={() => setStatus("")} label="All" count={all.length} />
           {LIST_STATUSES.map((s) => (
             <StatusTab key={s.id} active={status === s.id} onClick={() => setStatus(s.id)} label={s.label} count={counts.get(s.id) ?? 0} />
@@ -483,13 +483,10 @@ function StatusTab({ active, onClick, label, count }: { active: boolean; onClick
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={cx(
-        "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-        active ? "bg-brand text-brand-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-      )}
+      className={tabClass(active)}
     >
       {label}
-      <span className={cx("rounded-md px-1.5 text-xs tabular-nums", active ? "bg-white/15" : "bg-surface-2 text-muted")}>{count}</span>
+      <span className={tabCountClass}>{count}</span>
     </button>
   );
 }
@@ -497,12 +494,12 @@ function StatusTab({ active, onClick, label, count }: { active: boolean; onClick
 export function StatusSelect({ value, onChange }: { value: ListStatus; onChange: (s: ListStatus) => void }) {
   const tone = LIST_STATUSES.find((s) => s.id === value)?.tone ?? "neutral";
   return (
-    <span className={cx("relative inline-flex items-center rounded-full ring-1", STATUS_TONE[tone])}>
+    <span className={cx("relative inline-flex items-center rounded-md ring-1", STATUS_TONE[tone])}>
       <span className="pointer-events-none absolute left-2.5 h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as ListStatus)}
-        className="cursor-pointer appearance-none rounded-full bg-transparent py-1 pl-6 pr-6 text-xs font-semibold focus:outline-none"
+        className="keep-size cursor-pointer appearance-none rounded-md bg-transparent py-1 pl-6 pr-6 text-xs font-medium focus:outline-none"
         aria-label="Status"
       >
         {LIST_STATUSES.map((s) => (

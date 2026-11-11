@@ -20,7 +20,7 @@ export default function AddPage() {
   return (
     <>
       <PageHeader title="Add creators" subtitle="Every creator you look up is saved, so the whole team can find them later." />
-      <Card className="mb-6 p-5 sm:p-6">
+      <Card className="mb-6 p-4 sm:p-5">
         <SectionHeader title="One creator" description="Opens their profile as soon as the lookup finishes." className="mb-4" />
         <LookupForm />
       </Card>
@@ -95,7 +95,7 @@ function BulkAdd() {
   const failed = results.filter((r) => r.status === "error");
 
   return (
-    <Card className="p-5 sm:p-6">
+    <Card className="p-4 sm:p-5">
       <SectionHeader
         title="Bulk add"
         description={`Paste handles, one per line or separated by commas. They're looked up one at a time to respect the platforms' limits (up to ${BULK_LIMIT} at once).`}

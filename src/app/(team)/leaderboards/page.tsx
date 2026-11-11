@@ -7,7 +7,7 @@ import { AlsoOn } from "@/components/creator-table";
 import { cityOptions, nicheOptions } from "@/components/filters";
 import { Icon } from "@/components/icons";
 import { isLimited } from "@/components/score-breakdown";
-import { Avatar, Card, CreatorLink, cx, EmptyState, EngagementChip, inputClass, PageHeader, PlatformBadge, ScoreBadge, scoreTone, VerifiedBadge } from "@/components/ui";
+import { Avatar, Card, CreatorLink, cx, EmptyState, EngagementChip, inputClass, PageHeader, PlatformBadge, ScoreBadge, scoreTone, VerifiedBadge, tabClass, tabCountClass, tabListClass } from "@/components/ui";
 import { useAnalyses, useCreators } from "@/lib/data/creators";
 import { applyFilters, EMPTY_FILTERS, sortAnalyses } from "@/lib/filter";
 import { formatNumber, formatPercent } from "@/lib/format";
@@ -43,9 +43,9 @@ export default function LeaderboardsPage() {
     <>
       <PageHeader title="Leaderboards" subtitle="The highest Creator Scores, ranked against creators of the same size." />
 
-      <div className="mb-6 space-y-3">
+      <div className="mb-5 space-y-3">
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className="inline-flex min-w-full gap-1 rounded-xl bg-surface p-1 ring-1 ring-line sm:min-w-0" role="tablist" aria-label="Creator size">
+          <div className={cx(tabListClass, "min-w-full")} role="tablist" aria-label="Creator size">
             {SIZE_BANDS.map((b) => (
               <BandTab key={b.id} active={activeBand === b.id} onClick={() => setBand(b.id)} label={b.label} count={counts.get(b.id) ?? 0} />
             ))}
@@ -53,7 +53,7 @@ export default function LeaderboardsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg bg-surface-2 p-1 ring-1 ring-line" role="radiogroup" aria-label="Platform">
+          <div className="flex rounded-lg bg-surface-2 p-0.5 ring-1 ring-line" role="radiogroup" aria-label="Platform">
             {(["", ...PLATFORMS] as (Platform | "")[]).map((p) => (
               <button
                 key={p || "all"}
@@ -62,7 +62,7 @@ export default function LeaderboardsPage() {
                 aria-checked={platform === p}
                 onClick={() => setPlatform(p)}
                 className={cx(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-colors",
                   platform === p ? "bg-surface text-ink shadow-sm ring-1 ring-line" : "text-ink-2 hover:text-ink",
                 )}
               >
@@ -102,16 +102,16 @@ export default function LeaderboardsPage() {
           </ol>
 
           {rest.length > 0 && (
-            <Card className="mt-6 overflow-hidden">
+            <Card className="mt-4 overflow-hidden">
               <ol className="divide-y divide-line" start={4}>
                 {rest.map((a, i) => (
-                  <li key={a.creator.id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2 sm:gap-4">
-                    <span className="w-6 shrink-0 text-right text-sm font-semibold tabular-nums text-muted">{i + 4}</span>
+                  <li key={a.creator.id} className="flex items-center gap-3 px-4 py-2 text-[13px] transition-colors duration-100 hover:bg-surface-2 sm:gap-4">
+                    <span className="w-6 shrink-0 text-right font-medium tabular-nums text-muted">{i + 4}</span>
                     <CreatorLink id={a.creator.id} className="flex min-w-0 flex-1 items-center gap-3 rounded-md">
-                      <Avatar name={a.creator.name} photoUrl={a.creator.photoUrl} size={36} />
+                      <Avatar name={a.creator.name} photoUrl={a.creator.photoUrl} size={30} />
                       <span className="min-w-0">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold">{a.creator.name}</span>
+                          <span className="truncate font-medium">{a.creator.name}</span>
                           <VerifiedBadge verified={a.creator.verified} />
                         </span>
                         <span className="flex items-center gap-1.5 text-xs text-muted">
@@ -150,19 +150,16 @@ function BandTab({ active, onClick, label, count }: { active: boolean; onClick: 
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={cx(
-        "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
-        active ? "bg-brand text-brand-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-      )}
+      className={tabClass(active)}
     >
       {label}
-      <span className={cx("rounded-md px-1.5 text-xs tabular-nums", active ? "bg-white/15" : "bg-surface-2 text-muted")}>{count}</span>
+      <span className={tabCountClass}>{count}</span>
     </button>
   );
 }
 
 /** Compact select for the filter row (the shared input style is full-width). */
-const SELECT = cx(inputClass.replace("w-full ", ""), "w-auto py-2");
+const SELECT = cx(inputClass.replace("w-full ", ""), "w-auto");
 
 const RANK_STYLE = ["bg-accent text-white", "bg-ink text-white", "bg-ink-2 text-white"];
 
@@ -170,16 +167,16 @@ function PodiumCard({ a, rank, creators }: { a: CreatorAnalysis; rank: number; c
   const c = a.creator;
   const m = a.metrics;
   return (
-    <li className={cx("relative", rank === 1 && "md:-mt-2")}>
-      <Card className={cx("flex h-full flex-col p-5", rank === 1 && "ring-2 ring-accent/60")}>
+    <li className="relative">
+      <Card className={cx("flex h-full flex-col p-4", rank === 1 && "border-accent/70")}>
         <div className="flex items-start justify-between gap-3">
-          <span className={cx("flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold", RANK_STYLE[rank - 1])} aria-label={`Rank ${rank}`}>
+          <span className={cx("flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-semibold", RANK_STYLE[rank - 1])} aria-label={`Rank ${rank}`}>
             {rank}
           </span>
           <AddToShortlist creatorId={c.id} compact />
         </div>
-        <CreatorLink id={c.id} className="group mt-3 flex items-center gap-3 rounded-md">
-          <Avatar name={c.name} photoUrl={c.photoUrl} size={52} />
+        <CreatorLink id={c.id} className="group mt-2.5 flex items-center gap-3 rounded-md">
+          <Avatar name={c.name} photoUrl={c.photoUrl} size={40} />
           <span className="min-w-0">
             <span className="flex items-center gap-2">
               <span className="truncate font-semibold group-hover:underline">{c.name}</span>
@@ -192,7 +189,7 @@ function PodiumCard({ a, rank, creators }: { a: CreatorAnalysis; rank: number; c
             </span>
           </span>
         </CreatorLink>
-        <div className="mt-5 flex items-end justify-between gap-3 border-t border-line pt-4">
+        <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-3">
           <dl className="grid grid-cols-2 gap-x-5 gap-y-1 text-sm">
             <dt className="text-xs text-muted">Followers</dt>
             <dt className="text-xs text-muted">Engagement</dt>
@@ -202,9 +199,9 @@ function PodiumCard({ a, rank, creators }: { a: CreatorAnalysis; rank: number; c
               {m.engagementLabel && <EngagementChip label={m.engagementLabel} />}
             </dd>
           </dl>
-          <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size={rank === 1 ? "lg" : "md"} />
+          <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="md" />
         </div>
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-2.5 text-xs text-muted">
           Strongest: <span className="font-medium text-ink-2">{strongest(a)}</span>
         </p>
       </Card>

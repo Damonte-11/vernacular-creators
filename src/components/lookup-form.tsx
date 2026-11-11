@@ -13,7 +13,7 @@ import { buttonClass, cx, inputClass } from "./ui";
 
 export function PlatformToggle({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
   return (
-    <div className="flex shrink-0 rounded-lg bg-surface-2 p-1 ring-1 ring-line" role="radiogroup" aria-label="Platform">
+    <div className="flex shrink-0 rounded-lg bg-surface-2 p-0.5 ring-1 ring-line" role="radiogroup" aria-label="Platform">
       {PLATFORMS.map((p) => (
         <button
           key={p}
@@ -22,7 +22,7 @@ export function PlatformToggle({ value, onChange }: { value: Platform; onChange:
           aria-checked={value === p}
           onClick={() => onChange(p)}
           className={cx(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:flex-none",
+            "flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-colors max-sm:h-9 sm:flex-none",
             value === p ? "bg-surface text-ink shadow-sm ring-1 ring-line" : "text-ink-2 hover:text-ink",
           )}
         >

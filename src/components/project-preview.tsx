@@ -23,7 +23,7 @@ import { buttonClass, Card, cx, SectionHeader } from "./ui";
 
 export function PreviewBanner({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 rounded-xl border border-dashed border-info/40 bg-info-soft px-4 py-3 text-sm text-info sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 rounded-xl border border-dashed border-info/40 bg-info-soft px-3.5 py-2.5 text-[13px] text-info sm:flex-row sm:items-center sm:justify-between">
       <p className="flex items-start gap-2">
         <Icon name="info" size={16} className="mt-0.5 shrink-0" />
         <span>
@@ -107,17 +107,17 @@ export function ProjectSummary({ p }: { p: SampleProject }) {
   ];
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Card className="p-5 sm:p-6">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <div>
-            <p className={cx("flex items-center gap-2 text-lg font-semibold", TONE_TEXT[v.tone])}>
+            <p className={cx("flex items-center gap-2 text-base font-semibold", TONE_TEXT[v.tone])}>
               <span className={cx("h-2.5 w-2.5 rounded-full", { good: "bg-good", warn: "bg-warn", bad: "bg-bad", none: "bg-muted" }[v.tone])} aria-hidden />
               {v.label}
             </p>
             <p className="mt-0.5 text-sm text-ink-2">{v.line}</p>
           </div>
           <p className="text-sm text-muted">
-            <span className="text-[28px] font-semibold leading-none tracking-tight text-ink tabular-nums">{formatNumber(t.views)}</span> / {formatNumber(p.guarantee)} views
+            <span className="text-2xl font-semibold leading-none tracking-tight text-ink tabular-nums">{formatNumber(t.views)}</span> / {formatNumber(p.guarantee)} views
           </p>
         </div>
         <div className="mt-5">
@@ -127,7 +127,7 @@ export function ProjectSummary({ p }: { p: SampleProject }) {
           {numbers.map((n) => (
             <div key={n.label}>
               <dt className="text-[13px] font-medium text-muted">{n.label}</dt>
-              <dd className="mt-0.5 text-lg font-semibold tabular-nums">{n.value}</dd>
+              <dd className="mt-0.5 text-base font-semibold tabular-nums">{n.value}</dd>
             </div>
           ))}
         </dl>
@@ -310,7 +310,7 @@ export function LanesView({ p }: { p: SampleProject }) {
   return (
     <div>
       {/* Phones: one lane at a time */}
-      <div className="mb-3 flex gap-1 overflow-x-auto rounded-lg bg-surface-2 p-1 ring-1 ring-line md:hidden" role="tablist" aria-label="Creator status">
+      <div className="mb-3 flex gap-1 overflow-x-auto rounded-lg bg-surface-2 p-0.5 ring-1 ring-line md:hidden" role="tablist" aria-label="Creator status">
         {order.map((k) => {
           const s = CREATOR_STATES.find((x) => x.key === k)!;
           return (
@@ -514,7 +514,7 @@ export function PostsView({ p }: { p: SampleProject }) {
             key={f}
             onClick={() => setFilter(f)}
             aria-pressed={filter === f}
-            className={cx("rounded-lg px-3 py-1.5 text-sm font-medium ring-1", filter === f ? "bg-brand text-brand-ink ring-brand" : "bg-surface text-ink-2 ring-line-strong hover:bg-surface-2")}
+            className={cx("h-7 rounded-lg px-2.5 text-[13px] font-medium ring-1 transition-colors", filter === f ? "bg-brand text-brand-ink ring-brand" : "bg-surface text-ink-2 ring-line-strong hover:bg-surface-2")}
           >
             {f === "all" ? `All posts ${posts.all.length}` : `Needs a look ${posts.problems.length}`}
           </button>
@@ -570,7 +570,7 @@ export function ProjectRow({ p }: { p: SampleProject }) {
   const status = p.today === 0 ? "Upcoming" : p.today >= p.days ? "Finished" : `Day ${p.today} of ${p.days}`;
   return (
     <li>
-      <Link href={`/projects/${p.id}`} className="group block rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong hover:bg-surface-2/50 sm:p-5">
+      <Link href={`/projects/${p.id}`} className="group block bg-surface px-4 py-3 transition-colors duration-100 hover:bg-surface-2">
         <div className="grid items-center gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_auto]">
           <div className="min-w-0">
             <p className="truncate font-semibold group-hover:underline">{p.name}</p>

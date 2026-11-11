@@ -15,7 +15,7 @@ export function ScoreBreakdown({ score }: { score: ScoreResult }) {
       <div className="flex items-center gap-4">
         <ScoreBadge score={score.total} size="lg" />
         <div>
-          <h2 className="text-base font-semibold">Creator Score</h2>
+          <h2 className="text-sm font-semibold">Creator Score</h2>
           <p className="mt-0.5 text-xs text-muted">Out of 100. 
 Based on {used.length} of 5 factors, compared with creators of the same size.
           </p>

@@ -17,13 +17,13 @@ export default function ProjectsPage() {
     <>
       <PreviewBanner />
       <PageHeader title="Projects" subtitle="Every Chorus campaign, with its views guarantee. Open one to see who has posted and what to chase." />
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         {groups.map((g) => (
           <section key={g.title} aria-labelledby={`g-${g.title}`}>
-            <h2 id={`g-${g.title}`} className="mb-3 text-base font-semibold">
+            <h2 id={`g-${g.title}`} className="mb-2 text-sm font-semibold">
               {g.title} <span className="font-normal text-muted">{g.items.length}</span>
             </h2>
-            <ul className="flex flex-col gap-2">
+            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
               {g.items.map((p) => (
                 <ProjectRow key={p.id} p={p} />
               ))}

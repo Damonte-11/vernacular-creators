@@ -2,7 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Wordmark } from "@/components/logo";
-import { buttonClass, Card, inputClass, labelClass } from "@/components/ui";
+import { buttonClass, inputClass, labelClass } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { IS_LIVE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 
@@ -69,26 +69,37 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-6">
-        <Wordmark className="h-7 w-auto text-ink" />
-        <h1 className="mt-6 text-xl font-semibold">Sign in to Creators</h1>
+    <div className="grid min-h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      {/* Brand side: Eerie Black with the two lines Vernacular is known by. */}
+      <div className="flex flex-col justify-between gap-10 bg-brand px-6 py-6 text-rail sm:px-10 lg:py-10">
+        <Wordmark className="h-7 w-auto self-start" />
+        <div className="max-lg:hidden">
+          <p className="max-w-md text-[40px] font-semibold leading-[1.08] tracking-tight">
+            We don&apos;t market at people. We market <span className="text-accent">through communities.</span>
+          </p>
+          <p className="mt-5 max-w-sm text-[15px] text-rail/70">Where others buy reach, we build belief. This is where the team finds, vets and ranks the creators who carry it.</p>
+        </div>
+        <p className="text-xs text-rail/60 max-lg:hidden">Vernacular Creators · team access only</p>
+      </div>
+      <div className="flex items-start justify-center px-6 py-10 sm:px-10 lg:items-center">
+       <div className="w-full max-w-sm">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-sm text-ink-2">For the Vernacular team. Ask an admin if you need an account.</p>
         {!IS_LIVE ? (
           <div className="mt-4 rounded-lg bg-warn-soft p-3 text-sm text-warn">
             <p>The app is in demo mode, so no sign-in is needed.</p>
             <p className="mt-3 font-semibold">Setup check (values are hidden):</p>
             <ul className="mt-1 space-y-0.5">
-              <li>{SUPABASE_URL ? "✅" : "❌"} NEXT_PUBLIC_SUPABASE_URL</li>
-              <li>{SUPABASE_PUBLISHABLE_KEY ? "✅" : "❌"} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</li>
+              <li><b>{SUPABASE_URL ? "Set" : "Missing"}:</b> NEXT_PUBLIC_SUPABASE_URL</li>
+              <li><b>{SUPABASE_PUBLISHABLE_KEY ? "Set" : "Missing"}:</b> NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</li>
             </ul>
             <p className="mt-2 text-xs">
-              Both need ✅ for live mode. They must be set for this environment (Production or Preview) before the deployment is built.
+              Both need to be set for live mode. They must be set for this environment (Production or Preview) before the deployment is built.
             </p>
           </div>
         ) : (
           <div className="mt-5 space-y-4">
-            <button type="button" onClick={signInWithGoogle} disabled={googleBusy} className={`${buttonClass.secondary} w-full`}>
+            <button type="button" onClick={signInWithGoogle} disabled={googleBusy} className={`${buttonClass.secondary} h-10 w-full text-sm`}>
               <GoogleLogo /> {googleBusy ? "Opening Google…" : "Sign in with Google"}
             </button>
             <div className="flex items-center gap-3 text-xs text-muted">
@@ -97,12 +108,12 @@ function LoginForm() {
             <form onSubmit={submit} className="space-y-4">
               <label className="block">
                 <span className={labelClass}>Email</span>
-                <input className={inputClass} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input className={`${inputClass} h-10 text-sm`} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
               <label className="block">
                 <span className={labelClass}>Password</span>
                 <input
-                  className={inputClass}
+                  className={`${inputClass} h-10 text-sm`}
                   type="password"
                   autoComplete="current-password"
                   required
@@ -115,13 +126,14 @@ function LoginForm() {
                   {error}
                 </p>
               )}
-              <button className={`${buttonClass.primary} w-full`} disabled={busy}>
+              <button className={`${buttonClass.primary} h-10 w-full text-sm`} disabled={busy}>
                 {busy ? "Signing in…" : "Sign in"}
               </button>
             </form>
           </div>
         )}
-      </Card>
+       </div>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { ListTable } from "@/components/list-table";
 import { QueueStatusCard } from "@/components/queue-status";
 import { PlatformToggle } from "@/components/lookup-form";
 import { SavedMatches } from "@/components/saved-matches";
-import { buttonClass, cx, EmptyState, inputClass, Loading, PageHeader, SectionHeader, StatTile } from "@/components/ui";
+import { buttonClass, cx, EmptyState, inputClass, Loading, PageHeader, SectionHeader, StatStrip, StatTile } from "@/components/ui";
 import { normalizeHandle, useAnalyses, useCreators } from "@/lib/data/creators";
 import { lookupCreator } from "@/lib/data/lookup";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
@@ -105,13 +105,13 @@ export default function ListPage() {
         />
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <StatStrip cols={5} className="mb-5">
         <StatTile label="Creators" value={totals.creators} hint={active ? `${active} active` : undefined} />
         <StatTile label="Combined followers" value={formatNumber(totals.followers)} hint="Added up per account" />
         <StatTile label="Expected engagements" value={formatRange(totals.engagements)} hint="If each creator posts once" />
         <StatTile label="Estimated reach" value={formatRange(totals.reach)} estimate hint="One post each; people may overlap" />
         <StatTile label="Total rate" value={formatNaira(totalRate)} hint={`${list.items.filter((i) => i.rate !== null).length} of ${list.items.length} with a rate`} />
-      </div>
+      </StatStrip>
 
       <QueueStatusCard listId={list.id} hideWhenEmpty className="mb-6" />
 
