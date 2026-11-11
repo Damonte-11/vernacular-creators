@@ -6,7 +6,6 @@ import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
 import { sampleProjects } from "@/sample-data/projects";
 import { searchSaved } from "../people";
-import { dueCheckDay } from "../post-links";
 import { guessLayout, matchRow, readRows, rowLabel, squash } from "../sheet-sync";
 import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
 import type { CampaignResult, Creator, CreatorEdits, Project, ProjectCreator, Settings } from "../types";
@@ -289,8 +288,9 @@ export const demoBackend: Backend = {
       setProject(projectId, (p) => ({
         ...p,
         posts: p.posts.map((x) => {
-          const day = dueCheckDay(x, today, null, Date.now());
-          if (day === null) return x;
+          // "Check now" reads every post, filed under its real age.
+          if (!x.creatorId || !x.postedDate) return x;
+          const day = Math.max(0, Math.round((Date.parse(today) - Date.parse(x.postedDate)) / 86_400_000));
           n++;
           const base = [...x.url].reduce((a, c) => a + c.charCodeAt(0), 0);
           const views = Math.round((8_000 + (base % 40) * 1_500) * (day >= 7 ? 1 : day >= 3 ? 0.84 : 0.62));
@@ -298,7 +298,7 @@ export const demoBackend: Backend = {
           return { ...x, problem: null, checks: [...x.checks.filter((c) => c.day !== day), check] };
         }),
       }));
-      return n ? `Read ${n} ${n === 1 ? "post" : "posts"} (made-up numbers in the demo).` : "Nothing is due a check right now. Posts are read on day 1, 3 and 7.";
+      return n ? `Read ${n} ${n === 1 ? "post" : "posts"} (made-up numbers in the demo).` : "No posts with a creator and a posting date to read yet.";
     },
     updateSettings(patch) {
       set((d) => ({ ...d, settings: { ...d.settings, ...patch } }));

@@ -422,7 +422,7 @@ export const liveBackend: Backend = {
         body.waiting ? `${body.waiting} still waiting.` : "",
         ...(body.notes ?? []),
       ].filter(Boolean);
-      return parts.length ? parts.join(" ") : "Nothing is due a check right now. Posts are read on day 1, 3 and 7.";
+      return parts.length ? parts.join(" ") : "No posts with a creator and a posting date to read yet.";
     },
     async documentLink(doc) {
       if (!doc.filePath) return doc.url || null;

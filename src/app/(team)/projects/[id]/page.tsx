@@ -110,7 +110,7 @@ export default function ProjectPage() {
             <button
               className={buttonClass.secondary}
               disabled={checking}
-              title="Numbers are read automatically every hour: each post on its day 1, 3 and 7"
+              title="Reads the latest numbers of every post now. They're also read automatically on each post's day 1, 3 and 7."
               onClick={async () => {
                 setChecking(true);
                 setCheckNote(null);

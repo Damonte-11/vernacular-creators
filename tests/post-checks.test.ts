@@ -142,3 +142,23 @@ describe("the post-checks job", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Check numbers now", () => {
+  it("reads every post on demand, even ones already read, filed under the post's real age", async () => {
+    process.env.YOUTUBE_API_KEY = "yt-key";
+    const { runPostChecks } = await import("@/lib/server/post-checks");
+    const now = Date.UTC(2026, 10, 20, 12);
+    const rows = [
+      // Day-7 reading already in and tried an hour ago: the scheduled run would skip it.
+      { id: "y1", project_id: "p", url: "https://youtu.be/AAAAAAAAAAA", platform: "youtube", posted_date: "2026-11-10", checks: [{ day: 7, views: 1 }], last_tried_at: new Date(now - 3_600_000).toISOString(), creator_id: "c1", creators: { handle: "a", platform: "youtube" } },
+    ];
+    const { db, updates } = fakeDb(rows);
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ items: [{ id: "AAAAAAAAAAA", snippet: { publishedAt: "2026-11-10T10:00:00Z" }, statistics: { viewCount: "9000", likeCount: "500", commentCount: "40" } }] })));
+    expect((await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never })).checked).toBe(0);
+    const summary = await runPostChecks(db, { deadline: Date.now() + 60_000, now, fetcher: fetcher as never, force: true });
+    expect(summary.checked).toBe(1);
+    const checks = updates.find((u) => u.id === "y1")!.patch.checks as PostCheck[];
+    expect(checks.map((c) => c.day)).toEqual([7, 10]); // the day-7 reading stays, today's is added
+    expect(checks[1].views).toBe(9000);
+  });
+});

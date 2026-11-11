@@ -95,7 +95,7 @@ export function checkLabel(post: ProjectPost, today: string): string {
   const check = latestCheck(post);
   if (post.problem) return "Couldn't read";
   if (!check) return post.postedDate && daysBetween(post.postedDate, today) < 1 ? "Numbers tomorrow" : "No numbers yet";
-  if (check.day >= 7) return "Day 7";
+  if (check.day === 0) return "Today";
   return `Day ${check.day}`;
 }
 

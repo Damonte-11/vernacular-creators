@@ -61,7 +61,7 @@ type Result = { numbers: Omit<PostCheck, "day" | "checkedAt" | "source">; posted
 
 export async function runPostChecks(
   db: SupabaseClient,
-  opts: { projectId?: string; deadline: number; igCalls?: number; now?: number; fetcher?: Fetcher } = { deadline: Date.now() + 120_000 },
+  opts: { projectId?: string; deadline: number; igCalls?: number; now?: number; fetcher?: Fetcher; force?: boolean } = { deadline: Date.now() + 120_000 },
 ): Promise<PostCheckSummary> {
   const now = opts.now ?? Date.now();
   const today = todayLagos(now);
@@ -72,7 +72,7 @@ export async function runPostChecks(
     .from("project_posts")
     .select("id, project_id, url, platform, posted_date, checks, last_tried_at, creator_id, creators!project_posts_creator_id_fkey(handle, platform)")
     .not("creator_id", "is", null)
-    .gte("posted_date", addDaysStr(today, -45))
+    .gte("posted_date", addDaysStr(today, opts.force ? -365 : -45))
     .limit(2000);
   if (opts.projectId) query = query.eq("project_id", opts.projectId);
   const { data, error } = await query;
@@ -80,7 +80,12 @@ export async function runPostChecks(
 
   const due: Due[] = [];
   for (const row of (data ?? []) as unknown as PostRow[]) {
-    const day = dueCheckDay({ creatorId: row.creator_id, postedDate: row.posted_date, checks: row.checks ?? [] }, today, row.last_tried_at, now);
+    // "Check now" from a project reads every post straight away; the scheduled run only reads posts due their day 1, 3 or 7.
+    const day = opts.force
+      ? row.creator_id && row.posted_date
+        ? postAge(row.posted_date, today)
+        : null
+      : dueCheckDay({ creatorId: row.creator_id, postedDate: row.posted_date, checks: row.checks ?? [] }, today, row.last_tried_at, now);
     if (day !== null) due.push({ row, day });
   }
   if (due.length === 0) return summary;
@@ -95,7 +100,9 @@ export async function runPostChecks(
     }
     // A post checked later than planned still counts as the reading for its real age, capped at day 7.
     const posted = r.postedAt ? lagosDate(r.postedAt) : d.row.posted_date!;
-    const day = [7, 3, 1].find((x) => x <= postAge(posted, today)) ?? 1;
+    // Scheduled readings are filed as day 1, 3 or 7; one taken on demand keeps the post's real age.
+    const age = postAge(posted, today);
+    const day = opts.force ? age : ([7, 3, 1].find((x) => x <= age) ?? 1);
     const check: PostCheck = { day, checkedAt: stamp, ...r.numbers, source: "auto" };
     const checks = [...(d.row.checks ?? []).filter((c) => c.day !== day), check];
     summary.checked++;
