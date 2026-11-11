@@ -14,6 +14,9 @@ import type { Creator, Platform, PostCheck, Project, ProjectPost } from "../type
 import { LookupError } from "./errors";
 import type { Fetcher } from "./fetched";
 import { randomBytes } from "crypto";
+import { handleInUrl } from "../projects";
+import { defaultBudget, identifyCreator } from "./identify";
+import { loadSettings } from "./repository";
 import { columnLetter, readSheet, serviceAccountEmail, spreadsheetId, writeCells } from "./google";
 import { matchRowsWithAI, proposeLayout } from "./sheet-ai";
 
@@ -34,6 +37,8 @@ interface Loaded {
     checks: PostCheck[] | null;
     problem: string | null;
     posted_date: string | null;
+    match_note?: string | null;
+    sheet_label?: string | null;
   }[];
 }
 
@@ -61,7 +66,7 @@ const empty = (message: string, needsLayout = false): SheetSyncResult => ({
 });
 
 const LOADED_SELECT =
-  "id, name, sheet_url, sheet_rows, start_date, end_date, sheet_state, project_creators(creator_id, creators(id, name, handle, platform)), project_posts(id, url, url_key, creator_id, checks, problem, posted_date)";
+  "id, name, sheet_url, sheet_rows, start_date, end_date, sheet_state, project_creators(creator_id, creators(id, name, handle, platform)), project_posts(id, url, url_key, creator_id, checks, problem, posted_date, match_note, sheet_label)";
 
 async function load(db: SupabaseClient, projectId: string): Promise<Loaded> {
   const { data, error } = await db.from("projects").select(LOADED_SELECT).eq("id", projectId).single();
@@ -239,8 +244,57 @@ async function applyRows(
       guesses.set(r.urlKey, m.suggestion);
     }
   }
+  // Not booked yet? Work out who posted it (database first, then their platform) and book them.
+  const postByKey = new Map(p.project_posts.map((x) => [x.url_key, x]));
+  // Links already waiting for a creator are tried again, except ones that can't work until someone changes the sheet.
+  const dead = /^(Couldn't find|Found @.* isn't among|".*" isn't a handle|The sheet has no handle|Couldn't tell|YouTube didn't say)/;
+  const waitingOnes = rows.filter((r) => {
+    const post = postByKey.get(r.urlKey);
+    if (!post || post.creator_id !== null) return false;
+    return !(post.match_note && dead.test(post.match_note) && (post.sheet_label ?? "") === rowLabel(r));
+  });
+  // A row that looks like a misspelling of someone already booked stays a guess, unless the link itself names the account.
+  const toIdentify = [...unsure.filter((r) => handleInUrl(r.url) || !guesses.get(r.urlKey)), ...waitingOnes];
+  const identifyNotes = new Map<string, string>();
+  let found = 0;
+  if (toIdentify.length) {
+    const settings = await loadSettings(db);
+    const budget = defaultBudget();
+    for (const r of toIdentify) {
+      const id = await identifyCreator(db, r, settings, budget);
+      identifyNotes.set(r.urlKey, id.note);
+      if (!id.creator) continue;
+      const c = id.creator;
+      if (!project.creators.some((x) => x.creatorId === c.id)) {
+        const { error } = await db
+          .from("project_creators")
+          .upsert({ project_id: p.id, creator_id: c.id, due_date: r.date, posts_agreed: 1 }, { onConflict: "project_id,creator_id", ignoreDuplicates: true });
+        if (error) throw error;
+        project.creators.push({ creatorId: c.id, dueDate: r.date, postsAgreed: 1 });
+        creators.push(c);
+        found++;
+      }
+      const existing = postByKey.get(r.urlKey);
+      if (existing) {
+        await db.from("project_posts").update({ creator_id: c.id, suggested_creator_id: null, match_note: id.note }).eq("id", existing.id);
+      } else sure.set(r.urlKey, { creatorId: c.id, how: id.note });
+    }
+    // Links still waiting: say why, so the team can see what's happening.
+    for (const r of waitingOnes) {
+      const post = postByKey.get(r.urlKey)!;
+      if (!sure.has(r.urlKey) && identifyNotes.get(r.urlKey)) {
+        const { data: now_ } = await db.from("project_posts").select("creator_id").eq("id", post.id).maybeSingle<{ creator_id: string | null }>();
+        if (!now_?.creator_id)
+          await db
+            .from("project_posts")
+            .update({ match_note: identifyNotes.get(r.urlKey) })
+            .eq("id", post.id);
+      }
+    }
+  }
+  const stillUnsure = unsure.filter((r) => !sure.has(r.urlKey));
   const ai = await matchRowsWithAI(
-    unsure.filter((r) => r.handle || r.name || r.url),
+    stillUnsure.filter((r) => r.handle || r.name || r.url),
     creators,
   );
 
@@ -253,12 +307,17 @@ async function applyRows(
     let creatorId: string | null = s?.creatorId ?? null;
     let suggested: string | null = null;
     let note: string | null = null;
+    if (creatorId && s?.how && /database|Looked up/.test(s.how)) note = s.how;
     if (!creatorId && a?.creatorId && a.confidence === "high") {
       creatorId = a.creatorId;
       note = `Matched by the agent: ${a.reason}`;
     } else if (!creatorId) {
       suggested = a?.creatorId ?? guesses.get(r.urlKey) ?? null;
-      note = a ? a.reason : suggested ? "Close spelling of a booked creator's handle." : "No booked creator matches what's written in the sheet.";
+      note = a
+        ? a.reason
+        : suggested
+          ? "Close spelling of a booked creator's handle."
+          : (identifyNotes.get(r.urlKey) ?? "No booked creator matches what's written in the sheet.");
     }
     if (creatorId) matched++;
     else if (suggested) guessed++;
@@ -297,6 +356,7 @@ async function applyRows(
   const parts = [
     insert.length ? `Added ${insert.length} new ${insert.length === 1 ? "link" : "links"}` : "No new links",
     matched ? `${matched} matched` : "",
+    found ? `${found} ${found === 1 ? "creator" : "creators"} found and added to the project` : "",
     guessed ? `${guessed} to confirm` : "",
     unmatched ? `${unmatched} with no creator` : "",
     numberCells ? `wrote ${numberCells} ${numberCells === 1 ? "cell" : "cells"} back` : "",

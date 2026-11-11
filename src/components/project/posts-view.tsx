@@ -197,7 +197,10 @@ function Unmatched({ p, post, onProject, byId }: { p: Project; post: ProjectPost
       {guess && (
         <span className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-warn">Is this {guess.name}?</span>
-          <button className="rounded-md bg-brand px-1.5 py-0.5 text-[11px] font-medium text-brand-ink" onClick={() => actions.updateProjectPost(p.id, post.id, { creatorId: guess.id })}>
+          <button
+            className="rounded-md bg-brand px-1.5 py-0.5 text-[11px] font-medium text-brand-ink"
+            onClick={() => actions.updateProjectPost(p.id, post.id, { creatorId: guess.id })}
+          >
             Yes
           </button>
         </span>
@@ -215,11 +218,8 @@ function Unmatched({ p, post, onProject, byId }: { p: Project; post: ProjectPost
           </option>
         ))}
       </select>
-      {(post.sheetLabel || post.matchNote) && (
-        <span className="max-w-56 text-[11px] text-muted" title={post.matchNote ?? undefined}>
-          {post.sheetLabel ? `Sheet says "${post.sheetLabel}"` : post.matchNote}
-        </span>
-      )}
+      {post.sheetLabel && <span className="max-w-56 text-[11px] text-muted">Sheet says &quot;{post.sheetLabel}&quot;</span>}
+      {post.matchNote && <span className="max-w-56 text-[11px] text-muted">{post.matchNote}</span>}
     </span>
   );
 }
