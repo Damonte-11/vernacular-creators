@@ -1,4 +1,4 @@
-import type { CampaignResult, Creator, CreatorEdits, ListItemFields, PostCheck, Project, ProjectCreator, ProjectDocument, ProjectFields, ProjectPost, Settings, Shortlist } from "../types";
+import type { CampaignResult, Creator, CreatorEdits, PostCheck, Project, ProjectCreator, ProjectDocument, ProjectFields, ProjectPost, Settings } from "../types";
 
 /** A post link being added: everything except what the app fills in. */
 export type NewProjectPost = Pick<ProjectPost, "url" | "platform" | "creatorId" | "postedDate" | "source">;
@@ -11,7 +11,6 @@ export interface AppState {
   error: string | null;
   creators: Creator[];
   settings: Settings;
-  shortlists: Shortlist[];
   campaignResults: CampaignResult[];
   projects: Project[];
 }
@@ -24,17 +23,7 @@ export interface Actions {
   setPostExcluded(creatorId: string, postId: string, excluded: boolean): Promise<void>;
   /** Put a freshly looked-up creator into the list (replacing an older copy). */
   upsertCreator(creator: Creator): void;
-  /** Returns the new shortlist's ID, or "" if it couldn't be saved. */
-  createShortlist(name: string, client: string): Promise<string>;
-  renameShortlist(id: string, name: string, client: string): Promise<void>;
-  deleteShortlist(id: string): Promise<void>;
-  toggleInShortlist(listId: string, creatorId: string): Promise<void>;
-  /** Add creators to a list (or update the fields of ones already on it). */
-  addToList(listId: string, items: { creatorId: string; fields?: ListItemFields }[]): Promise<void>;
-  /** Set status, rate, labels or notes for one or more creators on a list. */
-  updateListItems(listId: string, creatorIds: string[], fields: ListItemFields): Promise<void>;
-  removeFromList(listId: string, creatorIds: string[]): Promise<void>;
-  /** Delete creators from the database (and from every list). */
+  /** Delete creators from the database (and from every project). */
   removeCreators(ids: string[]): Promise<void>;
   logCampaignResult(result: Omit<CampaignResult, "id" | "loggedAt">): Promise<void>;
   deleteCampaignResult(id: string): Promise<void>;

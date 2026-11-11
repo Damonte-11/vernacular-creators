@@ -303,7 +303,7 @@ export default function SettingsPage() {
 
       {!IS_LIVE && <Card className="p-4 sm:p-5">
         <h2 className="text-sm font-semibold">Demo data</h2>
-        <p className="mb-3 text-sm text-ink-2">Clear everything saved in this browser (added creators, notes, shortlists, settings) and start the demo fresh.</p>
+        <p className="mb-3 text-sm text-ink-2">Clear everything saved in this browser (added creators, notes, projects, settings) and start the demo fresh.</p>
         <button
           className={buttonClass.danger}
           onClick={() => window.confirm("Reset all demo data in this browser?") && actions.resetEverything()}

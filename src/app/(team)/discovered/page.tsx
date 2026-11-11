@@ -162,7 +162,7 @@ export default function DiscoveredPage() {
                 {belowBar.length} {belowBar.length === 1 ? "creator" : "creators"} found earlier {belowBar.length === 1 ? "doesn't" : "don't"} meet the quality bar
               </p>
               <p className="mt-0.5 text-sm text-ink-2">
-                They were added before the score check existed. Removing them deletes them from the database and from any lists; discovery won&apos;t add
+                They were added before the score check existed. Removing them deletes them from the database and from any projects; discovery won&apos;t add
                 them again.
               </p>
             </div>

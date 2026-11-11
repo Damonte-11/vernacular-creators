@@ -14,20 +14,17 @@ import {
   PROJECT_SELECT,
   projectFieldsToRow,
   projectFromRow,
-  shortlistFromRow,
-  SHORTLIST_SELECT,
   type ProjectRow,
   type CampaignResultRow,
   type CreatorRow,
   type SettingsRow,
-  type ShortlistRow,
 } from "../supabase/mappers";
 import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
-import type { ListItemFields, Project, ProjectPost, Settings } from "../types";
-import { DEFAULT_SETTINGS, mergeItems, toggleItem, upsertCreators } from "./demo-store";
+import type { Project, ProjectPost, Settings } from "../types";
+import { DEFAULT_SETTINGS, upsertCreators } from "./demo-store";
 import type { AppState, Backend } from "./types";
 
-const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, shortlists: [], campaignResults: [], projects: [] };
+const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, campaignResults: [], projects: [] };
 /** Creators are loaded in pages of this size. */
 const PAGE = 500;
 
@@ -97,13 +94,12 @@ async function loadAll() {
       creators.push(...(data as CreatorRow[]).map(creatorFromRow));
       if (data.length < PAGE) break;
     }
-    const [settings, shortlists, results, projects] = await Promise.all([
+    const [settings, results, projects] = await Promise.all([
       db().from("settings").select("*").eq("id", 1).maybeSingle<SettingsRow>(),
-      db().from("shortlists").select(SHORTLIST_SELECT).order("created_at"),
       db().from("campaign_results").select("*").order("logged_at"),
       db().from("projects").select(PROJECT_SELECT).order("created_at"),
     ]);
-    for (const r of [settings, shortlists, results]) if (r.error) throw r.error;
+    for (const r of [settings, results]) if (r.error) throw r.error;
     // Projects need migration 0012; until it's run, the rest of the app still works.
     const projectsMissing = !!projects.error && /project/.test(projects.error.message);
     if (projects.error && !projectsMissing) throw projects.error;
@@ -111,7 +107,6 @@ async function loadAll() {
       ready: true,
       creators,
       settings: settingsFromRow(settings.data),
-      shortlists: ((shortlists.data ?? []) as ShortlistRow[]).map(shortlistFromRow),
       campaignResults: ((results.data ?? []) as CampaignResultRow[]).map(campaignResultFromRow),
       projects: projectsMissing ? [] : ((projects.data ?? []) as ProjectRow[]).map(projectFromRow),
       error: projectsMissing ? `Projects need a small database update: ${message(projects.error)}` : null,
@@ -215,73 +210,17 @@ export const liveBackend: Backend = {
       const exists = state.creators.some((c) => c.id === creator.id);
       set({ creators: exists ? state.creators.map((c) => (c.id === creator.id ? creator : c)) : [...state.creators, creator] });
     },
-    async createShortlist(name, client) {
-      const { data, error } = await db().from("shortlists").insert({ name, client }).select(SHORTLIST_SELECT).single<ShortlistRow>();
-      if (error) {
-        set({ error: `Couldn't create the shortlist: ${message(error)}` });
-        return "";
-      }
-      const list = shortlistFromRow(data);
-      set({ shortlists: [...state.shortlists, list] });
-      return list.id;
-    },
-    async renameShortlist(id, name, client) {
-      set({ shortlists: state.shortlists.map((l) => (l.id === id ? { ...l, name, client } : l)) });
-      await save("the shortlist", () => db().from("shortlists").update({ name, client }).eq("id", id));
-    },
-    async deleteShortlist(id) {
-      set({ shortlists: state.shortlists.filter((l) => l.id !== id) });
-      await save("the shortlist", () => db().from("shortlists").delete().eq("id", id));
-    },
-    async toggleInShortlist(listId, creatorId) {
-      const list = state.shortlists.find((l) => l.id === listId);
-      if (!list) return;
-      const has = list.items.some((i) => i.creatorId === creatorId);
-      set({ shortlists: state.shortlists.map((l) => (l.id === listId ? toggleItem(l, creatorId) : l)) });
-      await save("the shortlist", () =>
-        has
-          ? db().from("shortlist_items").delete().eq("shortlist_id", listId).eq("creator_id", creatorId)
-          : db().from("shortlist_items").insert({ shortlist_id: listId, creator_id: creatorId }),
-      );
-    },
-    async addToList(listId, items) {
-      const list = state.shortlists.find((l) => l.id === listId);
-      if (!list || items.length === 0) return;
-      const have = new Set(list.items.map((i) => i.creatorId));
-      set({ shortlists: state.shortlists.map((l) => (l.id === listId ? mergeItems(l, items) : l)) });
-      const fresh = items.filter((i) => !have.has(i.creatorId)).map((i) => ({ shortlist_id: listId, creator_id: i.creatorId, ...itemRow(i.fields ?? {}) }));
-      if (fresh.length) await save("the list", () => db().from("shortlist_items").insert(fresh));
-      // Creators already on the list: only the fields that came with them change.
-      for (const i of items.filter((x) => have.has(x.creatorId) && x.fields && Object.keys(x.fields).length)) {
-        await save("the list", () => db().from("shortlist_items").update(itemRow(i.fields!)).eq("shortlist_id", listId).eq("creator_id", i.creatorId));
-      }
-    },
-    async updateListItems(listId, creatorIds, fields) {
-      if (creatorIds.length === 0) return;
-      const ids = new Set(creatorIds);
-      set({
-        shortlists: state.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.map((i) => (ids.has(i.creatorId) ? { ...i, ...fields } : i)) } : l)),
-      });
-      await save("the list", () => db().from("shortlist_items").update(itemRow(fields)).eq("shortlist_id", listId).in("creator_id", creatorIds));
-    },
     async removeCreators(ids) {
       if (ids.length === 0) return;
       const gone = new Set(ids);
       set({
         creators: state.creators.filter((c) => !gone.has(c.id)),
-        shortlists: state.shortlists.map((l) => ({ ...l, items: l.items.filter((i) => !gone.has(i.creatorId)) })),
       });
       // Keep discovery from finding them again.
       await save("discovery", () =>
         db().from("discovery_candidates").update({ status: "ignored", reason: "Removed by the team", decided_at: new Date().toISOString() }).in("creator_id", ids),
       );
       await save("the creators", () => db().from("creators").delete().in("id", ids));
-    },
-    async removeFromList(listId, creatorIds) {
-      if (creatorIds.length === 0) return;
-      const ids = new Set(creatorIds);
-      set({ shortlists: state.shortlists.map((l) => (l.id === listId ? { ...l, items: l.items.filter((i) => !ids.has(i.creatorId)) } : l)) });
-      await save("the list", () => db().from("shortlist_items").delete().eq("shortlist_id", listId).in("creator_id", creatorIds));
     },
     async logCampaignResult(result) {
       const { data, error } = await db()
@@ -483,12 +422,3 @@ function setProject(id: string, update: (p: Project) => Project) {
   set({ projects: state.projects.map((p) => (p.id === id ? update(p) : p)) });
 }
 
-/** Only the list fields that were given, as database columns. */
-function itemRow(f: ListItemFields): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
-  if (f.status !== undefined) row.status = f.status;
-  if (f.rate !== undefined) row.rate = f.rate;
-  if (f.labels !== undefined) row.labels = f.labels;
-  if (f.notes !== undefined) row.notes = f.notes;
-  return row;
-}

@@ -7,7 +7,7 @@ import { platformName } from "@/lib/platforms";
 import { Icon } from "./icons";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { sizeBandLabel } from "@/lib/size-bands";
-import { AddToShortlist } from "./add-to-shortlist";
+import { AddToProject } from "./add-to-project";
 import { Avatar, Card, CreatorLink, cx, EngagementChip, FlagCount, FoundBadge, PlatformBadge, ScoreBadge, VerifiedBadge } from "./ui";
 
 const TH = "px-3 py-2 text-xs font-medium text-muted first:pl-4";
@@ -51,7 +51,7 @@ export function CreatorTable({ rows, ranked, sort, onSort }: { rows: CreatorAnal
               <th className={cx(TH, "text-center")}>Flags</th>
               <SortTH label="Score" k="score" sort={sort} onSort={onSort} className="text-right" />
               <th className="w-10 px-1 py-2">
-                <span className="sr-only">Add to list</span>
+                <span className="sr-only">Add to project</span>
               </th>
             </tr>
           </thead>
@@ -99,7 +99,7 @@ export function CreatorTable({ rows, ranked, sort, onSort }: { rows: CreatorAnal
                   <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="sm" />
                 </td>
                 <td className="px-1 py-2">
-                  <AddToShortlist creatorId={a.creator.id} compact />
+                  <AddToProject creatorId={a.creator.id} compact />
                 </td>
               </tr>
             ))}
@@ -152,7 +152,7 @@ export function CreatorTable({ rows, ranked, sort, onSort }: { rows: CreatorAnal
             </dl>
             <div className="mt-2 flex items-center justify-between text-xs text-muted">
               <span className="truncate">{[a.creator.niche ?? "No niche", a.creator.city ?? "No city", sizeBandLabel(a.metrics.band)].join(" · ")}</span>
-              <AddToShortlist creatorId={a.creator.id} compact />
+              <AddToProject creatorId={a.creator.id} compact />
             </div>
           </div>
         ))}

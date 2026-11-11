@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { SCORE_FACTOR_LABELS, type ScoreFactor } from "@config/scoring";
 import { SIZE_BANDS, type SizeBandId } from "@config/size-bands";
-import { AddToShortlist } from "@/components/add-to-shortlist";
+import { AddToProject } from "@/components/add-to-project";
 import { AlsoOn } from "@/components/creator-table";
 import { cityOptions, nicheOptions } from "@/components/filters";
 import { Icon } from "@/components/icons";
@@ -131,7 +131,7 @@ export default function LeaderboardsPage() {
                     </span>
                     <ScoreBar score={a.score.total ?? 0} />
                     <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="sm" />
-                    <AddToShortlist creatorId={a.creator.id} compact />
+                    <AddToProject creatorId={a.creator.id} compact />
                   </li>
                 ))}
               </ol>
@@ -173,7 +173,7 @@ function PodiumCard({ a, rank, creators }: { a: CreatorAnalysis; rank: number; c
           <span className={cx("flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-semibold", RANK_STYLE[rank - 1])} aria-label={`Rank ${rank}`}>
             {rank}
           </span>
-          <AddToShortlist creatorId={c.id} compact />
+          <AddToProject creatorId={c.id} compact />
         </div>
         <CreatorLink id={c.id} className="group mt-2.5 flex items-center gap-3 rounded-md">
           <Avatar name={c.name} photoUrl={c.photoUrl} size={40} />

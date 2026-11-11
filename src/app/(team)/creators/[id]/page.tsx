@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CITIES, NICHES, TIKTOK_LIMITS } from "@config/app";
 import { FLAG_THRESHOLDS } from "@config/flags";
-import { AddToShortlist } from "@/components/add-to-shortlist";
+import { AddToProject } from "@/components/add-to-project";
 import { EngagementChart } from "@/components/engagement-chart";
 import { LinkedProfiles } from "@/components/linked-profiles";
 import { Icon } from "@/components/icons";
@@ -133,7 +133,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
             </a>
           )}
           <RefreshButton creatorId={c.id} />
-          <AddToShortlist creatorId={c.id} />
+          <AddToProject creatorId={c.id} />
         </div>
       </div>
 

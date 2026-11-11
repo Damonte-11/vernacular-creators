@@ -28,7 +28,6 @@ const NAV: { title: string | null; items: NavItem[] }[] = [
     title: "Campaigns",
     items: [
       { href: "/projects", label: "Projects", icon: "clipboard" },
-      { href: "/shortlists", label: "Lists", icon: "list" },
       { href: "/campaign-results", label: "Campaign results", icon: "chart" },
     ],
   },

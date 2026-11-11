@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { CreatorTable } from "@/components/creator-table";
 import { Icon } from "@/components/icons";
 import { LookupForm } from "@/components/lookup-form";
+import { PaceBar, TONE_TEXT, verdictText } from "@/components/project/summary";
+import { projectPhase, projectTotals, todayLagos } from "@/lib/projects";
 import { QueueStatusCard } from "@/components/queue-status";
 import { buttonClass, Card, EmptyState, PageHeader, SectionHeader, StatStrip, StatTile } from "@/components/ui";
 import { useAnalyses } from "@/lib/data/creators";
@@ -14,14 +16,15 @@ import { TOP_CREATORS_MIN_FOLLOWERS } from "@config/app";
 
 export default function HomePage() {
   const all = useAnalyses();
-  const { shortlists } = useAppState();
+  const { projects } = useAppState();
+  const today = todayLagos();
   const top = useMemo(() => sortAnalyses(all.filter((a) => a.creator.followers >= TOP_CREATORS_MIN_FOLLOWERS), "score").slice(0, 8), [all]);
   const flagged = all.filter((a) => a.flags.some((f) => f.severity !== "low")).length;
   const scored = all.filter((a) => a.score.total !== null);
   const weekAgo = Date.now() - 7 * 86_400_000;
   const foundThisWeek = all.filter((a) => a.creator.discoveredAt && new Date(a.creator.discoveredAt).getTime() >= weekAgo).length;
   const avgScore = scored.length ? Math.round(scored.reduce((s, a) => s + (a.score.total ?? 0), 0) / scored.length) : null;
-  const lists = useMemo(() => [...shortlists].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5), [shortlists]);
+  const live = useMemo(() => projects.filter((p) => projectPhase(p, today) !== "finished").sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5), [projects, today]);
 
   return (
     <>
@@ -84,37 +87,37 @@ export default function HomePage() {
 
         <section>
           <SectionHeader
-            title="Lists"
-            description="Newest campaigns first."
+            title="Projects"
+            description="Running and starting soon."
             className="mb-3"
             action={
-              <Link href="/shortlists" className={buttonClass.ghost}>
-                All lists <Icon name="back" size={14} className="rotate-180" />
+              <Link href="/projects" className={buttonClass.ghost}>
+                All projects <Icon name="back" size={14} className="rotate-180" />
               </Link>
             }
           />
-          {lists.length === 0 ? (
+          {live.length === 0 ? (
             <Card className="border-dashed p-4 text-[13px] text-ink-2">
-              No lists yet.{" "}
-              <Link href="/shortlists" className="font-medium text-ink underline">
-                Create one
+              No running projects.{" "}
+              <Link href="/projects/new" className="font-medium text-ink underline">
+                Start one
               </Link>{" "}
-              to group creators for a campaign.
+              for your next Chorus campaign.
             </Card>
           ) : (
             <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-              {lists.map((l) => {
-                const active = l.items.filter((i) => i.status === "active").length;
+              {live.map((p) => {
+                const t = projectTotals(p, today);
+                const v = verdictText(t, p);
                 return (
-                  <li key={l.id}>
-                    <Link href={`/shortlists/${l.id}`} className="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-surface-2">
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-medium">{l.name}</span>
-                        <span className="block truncate text-xs text-muted">{l.client || "No client set"}</span>
+                  <li key={p.id}>
+                    <Link href={`/projects/${p.id}`} className="block px-3.5 py-2.5 transition-colors hover:bg-surface-2">
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="truncate text-[13px] font-medium">{p.name}</span>
+                        <span className={`shrink-0 text-xs font-medium ${TONE_TEXT[v.tone]}`}>{v.label}</span>
                       </span>
-                      <span className="shrink-0 text-right text-xs text-muted">
-                        <span className="block font-medium tabular-nums text-ink">{l.items.length} creators</span>
-                        {active > 0 ? `${active} active` : "none active yet"}
+                      <span className="mt-1.5 block">
+                        <PaceBar p={p} t={t} size="sm" />
                       </span>
                     </Link>
                   </li>
