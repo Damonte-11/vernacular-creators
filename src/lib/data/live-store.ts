@@ -408,25 +408,54 @@ export const liveBackend: Backend = {
       if (!res.ok) return { message: body.error ?? "The sheet agent didn't run. Please try again." };
       return { message: body.message ?? "Done.", needsLayout: body.needsLayout, token: body.token };
     },
-    async generateReport(projectId) {
-      const res = await fetch(`/api/projects/${projectId}/report`, { method: "POST" });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; report?: { commentsRead: number; writtenBy: string } };
-      const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
-      if (data) setProject(projectId, () => projectFromRow(data));
-      if (!res.ok) return body.error ?? "The report didn't finish. Please try again.";
-      return `Report ready: ${body.report?.commentsRead ?? 0} comments read${body.report?.writtenBy === "ai" ? ", draft written by AI" : ""}.`;
-    },
-    async watchVideos(projectId, again) {
-      const res = await fetch(`/api/projects/${projectId}/videos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ again: again === true }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; left?: number };
-      const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
-      if (data) setProject(projectId, () => projectFromRow(data));
-      if (!res.ok) return { message: body.error ?? "Watching didn't finish. Please try again.", left: 0 };
-      return { message: body.message ?? "Done.", left: body.left ?? 0 };
+    async generateReport(projectId, onProgress) {
+      const post = async (path: string, body: object) => {
+        const res = await fetch(`/api/projects/${projectId}/${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return { ok: res.ok, body: (await res.json().catch(() => ({}))) as Record<string, unknown> };
+      };
+      const refresh = async () => {
+        const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
+        if (data) setProject(projectId, () => projectFromRow(data));
+      };
+      const notes: string[] = [];
+      // 1. The attached documents fill the brief.
+      onProgress?.("Reading the brief documents…");
+      const brief = await post("report", { step: "brief" });
+      notes.push(brief.ok ? String(brief.body.message ?? "") : `Documents: ${String(brief.body.error ?? "couldn't be read")}`);
+      await refresh();
+      // 2. The videos, a few per request (each request has a time limit).
+      const since = new Date().toISOString();
+      let watched = 0;
+      let failed = 0;
+      for (let round = 0; round < 30; round++) {
+        const left =
+          state.projects.find((x) => x.id === projectId)?.posts.filter((x) => x.creatorId && (!x.contentReview || x.contentReview.problem)).length ?? 0;
+        onProgress?.(`Watching the videos${round ? ` (${watched} watched, ${left} to go)` : ""}…`);
+        const v = await post("videos", { since });
+        await refresh();
+        if (!v.ok) {
+          notes.push(`Videos: ${String(v.body.error ?? "watching stopped early")}`);
+          break;
+        }
+        watched += Number(v.body.watched ?? 0);
+        failed += Number(v.body.failed ?? 0);
+        if (!Number(v.body.left ?? 0) || !(Number(v.body.watched ?? 0) + Number(v.body.failed ?? 0))) {
+          if (!watched && !failed && v.body.message && !/All watched/.test(String(v.body.message))) notes.push(String(v.body.message));
+          break;
+        }
+      }
+      if (watched || failed) notes.push(`Videos: ${watched} watched this time${failed ? `, ${failed} couldn't be (see the reasons in the table)` : ""}.`);
+      // 3. Comments, numbers and the written draft.
+      onProgress?.("Reading the comments and writing the report… (a few minutes)");
+      const r = await post("report", { notes: notes.filter(Boolean) });
+      await refresh();
+      if (!r.ok) return String(r.body.error ?? "The report didn't finish. Please try again.");
+      const rep = r.body.report as { commentsRead?: number; writtenBy?: string } | undefined;
+      return `Report ready: ${rep?.commentsRead ?? 0} comments read${rep?.writtenBy === "ai" ? ", draft written by AI" : ""}. ${notes.filter(Boolean).join(" ")}`;
     },
     async searchCreators(query) {
       // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.

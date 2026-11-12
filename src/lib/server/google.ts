@@ -39,6 +39,17 @@ export function serviceAccountEmail(): string | null {
 
 let cached: { token: string; expires: number } | null = null;
 
+/** A Google access token for the service account, or null when it isn't set up. */
+export async function googleToken(fetcher: Fetcher = fetch): Promise<string | null> {
+  let sa: ServiceAccount;
+  try {
+    sa = serviceAccountFromEnv();
+  } catch {
+    return null;
+  }
+  return accessToken(sa, fetcher);
+}
+
 async function accessToken(sa: ServiceAccount, fetcher: Fetcher): Promise<string> {
   if (cached && cached.expires > Date.now() + 60_000) return cached.token;
   const now = Math.floor(Date.now() / 1000);

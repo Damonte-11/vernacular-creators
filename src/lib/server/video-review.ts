@@ -100,7 +100,7 @@ function prompt(b: ProjectBrief, client: string): string {
 export async function reviewVideos(
   db: SupabaseClient,
   projectId: string,
-  opts: { again?: boolean; deadline?: number; fetcher?: Fetcher } = {},
+  opts: { again?: boolean; deadline?: number; fetcher?: Fetcher; since?: string } = {},
 ): Promise<VideoReviewResult> {
   const fetcher = opts.fetcher ?? fetch;
   const deadline = opts.deadline ?? Date.now() + 230_000;
@@ -119,7 +119,10 @@ export async function reviewVideos(
     .not("creator_id", "is", null);
   if (error) throw error;
   const all = (data ?? []) as unknown as PostRow[];
-  const todo = all.filter((x) => x.platform && (opts.again || !x.content_review || x.content_review.problem));
+  // Failed posts are tried again once per report run (`since` = when the run started), so the run always ends.
+  const todo = all.filter(
+    (x) => x.platform && (opts.again || !x.content_review || (x.content_review.problem && (!opts.since || x.content_review.watchedAt < opts.since))),
+  );
   const batch = todo.slice(0, VIDEOS_PER_CALL);
   const brief: ProjectBrief = { ...emptyBrief(), ...(project.brief ?? {}) };
 

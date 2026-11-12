@@ -62,10 +62,12 @@ export interface Actions {
   removeProjectDocument(projectId: string, docId: string): Promise<void>;
   /** The sheet agent: read the layout, confirm it, or sync the project's Google Sheet now. */
   sheetAgent(projectId: string, request: SheetRequest): Promise<{ message: string; needsLayout?: boolean; token?: string }>;
-  /** Make (or remake) the project's end-of-campaign report. Returns what happened, in words. */
-  generateReport(projectId: string): Promise<string>;
-  /** Have the AI watch the next few posts' videos and check them against the brief. `again` re-watches all. */
-  watchVideos(projectId: string, again?: boolean): Promise<{ message: string; left: number }>;
+  /**
+   * Make (or remake) the project's end-of-campaign report, in one go: read the attached documents into the brief,
+   * watch the posts' videos, read the comments and numbers, then write the draft. `onProgress` hears each step.
+   * Returns what happened, in words.
+   */
+  generateReport(projectId: string, onProgress?: (step: string) => void): Promise<string>;
   /** Search the whole database by name or handle (live: asks the server, so creators added since the page opened are found too). */
   searchCreators(query: string): Promise<Creator[]>;
   /** Read the numbers of this project's posts that are due a check, now. Returns what happened, in words. */

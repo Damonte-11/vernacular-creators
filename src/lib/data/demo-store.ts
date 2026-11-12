@@ -135,6 +135,37 @@ function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/** Demo: made-up video reviews, so the screen can be tried. The live app has Gemini watch the real videos. */
+function fakeVideoReviews(projectId: string) {
+  const p = getData().projects.find((x) => x.id === projectId);
+  if (!p) return 0;
+  const todo = p.posts.filter((x) => x.creatorId && (!x.contentReview || x.contentReview.problem));
+  const batch = new Set(todo.map((x) => x.id));
+  const formats = ["skit", "review", "vlog", "voiceover"];
+  setProject(projectId, (x) => ({
+    ...x,
+    posts: x.posts.map((post, i) => {
+      if (!batch.has(post.id)) return post;
+      const shown = i % 4 !== 3;
+      const review: ContentReview = {
+        watchedAt: new Date().toISOString(),
+        problem: null,
+        productShown: shown,
+        productFirstSecond: shown ? 2 + (i % 3) * 4 : null,
+        keyMessage: (["both", "said", "on_screen", "missing"] as const)[i % 4],
+        mustSays: x.brief.mustSay.map((item, j) => ({ item, found: (i + j) % 3 !== 2 })),
+        dontsBroken: i % 5 === 4 && x.brief.donts[0] ? [x.brief.donts[0]] : [],
+        hook: ["Opens on a funny argument at the table", "Straight to camera: 'I tried it for a week'", "Quick cuts of the product in use"][i % 3],
+        callToAction: i % 3 !== 1,
+        format: formats[i % formats.length],
+        note: "Demo review: made up. On the live app Gemini watches the real video.",
+      };
+      return { ...post, contentReview: review };
+    }),
+  }));
+  return batch.size;
+}
+
 export const demoBackend: Backend = {
   subscribe(listener) {
     listeners.add(listener);
@@ -313,8 +344,10 @@ export const demoBackend: Backend = {
       }));
       return { message };
     },
-    async generateReport(projectId) {
-      // Demo: made-up comments read by the plain rules, and a draft from the numbers.
+    async generateReport(projectId, onProgress) {
+      // Demo: made-up video reviews and comments read by the plain rules, and a draft from the numbers.
+      onProgress?.("Watching the videos…");
+      const watched = fakeVideoReviews(projectId);
       const p = getData().projects.find((x) => x.id === projectId);
       if (!p) return "Project not found.";
       const snap = demoBackend.getSnapshot();
@@ -343,41 +376,7 @@ export const demoBackend: Backend = {
         notes: ["Demo: these comments are made up and read by plain rules. On the live app the AI reads real comments and writes the draft."],
       };
       setProject(projectId, (x) => ({ ...x, report }));
-      return `Report ready: ${comments.length} made-up comments read.`;
-    },
-    async watchVideos(projectId, again) {
-      // Demo: made-up reviews, so the screen can be tried. The live app has Gemini watch the real videos.
-      const p = getData().projects.find((x) => x.id === projectId);
-      if (!p) return { message: "Project not found.", left: 0 };
-      const todo = p.posts.filter((x) => x.creatorId && (again || !x.contentReview || x.contentReview.problem));
-      const batch = new Set(todo.slice(0, 4).map((x) => x.id));
-      const formats = ["skit", "review", "vlog", "voiceover"];
-      setProject(projectId, (x) => ({
-        ...x,
-        posts: x.posts.map((post, i) => {
-          if (!batch.has(post.id)) return post;
-          const shown = i % 4 !== 3;
-          const review: ContentReview = {
-            watchedAt: new Date().toISOString(),
-            problem: null,
-            productShown: shown,
-            productFirstSecond: shown ? 2 + (i % 3) * 4 : null,
-            keyMessage: (["both", "said", "on_screen", "missing"] as const)[i % 4],
-            mustSays: x.brief.mustSay.map((item, j) => ({ item, found: (i + j) % 3 !== 2 })),
-            dontsBroken: i % 5 === 4 && x.brief.donts[0] ? [x.brief.donts[0]] : [],
-            hook: ["Opens on a funny argument at the table", "Straight to camera: 'I tried it for a week'", "Quick cuts of the product in use"][i % 3],
-            callToAction: i % 3 !== 1,
-            format: formats[i % formats.length],
-            note: "Demo review: made up. On the live app Gemini watches the real video.",
-          };
-          return { ...post, contentReview: review };
-        }),
-      }));
-      const left = todo.length - batch.size;
-      return {
-        message: `Watched ${batch.size} ${batch.size === 1 ? "video" : "videos"} (demo: made-up reviews).${left ? ` ${left} still to watch: click again.` : ""}`,
-        left,
-      };
+      return `Report ready: ${comments.length} made-up comments read${watched ? `, ${watched} videos given made-up reviews` : ""}. (Demo: the live app also reads the attached brief documents.)`;
     },
     async searchCreators(query) {
       return searchSaved(demoBackend.getSnapshot().creators, query, 8);

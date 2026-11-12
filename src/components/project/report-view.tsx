@@ -32,15 +32,24 @@ export function ReportView({ p }: { p: Project }) {
   const v = verdictText(n.totals, p);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [step, setStep] = useState<string | null>(null);
   const toRead = postsForComments(p, today);
+  const toWatch = p.posts.filter((x) => x.creatorId && (!x.contentReview || x.contentReview.problem));
+  const tiktokToWatch = toWatch.filter((x) => x.platform === "tiktok").length;
   const paid = toRead.filter((x) => x.platform !== "youtube").length;
 
   async function make() {
-    if (r && !window.confirm("Make the report again? Comments are read again (using Apify credit for TikTok and Instagram) and the written draft is replaced."))
+    if (
+      r &&
+      !window.confirm(
+        "Make the report again? The brief documents and comments are read again (comments use Apify credit for TikTok and Instagram) and the written draft is replaced. Videos already watched aren't watched again.",
+      )
+    )
       return;
     setBusy(true);
     setNote(null);
-    setNote(await actions.generateReport(p.id));
+    setNote(await actions.generateReport(p.id, setStep));
+    setStep(null);
     setBusy(false);
   }
 
@@ -56,8 +65,12 @@ export function ReportView({ p }: { p: Project }) {
             </>
           ) : (
             <>
-              Reads up to {formatNumber(p.commentCap)} comments from each of {toRead.length} posts
-              {paid ? ` (${paid} on TikTok or Instagram use Apify credit; YouTube is free)` : ""}, then analyses them and drafts the report.
+              One click: the AI reads the attached brief documents, watches {toWatch.length ? `the ${toWatch.length} videos` : "the videos"}, reads up to{" "}
+              {formatNumber(p.commentCap)} comments from each of {toRead.length} posts and the numbers, then writes the report. Apify credit is used for{" "}
+              {[paid ? `comments on ${paid} TikTok and Instagram posts` : "", tiktokToWatch ? `${tiktokToWatch} TikTok videos` : ""]
+                .filter(Boolean)
+                .join(" and ") || "nothing here"}
+              ; YouTube is free.
             </>
           )}
         </p>
@@ -68,13 +81,13 @@ export function ReportView({ p }: { p: Project }) {
             </button>
           )}
           <button className={r ? buttonClass.secondary : buttonClass.primary} onClick={make} disabled={busy || toRead.length === 0}>
-            {busy ? "Reading comments and writing… (a few minutes)" : r ? "Make it again" : "Create report"}
+            {busy ? "Working… (several minutes)" : r ? "Make it again" : "Create report"}
           </button>
         </div>
       </div>
-      {note && (
+      {(step || note) && (
         <p role="status" className="no-print rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
-          {note}
+          {step ? `${step} Keep this page open.` : note}
         </p>
       )}
 
@@ -217,53 +230,19 @@ const KEY_MESSAGE: Record<string, string> = { said: "Said", on_screen: "On scree
 
 /** The AI watches each post's video and checks it against the brief. */
 function VideoPanel({ p, names }: { p: Project; names: Map<string, string> }) {
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
   const v = videoSummary(p);
   const posts = p.posts.filter((x) => x.creatorId);
-  const tiktok = posts.filter((x) => x.platform === "tiktok" && (!x.contentReview || x.contentReview.problem)).length;
   const nameOf = (id: string | null) => (id && names.get(id)) || "—";
-  const left = posts.filter((x) => !x.contentReview || x.contentReview.problem).length;
 
-  async function watch(again = false) {
-    if (again && !window.confirm("Watch every video again? Earlier reviews are replaced (TikTok videos use Apify credit).")) return;
-    setBusy(true);
-    setNote(null);
-    setNote((await actions.watchVideos(p.id, again)).message);
-    setBusy(false);
-  }
-
-  if (posts.length === 0) return null;
+  if (!posts.some((x) => x.contentReview)) return null;
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 p-4 pb-3 sm:px-5">
+      <div className="p-4 pb-3 sm:px-5">
         <SectionHeader
           title="What the videos show"
-          description={`The AI watches each post and checks it against the brief. ${v.watched} of ${v.posts} watched${v.failed ? `, ${v.failed} couldn't be` : ""}.`}
+          description={`Watched by the AI when the report is made, and checked against the brief. ${v.watched} of ${v.posts} watched${v.failed ? `, ${v.failed} couldn't be` : ""}.`}
         />
-        <div className="no-print flex gap-2">
-          {v.watched > 0 && left === 0 && (
-            <button className={buttonClass.secondary} onClick={() => watch(true)} disabled={busy}>
-              Watch again
-            </button>
-          )}
-          {left > 0 && (
-            <button className={v.watched ? buttonClass.secondary : buttonClass.primary} onClick={() => watch()} disabled={busy}>
-              {busy ? "Watching… (a few minutes)" : v.watched ? `Watch the next ${Math.min(4, left)}` : "Watch the videos"}
-            </button>
-          )}
-        </div>
       </div>
-      {note && (
-        <p role="status" className="no-print mx-4 mb-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line sm:mx-5">
-          {note}
-        </p>
-      )}
-      {left > 0 && !busy && (
-        <p className="no-print mx-4 mb-3 text-xs text-muted sm:mx-5">
-          About 4 videos per click.{tiktok ? ` TikTok videos are downloaded through Apify (a few cents each); YouTube and Instagram are free.` : ""}
-        </p>
-      )}
       {v.watched > 0 && (
         <>
           <StatStrip cols={4} className="mx-4 mb-3 sm:mx-5">

@@ -129,7 +129,7 @@ async function labelWithAI(p: Project, comments: RawComment[]): Promise<{ labels
   return { labels, byAI };
 }
 
-export async function generateReport(db: SupabaseClient, projectId: string, now = Date.now()): Promise<CampaignReport> {
+export async function generateReport(db: SupabaseClient, projectId: string, now = Date.now(), earlierNotes: string[] = []): Promise<CampaignReport> {
   const { data, error } = await db.from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
   if (error) throw error;
   const p = projectFromRow(data);
@@ -150,7 +150,8 @@ export async function generateReport(db: SupabaseClient, projectId: string, now 
     if (c.postId) addToStats((byPost[c.postId] ??= emptyStats()), c, labels[i]);
   });
   const quotes = pickQuotes(comments, labels);
-  const notes: string[] = [];
+  // What the earlier steps of this run (documents, videos) reported.
+  const notes: string[] = [...earlierNotes];
   for (const s of sources) if (s.note) notes.push(`${s.platform}: ${s.note}`);
   if (comments.length && byAI < comments.length)
     notes.push(
