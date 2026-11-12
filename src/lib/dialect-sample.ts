@@ -165,7 +165,9 @@ export function sampleDialectProject(): DialectProject {
     adRule: { views: 400_000, timesUsual: 5 },
     competitors: ["RideCo", "Mova"],
     contentTypes: [...DEFAULT_CONTENT_TYPES],
-    followersGained: { "2026-09": 3_920, "2026-10": 2_940, "2026-11": 1_420 },
+    followerReads: [],
+    followersManual: { "2026-09": 3_920, "2026-10": 2_940, "2026-11": 1_420 },
+    reports: {},
     commitments: {
       "2026-10": [
         { text: "More story carousels, in different formats", result: "17 carousels (target was 14), our best format on both platforms", status: "done" },

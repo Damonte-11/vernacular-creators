@@ -3,7 +3,19 @@ import Link from "next/link";
 import { selectClass } from "./bits";
 import { useEffect, useState } from "react";
 import { formatFull } from "@/lib/format";
-import { agreementMonths, attention, METRICS, monthName, monthOf, platformLabel, type DialectPost, type DialectProject, type Metric } from "@/lib/dialect";
+import {
+  agreementMonths,
+  attention,
+  canMakeReport,
+  reportReadyOn,
+  METRICS,
+  monthName,
+  monthOf,
+  platformLabel,
+  type DialectPost,
+  type DialectProject,
+  type Metric,
+} from "@/lib/dialect";
 import { SAMPLE_LISTENING } from "@/lib/dialect-sample";
 import { Icon } from "../icons";
 import { buttonClass, Card, cx, inputClass, labelClass, SectionHeader, tabClass, tabCountClass, tabListClass } from "../ui";
@@ -16,16 +28,29 @@ import { ReportSlides } from "./report-slides";
 type Tab = "month" | "posts" | "report" | "settings";
 const LAYOUT_KEY = "dialect:layout";
 
+/** What the brand page can do: saved to the database on the live app, kept on the page in the design preview. */
+export interface BrandOps {
+  updatePost: (id: string, patch: Partial<DialectPost>) => void;
+  addPost: (post: DialectPost) => Promise<string | null>;
+  updateProject: (patch: Partial<DialectProject>) => void;
+  /** Read this month's numbers now (live only). */
+  readNow?: () => Promise<string>;
+}
+
 /** A Dialect project: one brand's pages, month by month, against the agreement's targets. */
-export function BrandPage({ initial, today }: { initial: DialectProject; today: string }) {
-  const [p, setP] = useState(initial);
+export function BrandPage({ p, today, ops, preview }: { p: DialectProject; today: string; ops: BrandOps; preview?: boolean }) {
   const [tab, setTab] = useState<Tab>("month");
   const [logging, setLogging] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const [layout, setLayout] = useState<MonthLayout>("timeline");
-  const months = agreementMonths(p).filter((m) => m <= monthOf(today));
-  const [month, setMonth] = useState(monthOf(today));
-  const reportMonths = months.filter((m) => m < monthOf(today));
-  const [reportMonth, setReportMonth] = useState(reportMonths.at(-1) ?? months[0]);
+  const started = agreementMonths(p).filter((m) => m <= monthOf(today));
+  // An agreement that hasn't started yet shows its first month.
+  const months = started.length ? started : [p.startMonth];
+  const [month, setMonth] = useState(months.at(-1)!);
+  // Finished months have reports; the month in progress is listed but locked until the 1st.
+  const reportMonths = months;
+  const [reportMonth, setReportMonth] = useState(months.filter((m) => canMakeReport(m, today)).at(-1) ?? months.at(-1)!);
 
   // Each person's layout choice stays in their own browser.
   useEffect(() => {
@@ -45,7 +70,7 @@ export function BrandPage({ initial, today }: { initial: DialectProject; today: 
     }
   }
 
-  const update = (id: string, patch: Partial<DialectPost>) => setP((x) => ({ ...x, posts: x.posts.map((y) => (y.id === id ? { ...y, ...patch } : y)) }));
+  const update = ops.updatePost;
   const open = attention(p, monthOf(today)).length;
   const monthIndex = agreementMonths(p).indexOf(monthOf(today)) + 1;
 
@@ -81,6 +106,20 @@ export function BrandPage({ initial, today }: { initial: DialectProject; today: 
             Needs attention
             {open > 0 && <span className="rounded bg-bad-soft px-1.5 text-xs tabular-nums text-bad">{open}</span>}
           </button>
+          {ops.readNow && (
+            <button
+              className={buttonClass.secondary}
+              disabled={reading}
+              onClick={async () => {
+                setReading(true);
+                setNote(null);
+                setNote(await ops.readNow!());
+                setReading(false);
+              }}
+            >
+              {reading ? "Reading… (a minute or two)" : "Read numbers now"}
+            </button>
+          )}
           <button className={buttonClass.primary} onClick={() => setLogging((v) => !v)} aria-expanded={logging}>
             <Icon name="plus" size={15} /> Log a post
           </button>
@@ -89,13 +128,14 @@ export function BrandPage({ initial, today }: { initial: DialectProject; today: 
 
       {logging && (
         <div className="mt-4">
-          <LogPost
-            contentTypes={p.contentTypes}
-            today={today}
-            onClose={() => setLogging(false)}
-            onLog={(x) => setP((y) => ({ ...y, posts: [...y.posts, x] }))}
-          />
+          <LogPost contentTypes={p.contentTypes} today={today} onClose={() => setLogging(false)} onLog={ops.addPost} />
         </div>
+      )}
+
+      {note && (
+        <p role="status" className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
+          {note}
+        </p>
       )}
 
       <div className="mb-5 mt-4 flex flex-wrap items-end justify-between gap-3 border-b border-line">
@@ -133,15 +173,53 @@ export function BrandPage({ initial, today }: { initial: DialectProject; today: 
             <PostsTable p={p} months={months} update={update} />
           </Card>
         )}
-        {tab === "report" && <ReportTab p={p} months={reportMonths} month={reportMonth} setMonth={setReportMonth} />}
-        {tab === "settings" && <SettingsTab p={p} setP={setP} />}
+        {tab === "report" && <ReportTab p={p} months={reportMonths} month={reportMonth} setMonth={setReportMonth} today={today} preview={preview} />}
+        {tab === "settings" && <SettingsTab saved={p} onSave={ops.updateProject} />}
       </div>
     </div>
   );
 }
 
-function ReportTab({ p, months, month, setMonth }: { p: DialectProject; months: string[]; month: string; setMonth: (m: string) => void }) {
+function ReportTab({
+  p,
+  months,
+  month,
+  setMonth,
+  today,
+  preview,
+}: {
+  p: DialectProject;
+  months: string[];
+  month: string;
+  setMonth: (m: string) => void;
+  today: string;
+  preview?: boolean;
+}) {
   const [note, setNote] = useState<string | null>(null);
+  const ready = canMakeReport(month, today);
+  const readyOn = new Date(`${reportReadyOn(month)}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+  if (!ready || (!preview && !p.reports[month]))
+    return (
+      <div className="space-y-4">
+        <select className={selectClass} value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Report month">
+          {months.map((m) => (
+            <option key={m} value={m}>
+              {monthName(m)} {m.slice(0, 4)} report{canMakeReport(m, today) ? "" : " (not ready yet)"}
+            </option>
+          ))}
+        </select>
+        <Card className="p-6 text-center">
+          <p className="text-sm font-semibold">
+            {ready ? `The ${monthName(month)} report hasn't been made yet` : `The ${monthName(month)} report is made on ${readyOn}`}
+          </p>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-muted">
+            {ready
+              ? "Monthly reports are made automatically on the 1st, after the final numbers update. This is being switched on next."
+              : "It waits for the month to end and the final numbers update on the 1st, then the AI makes it in the morning. Until then, clear anything in Needs attention so it's ready."}
+          </p>
+        </Card>
+      </div>
+    );
   const boosted = p.posts.filter((x) => monthOf(x.postedAt) === month && x.decision === "manual").length;
   return (
     <div className="space-y-4">
@@ -151,7 +229,7 @@ function ReportTab({ p, months, month, setMonth }: { p: DialectProject; months: 
             <select className={selectClass} value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Report month">
               {months.map((m) => (
                 <option key={m} value={m}>
-                  {monthName(m)} {m.slice(0, 4)} report
+                  {monthName(m)} {m.slice(0, 4)} report{canMakeReport(m, today) ? "" : " (not ready yet)"}
                 </option>
               ))}
             </select>
@@ -197,12 +275,54 @@ const addOne = (m: string) => {
   return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
 };
 
-function SettingsTab({ p, setP }: { p: DialectProject; setP: (f: (x: DialectProject) => DialectProject) => void }) {
+function SettingsTab({ saved, onSave }: { saved: DialectProject; onSave: (patch: Partial<DialectProject>) => void }) {
+  // Changes are kept here until Save, so typing doesn't save every keystroke.
+  const [p, setP] = useState(saved);
+  const fields = (x: DialectProject) => ({
+    monthTargets: x.monthTargets,
+    adRule: x.adRule,
+    competitors: x.competitors.filter(Boolean),
+    contentTypes: x.contentTypes.filter(Boolean),
+    listeningCapUsd: x.listeningCapUsd,
+    platforms: x.platforms,
+  });
+  const dirty = JSON.stringify(fields(p)) !== JSON.stringify(fields(saved));
   const months = agreementMonths(p);
   const setTarget = (m: string, k: Metric, v: number) => setP((x) => ({ ...x, monthTargets: { ...x.monthTargets, [m]: { ...x.monthTargets[m], [k]: v } } }));
   const sums = Object.fromEntries(METRICS.map((m) => [m.id, months.reduce((a, x) => a + p.monthTargets[x][m.id as Metric], 0)])) as Record<Metric, number>;
   return (
     <div className="space-y-4">
+      <div className="sticky top-0 z-10 -mx-1 flex items-center justify-between gap-3 rounded-lg bg-surface/95 px-1 py-2 backdrop-blur">
+        <p className="text-[13px] text-muted">{dirty ? "You have unsaved changes." : "Everything is saved."}</p>
+        <div className="flex gap-2">
+          {dirty && (
+            <button className={buttonClass.ghost} onClick={() => setP(saved)}>
+              Undo changes
+            </button>
+          )}
+          <button className={buttonClass.primary} disabled={!dirty} onClick={() => onSave(fields(p))}>
+            Save changes
+          </button>
+        </div>
+      </div>
+      <Card className="p-4 sm:p-5">
+        <SectionHeader title="Pages we run" description="The handles the numbers and followers are read from." />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {p.platforms.map((x, i) => (
+            <label key={x.platform}>
+              <span className={labelClass}>{platformLabel(x.platform)}</span>
+              <input
+                className={inputClass}
+                value={x.handle}
+                onChange={(e) =>
+                  setP((y) => ({ ...y, platforms: y.platforms.map((z, j) => (j === i ? { ...z, handle: e.target.value.replace(/^@/, "").trim() } : z)) }))
+                }
+                placeholder="@handle"
+              />
+            </label>
+          ))}
+        </div>
+      </Card>
       <Card className="overflow-hidden">
         <div className="p-4 pb-3 sm:px-5">
           <SectionHeader

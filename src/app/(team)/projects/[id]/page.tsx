@@ -130,7 +130,10 @@ export default function ProjectPage() {
       </div>
 
       {checkNote && (
-        <p role="status" className="fade-enter mt-3 flex items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
+        <p
+          role="status"
+          className="fade-enter mt-3 flex items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line"
+        >
           <span>{checkNote}</span>
           <button className="shrink-0 text-xs font-medium underline" onClick={() => setCheckNote(null)}>
             Dismiss

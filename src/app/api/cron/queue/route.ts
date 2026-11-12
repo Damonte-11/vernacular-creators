@@ -1,3 +1,4 @@
+import { readDialectNumbers } from "@/lib/server/dialect-reads";
 import { errorResponse } from "@/lib/server/lookup-service";
 import { runPostChecks } from "@/lib/server/post-checks";
 import { syncAllSheets } from "@/lib/server/sheet-agent";
@@ -11,7 +12,7 @@ export const maxDuration = 300;
  * Hourly (called by Supabase's scheduler with the CRON_SECRET, see docs/SETUP.md):
  * first sync projects' Google Sheets (new links in), then read the numbers of
  * campaign posts that are due a check, then write them back to the sheets,
- * then work through the background import queue with what's left of Instagram's hourly allowance.
+ * then read Dialect posts' numbers, then work through the background import queue with what's left of Instagram's hourly allowance.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -34,6 +35,13 @@ export async function GET(request: Request) {
     // Projects not set up yet (or another problem): imports still run.
     postChecks = { error: e instanceof Error ? e.message : String(e) };
   }
+  // Dialect pages: new posts within the hour, this month's every 7 days, last month's final read on the 1st.
+  let dialect = null;
+  try {
+    dialect = await readDialectNumbers(db, { deadline: start + 160_000 });
+  } catch (e) {
+    dialect = { error: e instanceof Error ? e.message : String(e) };
+  }
   // Fresh numbers go back into the sheets straight away rather than next hour.
   if (postChecks && "checked" in postChecks && postChecks.checked > 0) {
     try {
@@ -45,7 +53,7 @@ export async function GET(request: Request) {
   try {
     const igUsed = postChecks && "instagramCalls" in postChecks ? postChecks.instagramCalls : 0;
     const queue = await processQueue(db, start + 270_000, Math.max(0, QUEUE_LOOKUPS_PER_RUN - igUsed));
-    return Response.json({ ...queue, postChecks, sheets });
+    return Response.json({ ...queue, postChecks, sheets, dialect });
   } catch (e) {
     return errorResponse(e);
   }

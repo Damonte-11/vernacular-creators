@@ -3,7 +3,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Icon } from "@/components/icons";
 import { PaceBar, TONE_TEXT, verdictText } from "@/components/project/summary";
+import { TargetBar } from "@/components/dialect/bits";
 import { buttonClass, EmptyState, PageHeader } from "@/components/ui";
+import { useDialect } from "@/lib/data/dialect-store";
+import { agreementMonths, attention, monthName, monthOf, monthStats, paceVerdict } from "@/lib/dialect";
 import { useAppState } from "@/lib/data/store";
 import { formatNumber } from "@/lib/format";
 import { useCreators } from "@/lib/data/creators";
@@ -32,22 +35,18 @@ export default function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle="Every Chorus campaign, with its views guarantee and what needs chasing."
+        subtitle="Chorus campaigns with their views guarantee, and Dialect brands with this month against target."
         actions={
-          <>
-            <Link href="/projects/dialect-preview" className={buttonClass.secondary}>
-              Dialect (design preview)
-            </Link>
-            <Link href="/projects/new" className={buttonClass.primary}>
-              <Icon name="plus" size={15} /> New project
-            </Link>
-          </>
+          <Link href="/projects/new" className={buttonClass.primary}>
+            <Icon name="plus" size={15} /> New project
+          </Link>
         }
       />
+      <DialectSection today={today} />
       {projects.length === 0 ? (
         <EmptyState
-          title="No projects yet"
-          body="Create one for each Chorus campaign: the creators, their post links, the brief and the views guarantee, in one place."
+          title="No Chorus campaigns yet"
+          body="Create one for each Chorus campaign (creators, their post links, the brief and the views guarantee) or a Dialect project for a brand whose pages we run."
           action={
             <Link href="/projects/new" className={buttonClass.primary}>
               New project
@@ -71,6 +70,69 @@ export default function ProjectsPage() {
         </div>
       )}
     </>
+  );
+}
+
+/** Dialect brands: this month's views against its target. */
+function DialectSection({ today }: { today: string }) {
+  const { projects, ready, error } = useDialect();
+  if (!ready) return null;
+  if (error && !projects.length) return <p className="mb-6 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">Dialect: {error}</p>;
+  if (!projects.length) return null;
+  const month = monthOf(today);
+  return (
+    <section aria-labelledby="g-dialect" className="mb-6">
+      <h2 id="g-dialect" className="mb-2 text-sm font-semibold">
+        Dialect <span className="font-normal text-muted">{projects.length}</span>
+      </h2>
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+        {projects.map((p) => {
+          const s = monthStats(p, month, today);
+          const target = p.monthTargets[month]?.views ?? 0;
+          const v = paceVerdict(s.views, target, s.day, s.days);
+          const open = attention(p, month).length;
+          const all = agreementMonths(p);
+          const idx = all.indexOf(month);
+          return (
+            <li key={p.id}>
+              <Link href={`/projects/dialect/${p.id}`} className="group block bg-surface px-4 py-3 transition-colors duration-100 hover:bg-surface-2">
+                <div className="grid items-center gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_auto]">
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold group-hover:underline">{p.brand}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {p.client || "No client set"} · Dialect ·{" "}
+                      {idx >= 0 ? `month ${idx + 1} of ${p.months}` : month < p.startMonth ? `Starts ${monthName(p.startMonth)}` : "Agreement ended"}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
+                      <span className={`font-medium ${{ good: "text-good", warn: "text-warn", bad: "text-bad" }[v.tone]}`}>
+                        {target ? v.text : "No target this month"}
+                      </span>
+                      <span className="tabular-nums text-muted">
+                        <b className="font-semibold text-ink">{formatNumber(s.views)}</b>
+                        {target ? ` / ${formatNumber(target)}` : ""} views in {monthName(month)}
+                      </span>
+                    </div>
+                    <TargetBar done={s.views} target={target} pace={s.day && s.day < s.days ? s.day / s.days : null} />
+                  </div>
+                  <div className="flex items-center gap-3 md:justify-end">
+                    {open > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-bad-soft px-2 py-0.5 text-xs font-medium text-bad">
+                        <Icon name="alert" size={12} /> {open} to clear
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted">{s.posts} posts this month</span>
+                    )}
+                    <Icon name="back" size={15} className="rotate-180 text-muted" />
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

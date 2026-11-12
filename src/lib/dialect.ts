@@ -69,6 +69,9 @@ export interface DialectPost {
   decision?: AdDecision | null;
   /** Organic numbers entered for a boosted post. */
   organic?: { views: number; engagements: number } | null;
+  lastReadAt?: string | null;
+  /** Why the numbers couldn't be read last time. */
+  readProblem?: string | null;
 }
 
 export interface Totals {
@@ -106,8 +109,12 @@ export interface DialectProject {
   adRule: { views: number; timesUsual: number };
   competitors: string[];
   contentTypes: string[];
-  /** Followers gained each month, YYYY-MM → number (read on the 1st, for all platforms). */
-  followersGained: Record<string, number>;
+  /** Follower counts read with the numbers, each platform, oldest first. */
+  followerReads: { at: string; platform: DialectPlatform; followers: number }[];
+  /** Followers gained typed in for a month (all platforms), used instead of the reads when set. */
+  followersManual: Record<string, number>;
+  /** Saved monthly reports, YYYY-MM → report (made from the 1st of the next month). */
+  reports: Record<string, unknown>;
   /** What the team committed to for each month, YYYY-MM → list. */
   commitments: Record<string, Commitment[]>;
   /** Monthly cap on Apify spend for mentions and competitors, in US dollars. */
@@ -207,11 +214,30 @@ export function monthStats(p: DialectProject, month: string, today: string): Mon
     views: run,
     engagements: posts.reduce((s, x) => s + countedEngagements(x), 0),
     posts: posts.filter((x) => x.decision !== "excluded").length,
-    followers: p.followersGained[month] ?? 0,
+    followers: followersFor(p, month),
     cumulative,
     postsPerDay: perDay,
     heldBack: posts.filter((x) => x.possibleAd && !x.decision),
   };
+}
+
+/**
+ * New followers in a month, across the pages: typed in for the month, or the
+ * last count read in the month minus the last count read before it (the first
+ * count in the month when there is none before).
+ */
+export function followersFor(p: Pick<DialectProject, "followerReads" | "followersManual">, month: string): number {
+  if (p.followersManual[month] !== undefined) return p.followersManual[month];
+  let total = 0;
+  const platforms = new Set(p.followerReads.map((r) => r.platform));
+  for (const platform of platforms) {
+    const reads = p.followerReads.filter((r) => r.platform === platform).sort((a, b) => a.at.localeCompare(b.at));
+    const inMonth = reads.filter((r) => r.at.slice(0, 7) === month);
+    if (!inMonth.length) continue;
+    const before = reads.filter((r) => r.at.slice(0, 7) < month).at(-1) ?? inMonth[0];
+    total += Math.max(0, inMonth.at(-1)!.followers - before.followers);
+  }
+  return total;
 }
 
 export type Verdict = { tone: "good" | "warn" | "bad"; text: string };
@@ -253,6 +279,14 @@ export function attention(p: DialectProject, month: string): AttentionItem[] {
     ...posts.filter(missingNumbers).map((post) => ({ kind: "numbers" as const, post })),
     ...posts.filter((x) => !x.contentType || !x.purpose).map((post) => ({ kind: "label" as const, post })),
   ];
+}
+
+/** A month's report can only be made from the 1st of the next month, after the final numbers update. */
+export function reportReadyOn(month: string): string {
+  return `${addMonths(month, 1)}-01`;
+}
+export function canMakeReport(month: string, today: string): boolean {
+  return today >= reportReadyOn(month);
 }
 
 /** Platform and format from a pasted link. */

@@ -3,11 +3,12 @@ import { useMemo, useState } from "react";
 import { formatFull } from "@/lib/format";
 import { parseViews } from "@/lib/projects";
 import { DIALECT_PLATFORMS, METRICS, monthName, splitTargets, type DialectPlatform, type Metric, type Totals } from "@/lib/dialect";
+import type { NewDialect } from "@/lib/data/dialect-store";
 import { Icon } from "../icons";
 import { buttonClass, Card, cx, inputClass, labelClass } from "../ui";
 
 /** Brand, pages, the agreement (start and length) and its total targets, shown split by month as you type. */
-export function NewDialectForm({ startMonth, onCreate }: { startMonth: string; onCreate: (note: string) => void }) {
+export function NewDialectForm({ startMonth, onCreate }: { startMonth: string; onCreate: (v: NewDialect) => Promise<string | null> }) {
   const [brand, setBrand] = useState("");
   const [client, setClient] = useState("");
   const [handles, setHandles] = useState<Record<DialectPlatform, string | null>>({ instagram: "", tiktok: "", x: "", youtube: null });
@@ -25,7 +26,8 @@ export function NewDialectForm({ startMonth, onCreate }: { startMonth: string; o
   const split = useMemo(() => splitTargets(parsed, start, months), [parsed, start, months]);
   const anyTarget = METRICS.some((m) => parsed[m.id as Metric] > 0);
 
-  function submit(e: React.FormEvent) {
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const chosen = DIALECT_PLATFORMS.filter((p) => handles[p.id] !== null);
     if (!brand.trim()) return setError("Give the brand's name.");
@@ -34,7 +36,21 @@ export function NewDialectForm({ startMonth, onCreate }: { startMonth: string; o
     if (METRICS.some((m) => Number.isNaN(parsed[m.id as Metric]))) return setError("Write targets as numbers, like 1600000, 1.6m or 400k.");
     if (!anyTarget) return setError("Add at least one target from the agreement.");
     setError(null);
-    onCreate(`Design preview: "${brand.trim()}" would be created with ${months} months of targets. Showing the sample brand instead.`);
+    setBusy(true);
+    const err = await onCreate({
+      brand: brand.trim(),
+      client: client.trim(),
+      platforms: chosen.map((x) => ({ platform: x.id, handle: (handles[x.id] ?? "").trim() })),
+      startMonth: start,
+      months,
+      totals: parsed,
+      competitors: competitors
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean),
+    });
+    setBusy(false);
+    if (err) setError(err);
   }
 
   return (
@@ -164,7 +180,9 @@ export function NewDialectForm({ startMonth, onCreate }: { startMonth: string; o
           {error}
         </p>
       )}
-      <button className={buttonClass.primary}>Create Dialect project</button>
+      <button className={buttonClass.primary} disabled={busy}>
+        {busy ? "Creating…" : "Create Dialect project"}
+      </button>
     </form>
   );
 }

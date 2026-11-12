@@ -14,7 +14,7 @@ export function LogPost({
 }: {
   contentTypes: string[];
   today: string;
-  onLog: (p: DialectPost) => void;
+  onLog: (p: DialectPost) => Promise<string | null> | void;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState("");
@@ -34,11 +34,15 @@ export function LogPost({
           ? "Pick what it's for: differentiation, safety or trend."
           : null;
 
-  function submit(e: React.FormEvent) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTried(true);
+    setFailed(null);
     if (problem || !read || !purpose) return;
-    onLog({
+    setBusy(true);
+    const err = await onLog({
       id: `new-${Date.now()}`,
       platform: read.platform,
       url: url.trim(),
@@ -53,6 +57,8 @@ export function LogPost({
       shares: null,
       saves: null,
     });
+    setBusy(false);
+    if (err) return setFailed(err);
     setUrl("");
     setTitle("");
     setType("");
@@ -106,8 +112,15 @@ export function LogPost({
             <span className={labelClass}>What it&apos;s for</span>
             <Segmented label="What it's for" value={purpose} options={PURPOSES} onChange={setPurpose} />
           </div>
-          <button className={cx(buttonClass.primary, "ml-auto")}>Log post</button>
+          <button className={cx(buttonClass.primary, "ml-auto")} disabled={busy}>
+            {busy ? "Logging…" : "Log post"}
+          </button>
         </div>
+        {failed && (
+          <p role="alert" className="text-xs text-bad">
+            {failed}
+          </p>
+        )}
         {tried && problem && (
           <p role="alert" className="text-xs text-bad">
             {problem}

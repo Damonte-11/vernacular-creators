@@ -321,7 +321,7 @@ async function checkTikTok(
 }
 
 /** One Apify run reading these TikTok post links (main account first, then the backup). */
-async function apifyPosts(urls: string[], fetcher: Fetcher): Promise<(ApifyTikTokItem & { shareCount?: number; submittedVideoUrl?: string; inputUrl?: string })[]> {
+export async function apifyPosts(urls: string[], fetcher: Fetcher): Promise<(ApifyTikTokItem & { shareCount?: number; submittedVideoUrl?: string; inputUrl?: string })[]> {
   return withApify(async (token) => {
     const run = new URL("https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
     run.searchParams.set("timeout", "150");
