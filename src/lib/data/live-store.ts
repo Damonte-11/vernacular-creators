@@ -89,7 +89,11 @@ async function loadAll() {
     syncedAt = new Date().toISOString();
     const creators = [];
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await db().from("creators").select(CREATOR_SELECT).order("created_at").range(from, from + PAGE - 1);
+      const { data, error } = await db()
+        .from("creators")
+        .select(CREATOR_SELECT)
+        .order("created_at")
+        .range(from, from + PAGE - 1);
       if (error) throw error;
       creators.push(...(data as CreatorRow[]).map(creatorFromRow));
       if (data.length < PAGE) break;
@@ -158,7 +162,12 @@ function saveSettingsSoon(s: Settings) {
   // Sliders fire many changes a second; save once they stop moving.
   if (settingsTimer) clearTimeout(settingsTimer);
   settingsTimer = setTimeout(() => {
-    void save("settings", () => db().from("settings").update({ ...settingsToRow(s), updated_at: new Date().toISOString() }).eq("id", 1));
+    void save("settings", () =>
+      db()
+        .from("settings")
+        .update({ ...settingsToRow(s), updated_at: new Date().toISOString() })
+        .eq("id", 1),
+    );
   }, 600);
 }
 
@@ -198,13 +207,9 @@ export const liveBackend: Backend = {
       const post = creator?.posts.find((p) => p.id === postId);
       if (!creator || !post) return;
       set({
-        creators: state.creators.map((c) =>
-          c.id === creatorId ? { ...c, posts: c.posts.map((p) => (p.id === postId ? { ...p, excluded } : p)) } : c,
-        ),
+        creators: state.creators.map((c) => (c.id === creatorId ? { ...c, posts: c.posts.map((p) => (p.id === postId ? { ...p, excluded } : p)) } : c)),
       });
-      await save("the post", () =>
-        db().from("posts").update({ excluded }).eq("creator_id", creatorId).eq("platform_post_id", post.platformPostId),
-      );
+      await save("the post", () => db().from("posts").update({ excluded }).eq("creator_id", creatorId).eq("platform_post_id", post.platformPostId));
     },
     upsertCreator(creator) {
       const exists = state.creators.some((c) => c.id === creator.id);
@@ -218,7 +223,10 @@ export const liveBackend: Backend = {
       });
       // Keep discovery from finding them again.
       await save("discovery", () =>
-        db().from("discovery_candidates").update({ status: "ignored", reason: "Removed by the team", decided_at: new Date().toISOString() }).in("creator_id", ids),
+        db()
+          .from("discovery_candidates")
+          .update({ status: "ignored", reason: "Removed by the team", decided_at: new Date().toISOString() })
+          .in("creator_id", ids),
       );
       await save("the creators", () => db().from("creators").delete().in("id", ids));
     },
@@ -360,7 +368,9 @@ export const liveBackend: Backend = {
       let filePath: string | null = null;
       if (file) {
         filePath = `${projectId}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
-        const up = await db().storage.from("project-documents").upload(filePath, file, { contentType: file.type || undefined });
+        const up = await db()
+          .storage.from("project-documents")
+          .upload(filePath, file, { contentType: file.type || undefined });
         if (up.error) {
           set({ error: `Couldn't upload the file: ${message(up.error)}` });
           return;
@@ -387,18 +397,39 @@ export const liveBackend: Backend = {
       if (doc?.filePath) await db().storage.from("project-documents").remove([doc.filePath]);
     },
     async sheetAgent(projectId, request) {
-      const res = await fetch(`/api/projects/${projectId}/sheet`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+      const res = await fetch(`/api/projects/${projectId}/sheet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
       const body = (await res.json().catch(() => ({}))) as { message?: string; needsLayout?: boolean; error?: string; token?: string };
       const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
       if (data) setProject(projectId, () => projectFromRow(data));
       if (!res.ok) return { message: body.error ?? "The sheet agent didn't run. Please try again." };
       return { message: body.message ?? "Done.", needsLayout: body.needsLayout, token: body.token };
     },
+    async generateReport(projectId) {
+      const res = await fetch(`/api/projects/${projectId}/report`, { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; report?: { commentsRead: number; writtenBy: string } };
+      const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
+      if (data) setProject(projectId, () => projectFromRow(data));
+      if (!res.ok) return body.error ?? "The report didn't finish. Please try again.";
+      return `Report ready: ${body.report?.commentsRead ?? 0} comments read${body.report?.writtenBy === "ai" ? ", draft written by AI" : ""}.`;
+    },
     async searchCreators(query) {
       // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.
-      const q = query.trim().replace(/^@/, "").replace(/[^\w. -]/g, "").slice(0, 60);
+      const q = query
+        .trim()
+        .replace(/^@/, "")
+        .replace(/[^\w. -]/g, "")
+        .slice(0, 60);
       if (q.length < 2) return [];
-      const { data, error } = await db().from("creators").select(CREATOR_SELECT).or(`handle.ilike.%${q}%,name.ilike.%${q}%`).order("followers", { ascending: false }).limit(8);
+      const { data, error } = await db()
+        .from("creators")
+        .select(CREATOR_SELECT)
+        .or(`handle.ilike.%${q}%,name.ilike.%${q}%`)
+        .order("followers", { ascending: false })
+        .limit(8);
       if (error) {
         set({ error: `Couldn't search the database: ${message(error)}` });
         return [];
@@ -443,4 +474,3 @@ export const liveBackend: Backend = {
 function setProject(id: string, update: (p: Project) => Project) {
   set({ projects: state.projects.map((p) => (p.id === id ? update(p) : p)) });
 }
-

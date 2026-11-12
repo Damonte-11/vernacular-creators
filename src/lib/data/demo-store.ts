@@ -4,7 +4,9 @@ import { APP_DEFAULTS } from "@config/app";
 import { DISCOVERY_DEFAULTS } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { sampleCreators, sampleNow } from "@/sample-data/creators";
-import { sampleProjects } from "@/sample-data/projects";
+import { sampleComments, sampleProjects } from "@/sample-data/projects";
+import { analyzeCreator } from "../analyze";
+import { addToStats, emptyStats, numbersReport, pickQuotes, ruleLabel, templateSections, type CampaignReport } from "../campaign-report";
 import { searchSaved } from "../people";
 import { guessLayout, matchRow, readRows, rowLabel, squash } from "../sheet-sync";
 import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../projects";
@@ -59,9 +61,7 @@ function toState(d: DemoData, ready: boolean): AppState {
       if (!e) return c;
       const { excludedPostIds, ...fields } = e;
       const edited = { ...c, ...Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) };
-      return excludedPostIds?.length
-        ? { ...edited, posts: c.posts.map((p) => (excludedPostIds.includes(p.id) ? { ...p, excluded: true } : p)) }
-        : edited;
+      return excludedPostIds?.length ? { ...edited, posts: c.posts.map((p) => (excludedPostIds.includes(p.id) ? { ...p, excluded: true } : p)) } : edited;
     }),
     settings: d.settings,
     campaignResults: d.campaignResults,
@@ -111,12 +111,20 @@ export function learnFrom(aliases: Record<string, string>, label: string, creato
 
 /** A messy demo sheet: misspelled handles, first names, a title row, a link with no creator. */
 function demoSheet(p: Project, creators: Creator[]): string[][] {
-  const booked = p.creators.map((pc) => creators.find((c) => c.id === pc.creatorId)).filter((c): c is Creator => !!c).slice(0, 6);
+  const booked = p.creators
+    .map((pc) => creators.find((c) => c.id === pc.creatorId))
+    .filter((c): c is Creator => !!c)
+    .slice(0, 6);
   const rows: string[][] = [["Links tracker (sample)"], ["S/N", "Influencer", "Handle", "Platform", "Date live", "Post link"]];
   booked.forEach((c, i) => {
     const handle = i % 3 === 0 ? `@${c.handle.toUpperCase()}` : i % 3 === 1 ? c.handle.replace(/_/g, "").slice(0, -1) : "";
     const name = i % 3 === 2 ? c.name.split(" ")[0] : c.name;
-    const url = c.platform === "tiktok" ? `https://www.tiktok.com/@${c.handle}/video/8${i}1234` : c.platform === "youtube" ? `https://youtu.be/demo${i}abcdef` : `https://www.instagram.com/reel/Csheet${i}x/`;
+    const url =
+      c.platform === "tiktok"
+        ? `https://www.tiktok.com/@${c.handle}/video/8${i}1234`
+        : c.platform === "youtube"
+          ? `https://youtu.be/demo${i}abcdef`
+          : `https://www.instagram.com/reel/Csheet${i}x/`;
     rows.push([String(i + 1), name, handle, c.platform === "tiktok" ? "TT" : c.platform === "youtube" ? "YouTube" : "IG", `${10 - i}/11/2026`, url]);
   });
   rows.push([String(booked.length + 1), "Unknown person", "@not_booked", "IG", "", "https://www.instagram.com/reel/Cnobody1/"]);
@@ -198,7 +206,20 @@ export const demoBackend: Backend = {
           return true;
         });
         added = fresh.length;
-        return { ...p, posts: [...p.posts, ...fresh.map((x) => ({ ...x, id: newId(), addedAt: new Date().toISOString(), checks: [], problem: null, postedDate: x.postedDate ?? todayLagos() }))] };
+        return {
+          ...p,
+          posts: [
+            ...p.posts,
+            ...fresh.map((x) => ({
+              ...x,
+              id: newId(),
+              addedAt: new Date().toISOString(),
+              checks: [],
+              problem: null,
+              postedDate: x.postedDate ?? todayLagos(),
+            })),
+          ],
+        };
       });
       return added;
     },
@@ -245,7 +266,10 @@ export const demoBackend: Backend = {
       }
       if (request.action === "read-layout" || (!state.layout && request.action === "sync")) {
         const layout = guessLayout("Links tracker (sample)", rows);
-        setProject(projectId, (x) => ({ ...x, sheetState: { ...state, proposed: layout, tabs: ["Links tracker (sample)"], headers: rows[layout.headerRow] ?? [] } }));
+        setProject(projectId, (x) => ({
+          ...x,
+          sheetState: { ...state, proposed: layout, tabs: ["Links tracker (sample)"], headers: rows[layout.headerRow] ?? [] },
+        }));
         return { message: "Read the sample sheet. Check which column is which, then confirm.", needsLayout: true };
       }
       const layout = request.action === "confirm-layout" ? request.layout : state.layout!;
@@ -265,7 +289,11 @@ export const demoBackend: Backend = {
           checks: [],
           problem: null,
           suggestedCreatorId: m.creatorId ? null : m.suggestion,
-          matchNote: m.creatorId ? null : m.suggestion ? "Close spelling of a booked creator's handle." : "No booked creator matches what's written in the sheet.",
+          matchNote: m.creatorId
+            ? null
+            : m.suggestion
+              ? "Close spelling of a booked creator's handle."
+              : "No booked creator matches what's written in the sheet.",
           sheetLabel: rowLabel(r) || null,
         };
       });
@@ -274,9 +302,48 @@ export const demoBackend: Backend = {
       setProject(projectId, (x) => ({
         ...x,
         posts: [...x.posts, ...added],
-        sheetState: { ...state, layout, proposed: null, lastSyncAt: new Date().toISOString(), lastResult: message, log: [{ at: new Date().toISOString(), text: message }, ...(state.log ?? [])].slice(0, 50) },
+        sheetState: {
+          ...state,
+          layout,
+          proposed: null,
+          lastSyncAt: new Date().toISOString(),
+          lastResult: message,
+          log: [{ at: new Date().toISOString(), text: message }, ...(state.log ?? [])].slice(0, 50),
+        },
       }));
       return { message };
+    },
+    async generateReport(projectId) {
+      // Demo: made-up comments read by the plain rules, and a draft from the numbers.
+      const p = getData().projects.find((x) => x.id === projectId);
+      if (!p) return "Project not found.";
+      const snap = demoBackend.getSnapshot();
+      const analyses = new Map(snap.creators.map((c) => [c.id, analyzeCreator(c, snap.settings, Date.now(), [], snap.creators)]));
+      const numbers = numbersReport(p, analyses, todayLagos());
+      const comments = sampleComments(p);
+      const labels = comments.map((c) => ruleLabel(c.text, p.brief));
+      const stats = emptyStats();
+      const byPost: Record<string, ReturnType<typeof emptyStats>> = {};
+      comments.forEach((c, i) => {
+        addToStats(stats, c, labels[i]);
+        if (c.postId) addToStats((byPost[c.postId] ??= emptyStats()), c, labels[i]);
+      });
+      const quotes = pickQuotes(comments, labels);
+      const report: CampaignReport = {
+        generatedAt: new Date().toISOString(),
+        writtenBy: "rules",
+        aiName: null,
+        commentsRead: comments.length,
+        sources: [{ platform: "instagram", posts: Object.keys(byPost).length, comments: comments.length, note: "Demo: made-up comments" }],
+        stats,
+        byPost,
+        quotes,
+        themes: quotes.questions.map((q) => q.text.slice(0, 80)),
+        sections: templateSections(p, numbers, stats),
+        notes: ["Demo: these comments are made up and read by plain rules. On the live app the AI reads real comments and writes the draft."],
+      };
+      setProject(projectId, (x) => ({ ...x, report }));
+      return `Report ready: ${comments.length} made-up comments read.`;
     },
     async searchCreators(query) {
       return searchSaved(demoBackend.getSnapshot().creators, query, 8);
@@ -294,7 +361,15 @@ export const demoBackend: Backend = {
           n++;
           const base = [...x.url].reduce((a, c) => a + c.charCodeAt(0), 0);
           const views = Math.round((8_000 + (base % 40) * 1_500) * (day >= 7 ? 1 : day >= 3 ? 0.84 : 0.62));
-          const check = { day, checkedAt: new Date().toISOString(), views, likes: Math.round(views * 0.05), comments: Math.round(views * 0.005), shares: x.platform === "tiktok" ? Math.round(views * 0.002) : null, source: "auto" as const };
+          const check = {
+            day,
+            checkedAt: new Date().toISOString(),
+            views,
+            likes: Math.round(views * 0.05),
+            comments: Math.round(views * 0.005),
+            shares: x.platform === "tiktok" ? Math.round(views * 0.002) : null,
+            source: "auto" as const,
+          };
           return { ...x, problem: null, checks: [...x.checks.filter((c) => c.day !== day), check] };
         }),
       }));
@@ -339,6 +414,5 @@ export const demoBackend: Backend = {
     },
   },
 };
-
 
 /** Adds new creators to a list, and updates the given fields of ones already on it. */

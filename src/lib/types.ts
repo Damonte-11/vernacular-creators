@@ -271,6 +271,8 @@ export interface ProjectPost {
   matchNote?: string | null;
   /** The handle or name written next to the link in the sheet. */
   sheetLabel?: string | null;
+  /** The post's caption (or video title), saved when its numbers are read, for the brief check. */
+  caption?: string | null;
 }
 
 export type DocumentKind = "brief" | "contract" | "guidelines" | "deck" | "other";
@@ -306,6 +308,8 @@ export interface Project {
   commentCap: number;
   /** What the sheet agent knows about the project's sheet. */
   sheetState?: import("./sheet-sync").SheetState;
+  /** The end-of-campaign report, once made. */
+  report?: import("./campaign-report").CampaignReport | null;
   createdAt: string;
   creators: ProjectCreator[];
   posts: ProjectPost[];
@@ -313,4 +317,4 @@ export interface Project {
 }
 
 /** The project fields edited on the project form. */
-export type ProjectFields = Partial<Pick<Project, "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "brief" | "sheetUrl" | "commentCap">>;
+export type ProjectFields = Partial<Pick<Project, "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "brief" | "sheetUrl" | "commentCap" | "report">>;

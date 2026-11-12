@@ -106,7 +106,7 @@ export async function fetchTikTokCreator(handle: string, token: string, fetcher:
         comments: v.commentCount ?? 0,
         views: typeof v.playCount === "number" ? v.playCount : null,
         url: v.webVideoUrl ?? `https://www.tiktok.com/@${input}`,
-        caption: (v.text ?? "").slice(0, 300),
+        caption: (v.text ?? "").slice(0, 2200),
       })),
   };
 }

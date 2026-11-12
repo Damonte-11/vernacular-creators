@@ -8,7 +8,7 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql", "0010_discovery.sql", "0011_import_queue.sql", "0012_projects.sql", "0013_post_checks.sql", "0014_sheet_agent.sql"];
+    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql", "0010_discovery.sql", "0011_import_queue.sql", "0012_projects.sql", "0013_post_checks.sql", "0014_sheet_agent.sql", "0015_campaign_report.sql"];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run
@@ -42,7 +42,7 @@ describe("database migration", () => {
     const p = await db.query<{ id: string; comment_cap: number }>(
       "insert into projects (name, start_date, end_date, guarantee) values ('Launch', '2026-11-01', '2026-11-21', 750000) returning id, comment_cap",
     );
-    expect(p.rows[0].comment_cap).toBe(3000);
+    expect(p.rows[0].comment_cap).toBe(200); // 0015 lowered the default from 3,000
     const pid = p.rows[0].id;
     await db.query("insert into project_creators (project_id, creator_id, due_date) values ($1, $2, '2026-11-04')", [pid, id]);
     await db.query("insert into project_posts (project_id, creator_id, url, url_key, platform) values ($1, $2, 'https://x/1', 'x/1', 'tiktok')", [pid, id]);

@@ -164,3 +164,33 @@ export function sampleProjects(creators: Creator[], now: number = Date.now()): P
     ),
   ];
 }
+
+/** Made-up comments for the demo report: praise, pidgin, questions, buying signals, a competitor, spam. */
+export function sampleComments(p: Project): import("@/lib/campaign-report").RawComment[] {
+  const brand = p.brief.brand || "the brand";
+  const product = p.brief.product || "this";
+  const lines = [
+    `This ${product} na correct thing o 😍`,
+    `Where can I get ${brand} in Lekki?`,
+    `How much is the new can?`,
+    `First time I'm hearing of ${brand}, looks nice`,
+    `@tunde_x you need to see this 😂`,
+    `Your skits always burst my brain 🔥🔥`,
+    `${brand} better pass ${p.brief.competitors[0] ?? "the other one"} any day`,
+    `Too expensive for me abeg`,
+    `I just bought two, the taste is sweet`,
+    `🔥🔥🔥`,
+    `Follow me back, check my page for promo`,
+    `Omo the outfit is everything`,
+    `Is it available in Abuja?`,
+    `Not a fan of the taste honestly`,
+    `Love this! ${p.brief.hashtags[0] ?? ""}`,
+  ];
+  const out: import("@/lib/campaign-report").RawComment[] = [];
+  const posts = p.posts.filter((x) => x.creatorId);
+  posts.forEach((post, k) => {
+    for (let i = 0; i < 12; i++)
+      out.push({ postId: post.id, text: lines[(i * 7 + k * 3) % lines.length], likes: (i * 13 + k * 7) % 90, replies: i % 4 === 0 ? 2 : 0 });
+  });
+  return out;
+}

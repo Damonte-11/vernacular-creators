@@ -58,7 +58,7 @@ export interface PostCheckSummary {
 }
 
 /** What a reading found: numbers, a corrected posting date, or why it couldn't be read. */
-type Result = { numbers: Omit<PostCheck, "day" | "checkedAt" | "source">; postedAt?: string } | { problem: string };
+type Result = { numbers: Omit<PostCheck, "day" | "checkedAt" | "source">; postedAt?: string; caption?: string | null } | { problem: string };
 
 export async function runPostChecks(
   db: SupabaseClient,
@@ -107,7 +107,10 @@ export async function runPostChecks(
     const check: PostCheck = { day, checkedAt: stamp, ...r.numbers, source: "auto" };
     const checks = [...(d.row.checks ?? []).filter((c) => c.day !== day), check];
     summary.checked++;
-    await db.from("project_posts").update({ checks, problem: null, last_tried_at: stamp, posted_date: posted }).eq("id", d.row.id);
+    await db
+      .from("project_posts")
+      .update({ checks, problem: null, last_tried_at: stamp, posted_date: posted, ...(r.caption ? { caption: r.caption.slice(0, 2200) } : {}) })
+      .eq("id", d.row.id);
   };
 
   for (const [platform, run] of [
@@ -158,7 +161,7 @@ async function checkYouTube(list: Due[], fetcher: Fetcher, save: (d: Due, r: Res
     url.searchParams.set("key", key);
     const res = await fetcher(url, { cache: "no-store" });
     const body = (await res.json().catch(() => ({}))) as {
-      items?: { id: string; snippet?: { publishedAt?: string }; statistics?: { viewCount?: string; likeCount?: string; commentCount?: string } }[];
+      items?: { id: string; snippet?: { publishedAt?: string; title?: string; description?: string }; statistics?: { viewCount?: string; likeCount?: string; commentCount?: string } }[];
       error?: { message?: string; errors?: { reason?: string }[] };
     };
     if (!res.ok) {
@@ -177,6 +180,7 @@ async function checkYouTube(list: Due[], fetcher: Fetcher, save: (d: Due, r: Res
       await save(d, {
         numbers: { views: n(v.statistics?.viewCount), likes: n(v.statistics?.likeCount), comments: n(v.statistics?.commentCount), shares: null },
         postedAt: v.snippet?.publishedAt,
+        caption: [v.snippet?.title, v.snippet?.description].filter(Boolean).join("\n"),
       });
     }
   }
@@ -229,7 +233,7 @@ async function checkInstagram(
         await save(d, {
           problem: `Not among @${handle}'s ${IG_MEDIA_LIMIT} latest posts (or it was deleted), so Instagram's API can't read it. Type the numbers in.`,
         });
-      else await save(d, { numbers: { views: p.views, likes: p.likes, comments: p.comments, shares: null }, postedAt: p.postedAt });
+      else await save(d, { numbers: { views: p.views, likes: p.likes, comments: p.comments, shares: null }, postedAt: p.postedAt, caption: p.caption });
     }
   }
 }
@@ -312,6 +316,7 @@ async function checkTikTok(
         shares: typeof item.shareCount === "number" ? item.shareCount : null,
       },
       postedAt: item.createTimeISO ?? (item.createTime ? new Date(item.createTime * 1000).toISOString() : undefined),
+      caption: item.text ?? null,
     });
   }
 }

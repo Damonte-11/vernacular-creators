@@ -9,6 +9,7 @@ import { CreatorsView } from "@/components/project/creators-view";
 import { DocumentsView } from "@/components/project/documents-view";
 import { PostsView } from "@/components/project/posts-view";
 import { ProjectForm } from "@/components/project/project-form";
+import { ReportView } from "@/components/project/report-view";
 import { SheetView } from "@/components/project/sheet-view";
 import { ProjectSummary } from "@/components/project/summary";
 import { buttonClass, Card, cx, EmptyState, Loading, tabClass, tabCountClass, tabListClass } from "@/components/ui";
@@ -16,7 +17,7 @@ import { useCreators } from "@/lib/data/creators";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
 import { chorusLabel, OBJECTIVES, projectPhase, projectWindow, shortDate, todayLagos, type AttentionItem } from "@/lib/projects";
 
-type Tab = "overview" | "creators" | "posts" | "sheet" | "brief" | "documents";
+type Tab = "overview" | "creators" | "posts" | "sheet" | "brief" | "documents" | "report";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function ProjectPage() {
   // Deep links like ?tab=creators (used right after creating a project).
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (t && ["overview", "creators", "posts", "sheet", "brief", "documents"].includes(t)) setTab(t);
+    if (t && ["overview", "creators", "posts", "sheet", "brief", "documents", "report"].includes(t)) setTab(t);
   }, []);
 
   if (!p && !hydrated) return <Loading />;
@@ -63,6 +64,7 @@ export default function ProjectPage() {
     { id: "sheet", label: "Sheet" },
     { id: "brief", label: "Brief" },
     { id: "documents", label: "Documents", count: p.documents.length },
+    { id: "report", label: "Report" },
   ];
   const openAttention = (a: AttentionItem) => {
     if (a.postId) {
@@ -73,7 +75,7 @@ export default function ProjectPage() {
 
   return (
     <>
-      <Link href="/projects" className="mb-3 inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
+      <Link href="/projects" className="no-print mb-3 inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
         <Icon name="back" size={14} /> Projects
       </Link>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -105,7 +107,7 @@ export default function ProjectPage() {
             </span>
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="no-print flex shrink-0 gap-2">
           {p.posts.length > 0 && (
             <button
               className={buttonClass.secondary}
@@ -162,7 +164,7 @@ export default function ProjectPage() {
         </Card>
       )}
 
-      <div className={cx(tabListClass, "mb-5 mt-4")} role="tablist" aria-label="Project sections">
+      <div className={cx(tabListClass, "no-print mb-5 mt-4")} role="tablist" aria-label="Project sections">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -196,6 +198,7 @@ export default function ProjectPage() {
         {tab === "sheet" && <SheetView p={p} />}
         {tab === "brief" && <BriefView p={p} />}
         {tab === "documents" && <DocumentsView p={p} />}
+        {tab === "report" && <ReportView p={p} />}
       </div>
     </>
   );

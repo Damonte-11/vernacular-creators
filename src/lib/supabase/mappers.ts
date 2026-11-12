@@ -3,6 +3,7 @@ import { APP_DEFAULTS } from "@config/app";
 import { DISCOVERY_DEFAULTS, type DiscoverySettings } from "@config/discovery";
 import { DEFAULT_SCORE_WEIGHTS } from "@config/scoring";
 import { emptyBrief } from "../projects";
+import type { CampaignReport } from "../campaign-report";
 import type { SheetState } from "../sheet-sync";
 import type {
   CampaignObjective,
@@ -223,7 +224,7 @@ export function campaignResultFromRow(r: CampaignResultRow): CampaignResult {
 
 /** Every project column except sheet_rows (a copy of the sheet, only needed on the server). */
 export const PROJECT_SELECT =
-  "id, name, client, chorus_type, vertical, start_date, end_date, guarantee, objective, brief, sheet_url, comment_cap, created_at, sheet_state, project_creators(*), project_posts(*), project_documents(*)";
+  "id, name, client, chorus_type, vertical, start_date, end_date, guarantee, objective, brief, sheet_url, comment_cap, created_at, sheet_state, report, project_creators(*), project_posts(*), project_documents(*)";
 
 export interface ProjectRow {
   id: string;
@@ -240,6 +241,7 @@ export interface ProjectRow {
   comment_cap: number;
   created_at: string;
   sheet_state?: SheetState | null;
+  report?: CampaignReport | null;
   project_creators?: { creator_id: string; due_date: string | null; posts_agreed: number }[];
   project_posts?: {
     id: string;
@@ -254,6 +256,7 @@ export interface ProjectRow {
     suggested_creator_id?: string | null;
     match_note?: string | null;
     sheet_label?: string | null;
+    caption?: string | null;
   }[];
   project_documents?: { id: string; kind: DocumentKind; title: string; url: string; file_path: string | null; added_at: string }[];
 }
@@ -274,6 +277,7 @@ export function projectFromRow(r: ProjectRow): Project {
     commentCap: r.comment_cap,
     createdAt: r.created_at,
     sheetState: r.sheet_state ?? {},
+    report: r.report ?? null,
     creators: (r.project_creators ?? []).map((c) => ({ creatorId: c.creator_id, dueDate: c.due_date, postsAgreed: c.posts_agreed })),
     posts: (r.project_posts ?? [])
       .map((x) => ({
@@ -289,6 +293,7 @@ export function projectFromRow(r: ProjectRow): Project {
         suggestedCreatorId: x.suggested_creator_id ?? null,
         matchNote: x.match_note ?? null,
         sheetLabel: x.sheet_label ?? null,
+        caption: x.caption ?? null,
       }))
       .sort((a, b) => a.addedAt.localeCompare(b.addedAt)),
     documents: (r.project_documents ?? [])
@@ -311,5 +316,6 @@ export function projectFieldsToRow(f: ProjectFields): Record<string, unknown> {
   if (f.brief !== undefined) row.brief = f.brief;
   if (f.sheetUrl !== undefined) row.sheet_url = f.sheetUrl;
   if (f.commentCap !== undefined) row.comment_cap = f.commentCap;
+  if (f.report !== undefined) row.report = f.report;
   return row;
 }

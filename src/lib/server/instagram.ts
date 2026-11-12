@@ -128,7 +128,7 @@ async function fetchWithLimit(username: string, config: InstagramConfig, fetcher
         comments: m.comments_count ?? 0,
         views: typeof m.view_count === "number" ? m.view_count : null,
         url: m.permalink ?? "",
-        caption: (m.caption ?? "").slice(0, 300),
+        caption: (m.caption ?? "").slice(0, 2200),
       })),
   };
 }

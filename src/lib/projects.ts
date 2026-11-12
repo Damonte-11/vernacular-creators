@@ -19,7 +19,7 @@ export const OBJECTIVES: { id: CampaignObjective; label: string; hint: string }[
 /** Days a post's numbers are read on, counted from the day it went up. */
 export const CHECK_DAYS = [1, 3, 7] as const;
 /** Comments read per post unless a project sets its own cap. */
-export const DEFAULT_COMMENT_CAP = 3000;
+export const DEFAULT_COMMENT_CAP = 200;
 
 export function chorusLabel(t: ChorusType): string {
   return CHORUS_TYPES.find((c) => c.id === t)?.label ?? t;
