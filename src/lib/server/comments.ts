@@ -11,7 +11,7 @@ import type { RawComment } from "../campaign-report";
 import type { ProjectPost } from "../types";
 import { LookupError } from "./errors";
 import type { Fetcher } from "./fetched";
-import { apifyTokenFromEnv, mapApifyError } from "./tiktok";
+import { mapApifyError, withApify } from "./tiktok";
 import { resolveTikTok } from "./tiktok-oembed";
 import { youtubeKeyFromEnv } from "./youtube";
 
@@ -105,19 +105,21 @@ interface ApifyComment {
 }
 
 async function apify(actor: string, input: Record<string, unknown>, maxItems: number, fetcher: Fetcher): Promise<ApifyComment[]> {
-  const run = new URL(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items`);
-  run.searchParams.set("timeout", "200");
-  run.searchParams.set("maxTotalChargeUsd", maxCharge());
-  run.searchParams.set("maxItems", String(maxItems));
-  const res = await fetcher(run, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apifyTokenFromEnv()}`, "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-    cache: "no-store",
+  return withApify(async (token) => {
+    const run = new URL(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items`);
+    run.searchParams.set("timeout", "200");
+    run.searchParams.set("maxTotalChargeUsd", maxCharge());
+    run.searchParams.set("maxItems", String(maxItems));
+    const res = await fetcher(run, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as ApifyComment[] | { error?: { type?: string; message?: string } } | null;
+    if (!res.ok || !Array.isArray(body)) throw mapApifyError(res.status, body && !Array.isArray(body) ? body.error : undefined);
+    return body.filter((c) => !c.error && (c.text ?? c.comment));
   });
-  const body = (await res.json().catch(() => null)) as ApifyComment[] | { error?: { type?: string; message?: string } } | null;
-  if (!res.ok || !Array.isArray(body)) throw mapApifyError(res.status, body && !Array.isArray(body) ? body.error : undefined);
-  return body.filter((c) => !c.error && (c.text ?? c.comment));
 }
 
 /** Which post a comment belongs to, from the link the source says it came from. */

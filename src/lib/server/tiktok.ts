@@ -24,9 +24,32 @@ const API = "https://api.apify.com/v2";
 const RUN_TIMEOUT_SECS = 150;
 
 export function apifyTokenFromEnv(): string {
-  const token = process.env.APIFY_TOKEN;
-  if (!token) throw new LookupError("config", "TikTok isn't connected yet. Add APIFY_TOKEN (see docs/SETUP.md).");
-  return token;
+  return apifyTokens()[0];
+}
+
+/** The Apify keys to use, in order: the main account (APIFY_TOKEN), then the company backup (APIFY_TOKEN_BACKUP). */
+export function apifyTokens(): string[] {
+  const list = [process.env.APIFY_TOKEN, process.env.APIFY_TOKEN_BACKUP].filter((t): t is string => !!t);
+  if (list.length === 0) throw new LookupError("config", "TikTok isn't connected yet. Add APIFY_TOKEN (see docs/SETUP.md).");
+  return list;
+}
+
+/**
+ * Run an Apify call with the main account's key; if Apify says that account's
+ * credit is used up, run it again with the backup account's key.
+ */
+export async function withApify<T>(run: (token: string) => Promise<T>): Promise<T> {
+  let last: unknown = null;
+  for (const [i, token] of apifyTokens().entries()) {
+    try {
+      return await run(token);
+    } catch (e) {
+      if (!(e instanceof LookupError) || e.code !== "quota") throw e;
+      if (i === 0) console.warn("Apify: main account's credit is used up; trying the backup account if there is one.");
+      last = e;
+    }
+  }
+  throw last;
 }
 
 interface AuthorMeta {

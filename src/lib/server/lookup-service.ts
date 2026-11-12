@@ -6,7 +6,7 @@ import { LookupError, withRetry } from "./errors";
 import type { FetchedCreator } from "./fetched";
 import { fetchInstagramCreator, instagramConfigFromEnv } from "./instagram";
 import { countFetchesSince, findCreator, loadSettings, saveFetchedCreator } from "./repository";
-import { apifyTokenFromEnv, fetchTikTokCreator } from "./tiktok";
+import { fetchTikTokCreator, withApify } from "./tiktok";
 import { fetchYouTubeCreator, youtubeKeyFromEnv } from "./youtube";
 
 export type LookupOutcome = { status: "existing" | "added" | "refreshed"; creator: Creator };
@@ -14,7 +14,7 @@ export type LookupOutcome = { status: "existing" | "added" | "refreshed"; creato
 /** Fetch a creator's public data from the right official API. */
 export async function fetchFromPlatform(platform: Platform, handleOrId: string, attempts = 2): Promise<FetchedCreator> {
   // No automatic retries for TikTok: each attempt costs Apify credit and can take minutes.
-  if (platform === "tiktok") return fetchTikTokCreator(handleOrId, apifyTokenFromEnv());
+  if (platform === "tiktok") return withApify((token) => fetchTikTokCreator(handleOrId, token));
   if (platform === "instagram") {
     const config = instagramConfigFromEnv();
     return withRetry(() => fetchInstagramCreator(handleOrId, config), attempts);

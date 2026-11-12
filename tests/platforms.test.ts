@@ -252,3 +252,30 @@ describe("Instagram: too much data", () => {
     expect(limits).toEqual(["45", "25"]);
   });
 });
+
+describe("Apify backup account", () => {
+  it("runs again with the backup key only when the main account's credit is used up", async () => {
+    const { withApify } = await import("@/lib/server/tiktok");
+    const { LookupError } = await import("@/lib/server/errors");
+    process.env.APIFY_TOKEN = "main";
+    process.env.APIFY_TOKEN_BACKUP = "backup";
+    const used: string[] = [];
+    const result = await withApify(async (t) => {
+      used.push(t);
+      if (t === "main") throw new LookupError("quota", "out of credit");
+      return "ok";
+    });
+    expect(result).toBe("ok");
+    expect(used).toEqual(["main", "backup"]);
+    // Other problems don't switch accounts.
+    used.length = 0;
+    await expect(
+      withApify(async (t) => {
+        used.push(t);
+        throw new LookupError("auth", "bad key");
+      }),
+    ).rejects.toMatchObject({ code: "auth" });
+    expect(used).toEqual(["main"]);
+    delete process.env.APIFY_TOKEN_BACKUP;
+  });
+});
