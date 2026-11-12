@@ -33,6 +33,28 @@ export type GeminiSchema =
 /** Last problem talking to Gemini, for the Sheet tab and the logs. */
 export let lastGeminiProblem: string | null = null;
 
+/** Requests a minute Gemini allows this key: 5 on the free tier. Set GEMINI_PER_MINUTE higher once billing is on. */
+function perMinute(): number {
+  return Math.max(1, Number(process.env.GEMINI_PER_MINUTE) || 5);
+}
+const recent: number[] = [];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Wait for a free slot under the per-minute limit. False when that would take longer than `maxWait`. */
+async function slot(maxWait: number): Promise<boolean> {
+  for (;;) {
+    const now = Date.now();
+    while (recent.length && now - recent[0] > 60_000) recent.shift();
+    if (recent.length < perMinute()) {
+      recent.push(now);
+      return true;
+    }
+    const wait = recent[0] + 60_500 - now;
+    if (wait > maxWait) return false;
+    await sleep(wait);
+  }
+}
+
 /**
  * Ask Gemini for JSON matching `schema`, then check it against `validate`.
  * Returns null when Gemini can't help (no key, free-tier limit, blocked, or an
@@ -49,6 +71,28 @@ export async function askGemini<T extends z.ZodType>(
 ): Promise<z.infer<T> | null> {
   const key = geminiKey();
   if (!key) return null;
+  // Busy (503) and per-minute (429) answers are waited out and tried again a few times.
+  for (let attempt = 0; ; attempt++) {
+    if (!(await slot(45_000))) {
+      lastGeminiProblem = "Gemini's free per-minute limit is full; try again in a minute.";
+      return null;
+    }
+    const out = await askOnce(key, system, prompt, schema, validate, fetcher, file);
+    if (out.ok) return out.value;
+    if (attempt >= 3 || !out.retryAfter) return null;
+    await sleep(out.retryAfter);
+  }
+}
+
+async function askOnce<T extends z.ZodType>(
+  key: string,
+  system: string,
+  prompt: string,
+  schema: GeminiSchema,
+  validate: T,
+  fetcher: Fetcher,
+  file?: { uri: string; mimeType?: string },
+): Promise<{ ok: true; value: z.infer<T> } | { ok: false; retryAfter?: number }> {
   try {
     const res = await fetcher(`${API}/${encodeURIComponent(geminiModel())}:generateContent`, {
       method: "POST",
@@ -73,31 +117,40 @@ export async function askGemini<T extends z.ZodType>(
     if (!res.ok) {
       lastGeminiProblem =
         res.status === 429
-          ? "Gemini's free daily or per-minute limit was reached; rows wait for the next run."
+          ? "Gemini's free daily or per-minute limit was reached; try again later."
           : res.status === 404
             ? `Gemini doesn't recognise the model "${geminiModel()}". Set GEMINI_MODEL in Vercel to a current model name.`
             : res.status === 400 || res.status === 403
               ? `Gemini refused the key or request: ${body.error?.message ?? res.status}.`
-              : `Gemini had a problem: ${body.error?.message ?? res.status}.`;
+              : res.status >= 500
+                ? "Gemini was overloaded (Google's side) and didn't answer after a few tries; try again later."
+                : `Gemini had a problem: ${body.error?.message ?? res.status}.`;
       console.warn("Gemini error", res.status, body.error?.status, body.error?.message);
-      return null;
+      // Busy: try again shortly. Per-minute limit: wait as long as Google says (if short). Daily limit: stop.
+      if (res.status >= 500) return { ok: false, retryAfter: 5_000 };
+      if (res.status === 429) {
+        const secs = Number(body.error?.message?.match(/retry in ([\d.]+)s/i)?.[1]);
+        const daily = /per ?day|daily/i.test(body.error?.message ?? "");
+        if (!daily && Number.isFinite(secs) && secs < 40) return { ok: false, retryAfter: secs * 1000 + 500 };
+      }
+      return { ok: false };
     }
     if (body.promptFeedback?.blockReason) {
       lastGeminiProblem = `Gemini blocked the request (${body.promptFeedback.blockReason}).`;
-      return null;
+      return { ok: false };
     }
     const text = (body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
     const parsed = validate.safeParse(JSON.parse(text));
     if (!parsed.success) {
       lastGeminiProblem = "Gemini's answer didn't fit the expected shape.";
-      return null;
+      return { ok: false };
     }
     lastGeminiProblem = null;
-    return parsed.data;
+    return { ok: true, value: parsed.data };
   } catch (e) {
     lastGeminiProblem = `Couldn't reach Gemini: ${e instanceof Error ? e.message : String(e)}`;
     console.warn("Gemini call failed", lastGeminiProblem);
-    return null;
+    return { ok: false };
   }
 }
 

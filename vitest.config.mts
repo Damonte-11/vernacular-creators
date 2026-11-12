@@ -8,5 +8,6 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  test: { include: ["tests/**/*.test.ts"] },
+  // Tests make many Gemini calls with fake answers: no per-minute pacing.
+  test: { include: ["tests/**/*.test.ts"], env: { GEMINI_PER_MINUTE: "1000" } },
 });

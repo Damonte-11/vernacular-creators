@@ -17,7 +17,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await reviewVideos(supabaseAdmin(), id, {
         again: body.again === true,
         since: typeof body.since === "string" ? body.since : undefined,
-        deadline: Date.now() + 240_000,
+        deadline: Date.now() + 200_000,
       }),
     );
   } catch (e) {

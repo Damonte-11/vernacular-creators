@@ -42,4 +42,24 @@ describe("Gemini", () => {
     expect(await g.askGemini("s", "p", gSchema, schema, wrong as never)).toBeNull();
     expect(g.lastGeminiProblem).toMatch(/didn't fit/);
   });
+
+  it("waits out a busy Gemini and tries again", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    vi.useFakeTimers();
+    try {
+      const { askGemini } = await import("@/lib/server/gemini");
+      let n = 0;
+      const fetcher = vi.fn(async () =>
+        ++n === 1
+          ? new Response(JSON.stringify({ error: { status: "UNAVAILABLE", message: "high demand" } }), { status: 503 })
+          : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"answer":"ok"}' }] } }] })),
+      );
+      const pending = askGemini("s", "p", gSchema, schema, fetcher as never);
+      await vi.advanceTimersByTimeAsync(6_000);
+      expect(await pending).toEqual({ answer: "ok" });
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

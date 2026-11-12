@@ -22,7 +22,8 @@ export function youtubeVideoId(url: string): string | null {
 
 /** The video ID in a full TikTok link (tiktok.com/@user/video/ID or /photo/ID). Short vm.tiktok.com links have none until opened. */
 export function tiktokVideoId(url: string): string | null {
-  return url.match(/tiktok\.com\/@[\w.]+\/(?:video|photo)\/(\d+)/i)?.[1] ?? null;
+  // Short links sometimes open as tiktok.com/@/video/ID, with no username: the ID is still good.
+  return url.match(/tiktok\.com\/@[\w.]*\/(?:video|photo)\/(\d+)/i)?.[1] ?? null;
 }
 
 export function isShortTikTokLink(url: string): boolean {

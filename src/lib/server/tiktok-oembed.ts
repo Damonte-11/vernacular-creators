@@ -38,7 +38,8 @@ export async function resolveTikTok(url: string, fetcher: Fetcher = fetch): Prom
       const res = await fetcher(url, { redirect: "follow", cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } });
       const id = tiktokVideoId(res.url);
       const handle = res.url.match(/tiktok\.com\/@([\w.]+)/i)?.[1] ?? null;
-      if (id) return { id, handle, url: handle ? `https://www.tiktok.com/@${handle}/video/${id}` : res.url };
+      // With no username in the link, keep the short link itself for Apify (it opens it).
+      if (id) return { id, handle, url: handle ? `https://www.tiktok.com/@${handle}/video/${id}` : url };
       console.warn("TikTok short link didn't lead to a video", res.status, res.url.slice(0, 120));
     } catch {
       // Nothing more to try.

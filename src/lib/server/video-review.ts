@@ -103,7 +103,8 @@ export async function reviewVideos(
   opts: { again?: boolean; deadline?: number; fetcher?: Fetcher; since?: string } = {},
 ): Promise<VideoReviewResult> {
   const fetcher = opts.fetcher ?? fetch;
-  const deadline = opts.deadline ?? Date.now() + 230_000;
+  // Time left for each video: download, upload, Google's processing and the review can take a minute or two.
+  const deadline = opts.deadline ?? Date.now() + 200_000;
   if (!geminiKey()) return { watched: 0, failed: 0, left: 0, message: "Watching videos needs a Gemini key (GEMINI_API_KEY in Vercel)." };
 
   const { data: project, error: pErr } = await db
@@ -137,7 +138,7 @@ export async function reviewVideos(
       const refs = await Promise.all(tiktokRows.map(async (x) => ({ x, ref: await resolveTikTok(x.url, fetcher) })));
       const items = await withApify(async (token) => {
         const run = new URL("https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items");
-        run.searchParams.set("timeout", "200");
+        run.searchParams.set("timeout", "100");
         run.searchParams.set("maxTotalChargeUsd", "0.5");
         run.searchParams.set("maxItems", String(refs.length + 3));
         const res = await fetcher(run, {
@@ -176,7 +177,8 @@ export async function reviewVideos(
   let watched = 0;
   let failed = 0;
   for (const x of batch) {
-    if (Date.now() > deadline) break;
+    // Not enough time left for another video: it waits for the next request.
+    if (Date.now() > deadline - 80_000) break;
     const save = async (review: ContentReview) => {
       await db.from("project_posts").update({ content_review: review }).eq("id", x.id);
     };
@@ -232,7 +234,7 @@ export async function reviewVideos(
           mime.startsWith("video/") ? mime : "video/mp4",
           `post-${x.id}`,
           fetcher,
-          Math.min(deadline, Date.now() + 120_000),
+          Math.min(deadline, Date.now() + 90_000),
         );
         if (!uri) {
           await fail(lastGeminiProblem ?? "Gemini couldn't take the video.");

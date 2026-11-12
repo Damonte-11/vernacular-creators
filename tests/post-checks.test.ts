@@ -20,6 +20,8 @@ describe("reading post links", () => {
   it("finds TikTok video IDs and spots short links that need opening first", () => {
     expect(tiktokVideoId("https://www.tiktok.com/@kemi.cooks/video/7301234567890?lang=en")).toBe("7301234567890");
     expect(tiktokVideoId("https://vm.tiktok.com/ZMabc/")).toBeNull();
+    // Short links can open with no username.
+    expect(tiktokVideoId("https://www.tiktok.com/@/video/7631561556588776712?_r=1")).toBe("7631561556588776712");
     expect(isShortTikTokLink("https://vm.tiktok.com/ZMabc/")).toBe(true);
   });
 });

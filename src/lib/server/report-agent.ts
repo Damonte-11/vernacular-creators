@@ -32,7 +32,8 @@ import type { GeminiSchema } from "./gemini";
 import { loadSettings } from "./repository";
 
 /** Comments sent to the AI in one request. */
-const LABEL_BATCH = 120;
+// Big batches: Gemini's free tier allows only 5 requests a minute.
+const LABEL_BATCH = 250;
 /** AI requests at once (Gemini's free tier allows only a few a minute). */
 const PARALLEL = 2;
 
