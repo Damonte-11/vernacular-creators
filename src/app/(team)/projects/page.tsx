@@ -34,9 +34,14 @@ export default function ProjectsPage() {
         title="Projects"
         subtitle="Every Chorus campaign, with its views guarantee and what needs chasing."
         actions={
-          <Link href="/projects/new" className={buttonClass.primary}>
-            <Icon name="plus" size={15} /> New project
-          </Link>
+          <>
+            <Link href="/projects/dialect-preview" className={buttonClass.secondary}>
+              Dialect (design preview)
+            </Link>
+            <Link href="/projects/new" className={buttonClass.primary}>
+              <Icon name="plus" size={15} /> New project
+            </Link>
+          </>
         }
       />
       {projects.length === 0 ? (
