@@ -326,6 +326,10 @@ export function templateSections(p: Project, n: NumbersReport, stats: CommentSta
   const real = stats.read - stats.about.spam;
   const brandReal = stats.brand.positive + stats.brand.neutral + stats.brand.negative;
   const lead = OBJECTIVE_SIGNALS[p.objective];
+  const vs = videoSummary(p);
+  const videoLine = vs.watched
+    ? ` In the ${vs.watched} videos watched, the product was shown in ${vs.productShown} and the key message came across in ${vs.keyMessage}.`
+    : "";
   return {
     summary: [
       g
@@ -350,6 +354,8 @@ export function templateSections(p: Project, n: NumbersReport, stats: CommentSta
           }.`
         : "",
       n.onTimeShare !== null && n.onTimeShare < 1 ? `${Math.round((1 - n.onTimeShare) * 100)}% of creators posted late.` : "",
+      videoLine.trim(),
+      vs.donts.length ? `Don'ts broken: ${vs.donts.map((d) => `${d.item} (${d.posts})`).join(", ")}.` : "",
     ]
       .filter(Boolean)
       .join(" "),
@@ -364,6 +370,50 @@ export function templateSections(p: Project, n: NumbersReport, stats: CommentSta
           .map((c) => c.name)
           .join(", ")}.`
       : "",
+  };
+}
+
+/** What the AI saw when it watched the posts' videos, added up. */
+export interface VideoSummary {
+  /** Posts with a creator (the ones that can be watched). */
+  posts: number;
+  watched: number;
+  failed: number;
+  productShown: number;
+  /** Middle second the product first appears, among posts that show it. */
+  medianFirstSecond: number | null;
+  keyMessage: number;
+  callToAction: number;
+  mustSays: { item: string; found: number }[];
+  donts: { item: string; posts: number }[];
+  formats: { format: string; posts: number }[];
+}
+
+export function videoSummary(p: Project): VideoSummary {
+  const posts = p.posts.filter((x) => x.creatorId);
+  const ok = posts.map((x) => x.contentReview).filter((r): r is NonNullable<typeof r> => !!r && !r.problem);
+  const seconds = ok
+    .filter((r) => r.productShown && r.productFirstSecond != null)
+    .map((r) => r.productFirstSecond as number)
+    .sort((a, b) => a - b);
+  const count = (items: string[]) => {
+    const m = new Map<string, number>();
+    for (const i of items) m.set(i, (m.get(i) ?? 0) + 1);
+    return m;
+  };
+  const formats = count(ok.map((r) => (r.format || "other").toLowerCase()));
+  const donts = count(ok.flatMap((r) => r.dontsBroken ?? []));
+  return {
+    posts: posts.length,
+    watched: ok.length,
+    failed: posts.filter((x) => x.contentReview?.problem).length,
+    productShown: ok.filter((r) => r.productShown).length,
+    medianFirstSecond: seconds.length ? seconds[Math.floor(seconds.length / 2)] : null,
+    keyMessage: ok.filter((r) => r.keyMessage && r.keyMessage !== "missing").length,
+    callToAction: ok.filter((r) => r.callToAction).length,
+    mustSays: p.brief.mustSay.map((item) => ({ item, found: ok.filter((r) => r.mustSays?.some((m) => m.item === item && m.found)).length })),
+    donts: [...donts].map(([item, posts]) => ({ item, posts })).sort((a, b) => b.posts - a.posts),
+    formats: [...formats].map(([format, posts]) => ({ format, posts })).sort((a, b) => b.posts - a.posts),
   };
 }
 

@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { numbersReport, OBJECTIVE_SIGNALS, postsForComments, SECTION_TITLES, SIGNALS, type CommentStats, type ReportSections } from "@/lib/campaign-report";
+import {
+  numbersReport,
+  OBJECTIVE_SIGNALS,
+  postsForComments,
+  SECTION_TITLES,
+  SIGNALS,
+  videoSummary,
+  type CommentStats,
+  type ReportSections,
+} from "@/lib/campaign-report";
 import { useAnalyses } from "@/lib/data/creators";
 import { actions } from "@/lib/data/store";
 import { formatDate, formatNumber, formatPercent } from "@/lib/format";
@@ -181,6 +190,9 @@ export function ReportView({ p }: { p: Project }) {
         </Card>
       )}
 
+      {/* What the videos show */}
+      <VideoPanel p={p} names={new Map(n.creators.map((c) => [c.creatorId, c.name]))} />
+
       {/* Comments */}
       {r ? <CommentsPanel p={p} stats={r.stats} themes={r.themes} quotes={r.quotes} /> : null}
 
@@ -198,6 +210,156 @@ export function ReportView({ p }: { p: Project }) {
         <p className="text-xs text-muted">Demo: the report uses made-up comments read by plain rules. On the live app the AI reads the real comments.</p>
       )}
     </div>
+  );
+}
+
+const KEY_MESSAGE: Record<string, string> = { said: "Said", on_screen: "On screen", both: "Said and shown", missing: "Missing" };
+
+/** The AI watches each post's video and checks it against the brief. */
+function VideoPanel({ p, names }: { p: Project; names: Map<string, string> }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const v = videoSummary(p);
+  const posts = p.posts.filter((x) => x.creatorId);
+  const tiktok = posts.filter((x) => x.platform === "tiktok" && (!x.contentReview || x.contentReview.problem)).length;
+  const nameOf = (id: string | null) => (id && names.get(id)) || "—";
+  const left = posts.filter((x) => !x.contentReview || x.contentReview.problem).length;
+
+  async function watch(again = false) {
+    if (again && !window.confirm("Watch every video again? Earlier reviews are replaced (TikTok videos use Apify credit).")) return;
+    setBusy(true);
+    setNote(null);
+    setNote((await actions.watchVideos(p.id, again)).message);
+    setBusy(false);
+  }
+
+  if (posts.length === 0) return null;
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 p-4 pb-3 sm:px-5">
+        <SectionHeader
+          title="What the videos show"
+          description={`The AI watches each post and checks it against the brief. ${v.watched} of ${v.posts} watched${v.failed ? `, ${v.failed} couldn't be` : ""}.`}
+        />
+        <div className="no-print flex gap-2">
+          {v.watched > 0 && left === 0 && (
+            <button className={buttonClass.secondary} onClick={() => watch(true)} disabled={busy}>
+              Watch again
+            </button>
+          )}
+          {left > 0 && (
+            <button className={v.watched ? buttonClass.secondary : buttonClass.primary} onClick={() => watch()} disabled={busy}>
+              {busy ? "Watching… (a few minutes)" : v.watched ? `Watch the next ${Math.min(4, left)}` : "Watch the videos"}
+            </button>
+          )}
+        </div>
+      </div>
+      {note && (
+        <p role="status" className="no-print mx-4 mb-3 rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line sm:mx-5">
+          {note}
+        </p>
+      )}
+      {left > 0 && !busy && (
+        <p className="no-print mx-4 mb-3 text-xs text-muted sm:mx-5">
+          About 4 videos per click.{tiktok ? ` TikTok videos are downloaded through Apify (a few cents each); YouTube and Instagram are free.` : ""}
+        </p>
+      )}
+      {v.watched > 0 && (
+        <>
+          <StatStrip cols={4} className="mx-4 mb-3 sm:mx-5">
+            <StatTile label="Product shown" value={`${v.productShown} of ${v.watched}`} />
+            <StatTile label="Product appears at" value={v.medianFirstSecond === null ? "—" : `${v.medianFirstSecond}s (middle)`} />
+            <StatTile label="Key message across" value={`${v.keyMessage} of ${v.watched}`} />
+            <StatTile label="Call to action" value={`${v.callToAction} of ${v.watched}`} />
+          </StatStrip>
+          {(v.mustSays.length > 0 || v.donts.length > 0) && (
+            <ul className="mx-4 mb-3 divide-y divide-line text-[13px] sm:mx-5">
+              {v.mustSays.map((m) => (
+                <li key={m.item} className="flex items-center justify-between gap-3 py-2">
+                  <span>
+                    <span className="text-muted">Must say:</span> {m.item}
+                  </span>
+                  <span className={cx("tabular-nums", m.found === v.watched ? "text-good" : m.found / v.watched < 0.5 ? "text-bad" : "text-warn")}>
+                    {m.found} of {v.watched} videos
+                  </span>
+                </li>
+              ))}
+              {v.donts.map((d) => (
+                <li key={d.item} className="flex items-center justify-between gap-3 py-2">
+                  <span>
+                    <span className="text-muted">Don&apos;t broken:</span> {d.item}
+                  </span>
+                  <span className="tabular-nums text-bad">
+                    {d.posts} {d.posts === 1 ? "video" : "videos"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {posts.some((x) => x.contentReview) && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-[13px]">
+            <thead className="border-y border-line bg-surface-2 text-left text-xs text-muted">
+              <tr>
+                <th className="py-2 pl-4 pr-3 font-medium sm:pl-5">Post</th>
+                <th className="px-3 py-2 font-medium">Product</th>
+                <th className="px-3 py-2 font-medium">Key message</th>
+                <th className="px-3 py-2 font-medium">Format</th>
+                <th className="py-2 pl-3 pr-4 font-medium sm:pr-5">Hook and notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line align-top">
+              {posts
+                .filter((x) => x.contentReview)
+                .map((x) => {
+                  const c = x.contentReview!;
+                  const missed = (c.mustSays ?? []).filter((m) => !m.found).map((m) => m.item);
+                  return (
+                    <tr key={x.id}>
+                      <td className="py-2 pl-4 pr-3 sm:pl-5">
+                        <a href={x.url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 font-medium hover:underline">
+                          {x.platform && <Icon name={x.platform as "instagram"} size={12} className="text-muted" />}
+                          {nameOf(x.creatorId)}
+                        </a>
+                      </td>
+                      {c.problem ? (
+                        <td colSpan={4} className="py-2 pl-3 pr-4 text-muted sm:pr-5">
+                          Not watched: {c.problem}
+                        </td>
+                      ) : (
+                        <>
+                          <td className={cx("px-3 py-2", !c.productShown && "text-bad")}>
+                            {c.productShown ? (c.productFirstSecond != null ? `Yes, at ${c.productFirstSecond}s` : "Yes") : "Not shown"}
+                          </td>
+                          <td className={cx("px-3 py-2", c.keyMessage === "missing" && "text-bad")}>{KEY_MESSAGE[c.keyMessage ?? "missing"]}</td>
+                          <td className="px-3 py-2 capitalize">{c.format || "—"}</td>
+                          <td className="py-2 pl-3 pr-4 sm:pr-5">
+                            {c.hook && <p className="text-ink-2">“{c.hook}”</p>}
+                            {c.note && <p className="mt-0.5 text-muted">{c.note}</p>}
+                            {(missed.length > 0 || (c.dontsBroken ?? []).length > 0 || c.callToAction === false) && (
+                              <p className="mt-0.5 text-bad">
+                                {[
+                                  missed.length ? `Missed: ${missed.join(", ")}` : "",
+                                  (c.dontsBroken ?? []).length ? `Broke: ${c.dontsBroken!.join(", ")}` : "",
+                                  c.callToAction === false ? "No call to action" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            )}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 

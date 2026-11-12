@@ -273,6 +273,28 @@ export interface ProjectPost {
   sheetLabel?: string | null;
   /** The post's caption (or video title), saved when its numbers are read, for the brief check. */
   caption?: string | null;
+  /** What Gemini saw when it watched the video. */
+  contentReview?: ContentReview | null;
+}
+
+/** Gemini's review of a campaign video against the brief. */
+export interface ContentReview {
+  watchedAt: string;
+  /** Why it couldn't be watched, when it couldn't. */
+  problem?: string | null;
+  productShown?: boolean;
+  /** Second the product or brand first appears, if it does. */
+  productFirstSecond?: number | null;
+  keyMessage?: "said" | "on_screen" | "both" | "missing";
+  mustSays?: { item: string; found: boolean }[];
+  dontsBroken?: string[];
+  /** The opening, in a few words. */
+  hook?: string;
+  callToAction?: boolean;
+  /** Skit, review, tutorial, vlog, dance… */
+  format?: string;
+  /** One or two sentences a person can check. */
+  note?: string;
 }
 
 export type DocumentKind = "brief" | "contract" | "guidelines" | "deck" | "other";

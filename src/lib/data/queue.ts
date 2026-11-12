@@ -17,7 +17,8 @@ export interface QueueItem {
 export async function enqueue(items: QueueItem[]): Promise<{ queued: number; alreadyWaiting: number } | { error: string }> {
   const db = supabaseBrowser();
   const { data: waiting, error } = await db.from("import_queue").select("platform, handle, list_id").eq("status", "waiting").limit(20000);
-  if (error) return { error: /import_queue/.test(error.message) ? "Run database update 0011_import_queue.sql in Supabase first (see docs/SETUP.md)." : error.message };
+  if (error)
+    return { error: /import_queue/.test(error.message) ? "Run database update 0011_import_queue.sql in Supabase first (see docs/SETUP.md)." : error.message };
   const key = (p: string, h: string, l: string | null | undefined) => `${p}:${h.toLowerCase()}:${l ?? ""}`;
   const have = new Set((waiting ?? []).map((w) => key(w.platform, w.handle, w.list_id)));
   const fresh = items.filter((i) => {

@@ -27,15 +27,22 @@ export async function discoverAccounts(creator: Creator, all: Creator[]): Promis
   const done = new Set<string>();
   for (const m of discoveryPlan(creator.bio, creator.handle, creator.platform)) {
     if (done.has(m.platform)) continue;
-    const saved = all.find((c) => c.platform === m.platform && (c.handle.toLowerCase() === m.handle.toLowerCase() || handleKey(c.handle) === handleKey(m.handle)));
+    const saved = all.find(
+      (c) => c.platform === m.platform && (c.handle.toLowerCase() === m.handle.toLowerCase() || handleKey(c.handle) === handleKey(m.handle)),
+    );
     if (saved) {
-      if (saved.id !== creator.id && !(creator.personId && saved.personId === creator.personId)) results.push({ ...m, handle: saved.handle, savedId: saved.id });
+      if (saved.id !== creator.id && !(creator.personId && saved.personId === creator.personId))
+        results.push({ ...m, handle: saved.handle, savedId: saved.id });
       done.add(m.platform);
     } else if (m.source === "bio") {
       if (m.platform === "tiktok") results.push({ ...m, unchecked: true });
       else {
         const sim = simulateLookup(m.platform, m.handle, NOW);
-        if (sim.ok) results.push({ ...m, preview: { name: sim.creator.name, followers: sim.creator.followers, photoUrl: null, bio: sim.creator.bio, platformId: sim.creator.platformId } });
+        if (sim.ok)
+          results.push({
+            ...m,
+            preview: { name: sim.creator.name, followers: sim.creator.followers, photoUrl: null, bio: sim.creator.bio, platformId: sim.creator.platformId },
+          });
       }
       done.add(m.platform);
     }

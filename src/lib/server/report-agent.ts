@@ -11,6 +11,7 @@ import {
   addToStats,
   emptyStats,
   numbersReport,
+  videoSummary,
   OBJECTIVE_SIGNALS,
   pickQuotes,
   postsForComments,
@@ -22,7 +23,7 @@ import {
   type CommentStats,
   type RawComment,
 } from "../campaign-report";
-import { todayLagos } from "../projects";
+import { postNumbers, todayLagos } from "../projects";
 import { CREATOR_SELECT, creatorFromRow, PROJECT_SELECT, projectFromRow, type CreatorRow, type ProjectRow } from "../supabase/mappers";
 import type { CreatorAnalysis, Project } from "../types";
 import { aiLabel, aiReady, askAI } from "./ai";
@@ -193,6 +194,24 @@ export async function generateReport(db: SupabaseClient, projectId: string, now 
       })),
       topPosts: numbers.topPosts.map((x) => ({ by: x.creatorId ? nameOf.get(x.creatorId) : null, views: x.views, er: x.er })),
       briefCheck: numbers.briefChecks,
+      videosWatched: (() => {
+        const v = videoSummary(p);
+        if (!v.watched) return null;
+        return {
+          ...v,
+          perPost: p.posts
+            .filter((x) => x.contentReview && !x.contentReview.problem)
+            .map((x) => ({
+              by: x.creatorId ? nameOf.get(x.creatorId) : null,
+              views: postNumbers(x).views,
+              productShown: x.contentReview!.productShown,
+              keyMessage: x.contentReview!.keyMessage,
+              format: x.contentReview!.format,
+              hook: x.contentReview!.hook,
+              note: x.contentReview!.note,
+            })),
+        };
+      })(),
       comments: {
         read: stats.read,
         about: stats.about,
@@ -209,7 +228,7 @@ export async function generateReport(db: SupabaseClient, projectId: string, now 
       SYSTEM,
       `Write the end-of-campaign report for the team to edit before it goes to the client. Facts (JSON):\n${JSON.stringify(facts)}\n\n` +
         `Write plain, direct British English, short paragraphs, no jargon, no hype; only use the facts given and never invent numbers. ` +
-        `summary: 2-4 sentences, lead with whether the views guarantee was met. worked: what and who performed best and why it seems so. didnt: what underperformed, honestly. ` +
+        `summary: 2-4 sentences, lead with whether the views guarantee was met. worked: what and who performed best and why it seems so (use videosWatched, if given, to link content choices such as hook, format and how early the product appears to results). didnt: what underperformed, honestly, including brief points the videos missed. ` +
         `audience: what the comments say about the brand, led by the signals that matter for a ${p.objective} campaign (${OBJECTIVE_SIGNALS[p.objective].map((s) => SIGNALS.find((x) => x.id === s)!.label).join(", ")}); keep comments about the creator apart from comments about the brand. ` +
         `next: who to rebook and what to change next time. themes: up to 6 recurring questions or objections from the comments, a few words each.`,
       DraftAnswer,

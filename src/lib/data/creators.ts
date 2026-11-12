@@ -20,10 +20,7 @@ export function useCreators(): Creator[] {
 /** Every creator with metrics, reach, flags and score worked out. */
 export function useAnalyses(): CreatorAnalysis[] {
   const { creators, settings, campaignResults } = useAppState();
-  return useMemo(
-    () => creators.map((c) => analyzeCreator(c, settings, NOW, campaignResults, creators)),
-    [creators, settings, campaignResults],
-  );
+  return useMemo(() => creators.map((c) => analyzeCreator(c, settings, NOW, campaignResults, creators)), [creators, settings, campaignResults]);
 }
 
 export function useAnalysis(id: string): CreatorAnalysis | undefined {

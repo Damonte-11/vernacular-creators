@@ -191,3 +191,35 @@ export function mapGraphError(err: GraphError["error"], status: number, username
   }
   return new LookupError("upstream", `Instagram returned an error: ${err?.message ?? `HTTP ${status}`}`);
 }
+
+/**
+ * The video files behind a creator's latest posts (Business Discovery's
+ * media_url), by post code. Instagram leaves some out (for example some reels
+ * with licensed music); those posts can't be watched.
+ */
+export async function fetchInstagramMediaUrls(
+  username: string,
+  config: InstagramConfig,
+  fetcher: Fetcher = fetch,
+): Promise<Map<string, { url: string; type: string }>> {
+  const out = new Map<string, { url: string; type: string }>();
+  for (const limit of [45, 20]) {
+    const url = new URL(`https://graph.facebook.com/${config.apiVersion}/${config.igUserId}`);
+    url.searchParams.set("fields", `business_discovery.username(${username}){media.limit(${limit}){permalink,media_url,media_type,media_product_type}}`);
+    url.searchParams.set("access_token", config.accessToken);
+    const res = await fetcher(url, { cache: "no-store" });
+    const body = (await res.json().catch(() => ({}))) as {
+      business_discovery?: { media?: { data?: { permalink?: string; media_url?: string; media_type?: string }[] } };
+    } & GraphError;
+    if (!res.ok || body.error) {
+      if (/reduce the amount of data/i.test(body.error?.message ?? "") && limit === 45) continue;
+      throw mapGraphError(body.error, res.status, username, regainSeconds(res.headers));
+    }
+    for (const m of body.business_discovery?.media?.data ?? []) {
+      const code = m.permalink?.match(/\/(?:p|reel|reels|tv)\/([\w-]+)/)?.[1];
+      if (code && m.media_url) out.set(code, { url: m.media_url, type: m.media_type ?? "" });
+    }
+    break;
+  }
+  return out;
+}

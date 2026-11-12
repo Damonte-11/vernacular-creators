@@ -9,6 +9,7 @@ import type {
   CampaignObjective,
   CampaignResult,
   ChorusType,
+  ContentReview,
   Creator,
   DocumentKind,
   ListStatus,
@@ -257,6 +258,7 @@ export interface ProjectRow {
     match_note?: string | null;
     sheet_label?: string | null;
     caption?: string | null;
+    content_review?: ContentReview | null;
   }[];
   project_documents?: { id: string; kind: DocumentKind; title: string; url: string; file_path: string | null; added_at: string }[];
 }
@@ -294,6 +296,7 @@ export function projectFromRow(r: ProjectRow): Project {
         matchNote: x.match_note ?? null,
         sheetLabel: x.sheet_label ?? null,
         caption: x.caption ?? null,
+        contentReview: x.content_review ?? null,
       }))
       .sort((a, b) => a.addedAt.localeCompare(b.addedAt)),
     documents: (r.project_documents ?? [])

@@ -1,9 +1,24 @@
 import type { SheetLayout } from "../sheet-sync";
-import type { CampaignResult, Creator, CreatorEdits, PostCheck, Project, ProjectCreator, ProjectDocument, ProjectFields, ProjectPost, Settings } from "../types";
+import type {
+  CampaignResult,
+  Creator,
+  CreatorEdits,
+  PostCheck,
+  Project,
+  ProjectCreator,
+  ProjectDocument,
+  ProjectFields,
+  ProjectPost,
+  Settings,
+} from "../types";
 
 /** A post link being added: everything except what the app fills in. */
 export type NewProjectPost = Pick<ProjectPost, "url" | "platform" | "creatorId" | "postedDate" | "source">;
-export type SheetRequest = { action: "read-layout"; tab?: string | null } | { action: "confirm-layout"; layout: SheetLayout } | { action: "sync" } | { action: "hook" };
+export type SheetRequest =
+  | { action: "read-layout"; tab?: string | null }
+  | { action: "confirm-layout"; layout: SheetLayout }
+  | { action: "sync" }
+  | { action: "hook" };
 export type NewProjectDocument = Pick<ProjectDocument, "kind" | "title" | "url">;
 
 export interface AppState {
@@ -49,6 +64,8 @@ export interface Actions {
   sheetAgent(projectId: string, request: SheetRequest): Promise<{ message: string; needsLayout?: boolean; token?: string }>;
   /** Make (or remake) the project's end-of-campaign report. Returns what happened, in words. */
   generateReport(projectId: string): Promise<string>;
+  /** Have the AI watch the next few posts' videos and check them against the brief. `again` re-watches all. */
+  watchVideos(projectId: string, again?: boolean): Promise<{ message: string; left: number }>;
   /** Search the whole database by name or handle (live: asks the server, so creators added since the page opened are found too). */
   searchCreators(query: string): Promise<Creator[]>;
   /** Read the numbers of this project's posts that are due a check, now. Returns what happened, in words. */

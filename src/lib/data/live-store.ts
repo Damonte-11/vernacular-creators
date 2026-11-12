@@ -416,6 +416,18 @@ export const liveBackend: Backend = {
       if (!res.ok) return body.error ?? "The report didn't finish. Please try again.";
       return `Report ready: ${body.report?.commentsRead ?? 0} comments read${body.report?.writtenBy === "ai" ? ", draft written by AI" : ""}.`;
     },
+    async watchVideos(projectId, again) {
+      const res = await fetch(`/api/projects/${projectId}/videos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ again: again === true }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; left?: number };
+      const { data } = await db().from("projects").select(PROJECT_SELECT).eq("id", projectId).single<ProjectRow>();
+      if (data) setProject(projectId, () => projectFromRow(data));
+      if (!res.ok) return { message: body.error ?? "Watching didn't finish. Please try again.", left: 0 };
+      return { message: body.message ?? "Done.", left: body.left ?? 0 };
+    },
     async searchCreators(query) {
       // Only letters, numbers, dots, underscores, dashes and spaces reach the database filter.
       const q = query
