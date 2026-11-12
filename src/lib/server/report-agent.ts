@@ -97,16 +97,42 @@ const DRAFT_SCHEMA: GeminiSchema = {
   required: ["summary", "worked", "didnt", "audience", "next", "themes"],
 };
 
-async function labelWithAI(p: Project, comments: RawComment[]): Promise<{ labels: CommentLabel[]; byAI: number }> {
-  const labels: CommentLabel[] = comments.map((c) => ruleLabel(c.text, p.brief));
-  if (!aiReady() || comments.length === 0) return { labels, byAI: 0 };
+/** A comment as kept in post_comments, with the label it was given (and whether the AI gave it). */
+interface SavedComment {
+  text: string;
+  likes: number;
+  replies: number;
+  label?: CommentLabel;
+  ai?: boolean;
+}
+
+/** Comments already read, by post. Null when the post_comments table isn't there yet (migration 0017). */
+async function savedComments(db: SupabaseClient, postIds: string[]): Promise<Map<string, { readAt: string; items: SavedComment[] }> | null> {
+  if (postIds.length === 0) return new Map();
+  const { data, error } = await db.from("post_comments").select("post_id, read_at, items").in("post_id", postIds);
+  if (error) {
+    console.warn("post_comments not readable", error.message);
+    return null;
+  }
+  return new Map((data as { post_id: string; read_at: string; items: SavedComment[] }[]).map((r) => [r.post_id, { readAt: r.read_at, items: r.items ?? [] }]));
+}
+
+async function labelWithAI(
+  p: Project,
+  comments: RawComment[],
+  /** Labels the AI already gave (from an earlier report); only the rest are sent to the AI. */
+  known: (CommentLabel | null)[] = [],
+): Promise<{ labels: CommentLabel[]; ai: boolean[]; byAI: number }> {
+  const labels: CommentLabel[] = comments.map((c, i) => known[i] ?? ruleLabel(c.text, p.brief));
+  const ai = comments.map((_, i) => !!known[i]);
+  const todo = comments.map((_, i) => i).filter((i) => !known[i]);
+  if (!aiReady() || todo.length === 0) return { labels, ai, byAI: ai.filter(Boolean).length };
   const b = p.brief;
   const context =
     `Campaign: ${p.name}. Brand: ${b.brand || p.client || "unknown"}. Product: ${b.product || "—"}. Key message: ${b.keyMessage || "—"}. ` +
     `Must-says: ${b.mustSay.join("; ") || "—"}. Hashtags: ${b.hashtags.join(" ") || "—"}. Competitors: ${b.competitors.join(", ") || "—"}. Objective: ${p.objective}.`;
   const batches: number[][] = [];
-  for (let i = 0; i < comments.length; i += LABEL_BATCH) batches.push(comments.slice(i, i + LABEL_BATCH).map((_, k) => i + k));
-  let byAI = 0;
+  for (let i = 0; i < todo.length; i += LABEL_BATCH) batches.push(todo.slice(i, i + LABEL_BATCH));
   const work = async (idx: number[]) => {
     const items = idx.map((i, k) => ({ i: k, text: comments[i].text.slice(0, 400) }));
     const answer = await askAI(
@@ -123,11 +149,11 @@ async function labelWithAI(p: Project, comments: RawComment[]): Promise<{ labels
       const i = idx[l.i];
       if (i === undefined) continue;
       labels[i] = { about: l.about, sentiment: l.sentiment, signals: l.signals, language: l.language };
-      byAI++;
+      ai[i] = true;
     }
   };
   for (let k = 0; k < batches.length; k += PARALLEL) await Promise.all(batches.slice(k, k + PARALLEL).map(work));
-  return { labels, byAI };
+  return { labels, ai, byAI: ai.filter(Boolean).length };
 }
 
 export async function generateReport(db: SupabaseClient, projectId: string, now = Date.now(), earlierNotes: string[] = []): Promise<CampaignReport> {
@@ -142,8 +168,44 @@ export async function generateReport(db: SupabaseClient, projectId: string, now 
   const analyses = new Map<string, CreatorAnalysis>(creators.map((c) => [c.id, analyzeCreator(c, settings, now, [], creators)]));
   const numbers = numbersReport(p, analyses, today);
 
-  const { comments, sources } = await readComments(postsForComments(p, today), p.commentCap);
-  const { labels, byAI } = await labelWithAI(p, comments);
+  // Comments: reuse what earlier reports read; only posts not read yet are fetched (Apify costs credit).
+  const posts = postsForComments(p, today);
+  const saved = await savedComments(
+    db,
+    posts.map((x) => x.id),
+  );
+  const fresh = saved ? posts.filter((x) => !saved.has(x.id)) : posts;
+  const read = fresh.length ? await readComments(fresh, p.commentCap) : { comments: [], sources: [] };
+  const sources = read.sources;
+  const comments: RawComment[] = [];
+  const known: (CommentLabel | null)[] = [];
+  for (const x of posts) {
+    for (const c of saved?.get(x.id)?.items ?? []) {
+      comments.push({ postId: x.id, text: c.text, likes: c.likes, replies: c.replies });
+      known.push(c.ai && c.label ? c.label : null);
+    }
+  }
+  for (const c of read.comments) {
+    comments.push(c);
+    known.push(null);
+  }
+  const { labels, ai, byAI } = await labelWithAI(p, comments, known);
+  if (saved) {
+    // Keep each post's comments and labels for next time; skip platforms whose reading failed (tried again next time).
+    const failed = new Set(sources.filter((x) => x.note).map((x) => x.platform));
+    const items = new Map<string, SavedComment[]>();
+    comments.forEach((c, i) => {
+      if (c.postId)
+        (items.get(c.postId) ?? items.set(c.postId, []).get(c.postId)!).push({ text: c.text, likes: c.likes, replies: c.replies, label: labels[i], ai: ai[i] });
+    });
+    const rows = posts
+      .filter((x) => saved.has(x.id) || (x.platform && !failed.has(x.platform)))
+      .map((x) => ({ post_id: x.id, read_at: saved.get(x.id)?.readAt ?? new Date(now).toISOString(), items: items.get(x.id) ?? [] }));
+    if (rows.length) {
+      const { error: sErr } = await db.from("post_comments").upsert(rows);
+      if (sErr) console.warn("Couldn't keep comments", sErr.message);
+    }
+  }
   const stats = emptyStats();
   const byPost: Record<string, CommentStats> = {};
   comments.forEach((c, i) => {
@@ -154,6 +216,11 @@ export async function generateReport(db: SupabaseClient, projectId: string, now 
   // What the earlier steps of this run (documents, videos) reported.
   const notes: string[] = [...earlierNotes];
   for (const s of sources) if (s.note) notes.push(`${s.platform}: ${s.note}`);
+  if (saved === null) notes.push("Run database update 0017_post_comments.sql in Supabase so comments are kept and not paid for again.");
+  else if (posts.length - fresh.length)
+    notes.push(
+      `Comments on ${posts.length - fresh.length} posts were reused from earlier; ${fresh.length ? `${fresh.length} new posts were read now` : "no new posts to read"}.`,
+    );
   if (comments.length && byAI < comments.length)
     notes.push(
       byAI

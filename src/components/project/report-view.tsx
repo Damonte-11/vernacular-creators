@@ -42,7 +42,7 @@ export function ReportView({ p }: { p: Project }) {
     if (
       r &&
       !window.confirm(
-        "Make the report again? The brief documents and comments are read again (comments use Apify credit for TikTok and Instagram) and the written draft is replaced. Videos already watched aren't watched again.",
+        "Make the report again? The written draft is replaced. Comments and videos already read are reused (no Apify credit); only new posts are read. The brief documents are read again.",
       )
     )
       return;
