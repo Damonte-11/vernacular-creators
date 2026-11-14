@@ -70,6 +70,7 @@ export interface ApifyTikTokItem {
   createTime?: number;
   createTimeISO?: string;
   webVideoUrl?: string;
+  videoMeta?: { coverUrl?: string; originalCoverUrl?: string };
   isAd?: boolean;
   isSlideshow?: boolean;
   isPinned?: boolean;
@@ -102,7 +103,11 @@ export async function fetchTikTokCreator(handle: string, token: string, fetcher:
   });
 
   const videos = items.filter((i) => !i.errorCode && i.id && i.authorMeta);
-  if (videos.length === 0) throw itemError(items.find((i) => i.errorCode), input);
+  if (videos.length === 0)
+    throw itemError(
+      items.find((i) => i.errorCode),
+      input,
+    );
 
   const author = videos[0].authorMeta!;
   if (author.privateAccount) throw new LookupError("not_found", `@${input} is a private TikTok account, so its numbers aren't public.`);
@@ -130,6 +135,7 @@ export async function fetchTikTokCreator(handle: string, token: string, fetcher:
         views: typeof v.playCount === "number" ? v.playCount : null,
         url: v.webVideoUrl ?? `https://www.tiktok.com/@${input}`,
         caption: (v.text ?? "").slice(0, 2200),
+        thumbnailUrl: v.videoMeta?.coverUrl ?? v.videoMeta?.originalCoverUrl ?? null,
       })),
   };
 }
@@ -186,7 +192,8 @@ export function mapApifyError(status: number, error: { type?: string; message?: 
   }
   if (/limit|concurren|memory|busy/i.test(type)) {
     return new LookupError("rate_limited", `Apify is busy with another run (the free plan limits how many run at once). Trying again shortly.${says}`, 60);
-  }  if (status === 408) {
+  }
+  if (status === 408) {
     return new LookupError("upstream", "TikTok took too long to answer through Apify. Please try again.");
   }
   if (status >= 500) return new LookupError("upstream", "Apify had a temporary problem. Please try again shortly.");

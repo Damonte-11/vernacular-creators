@@ -91,6 +91,7 @@ export async function fetchYouTubeCreator(handleOrId: string, key: string, fetch
       comments: Number(v.statistics.commentCount ?? 0),
       views: v.statistics.viewCount !== undefined ? Number(v.statistics.viewCount) : null,
       url: `https://www.youtube.com/watch?v=${v.id}`,
+      thumbnailUrl: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
       caption: v.snippet.title.slice(0, 300),
     })),
   };

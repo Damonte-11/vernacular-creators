@@ -101,6 +101,31 @@ a {
 .fade-enter {
   animation: fade-in 0.18s ease-out;
 }
+/* Creator pages: cards rise in, the profile drawer slides a short way, bars grow. */
+@keyframes cr-drawer {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+}
+@keyframes cr-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.cr-rise {
+  animation: rise-in 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.cr-drawer {
+  animation: cr-drawer 0.24s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.cr-fade {
+  animation: fade-in 0.2s ease-out both;
+}
+.cr-grow {
+  transform-origin: left;
+  animation: cr-grow 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

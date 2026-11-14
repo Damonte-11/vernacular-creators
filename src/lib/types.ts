@@ -19,6 +19,8 @@ export interface Post {
   caption: string;
   /** Set aside by the team (e.g. a known paid ad): left out of all averages. */
   excluded?: boolean;
+  /** Cover image from the platform (Instagram and TikTok links expire after a while; refreshed with each read). */
+  thumbnailUrl?: string | null;
 }
 
 export interface Snapshot {

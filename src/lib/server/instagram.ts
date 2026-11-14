@@ -11,7 +11,7 @@ import type { FetchedCreator, Fetcher } from "./fetched";
 /** How many recent posts to fetch: the latest 30 used for the numbers, plus spares to replace set-aside posts. */
 export const IG_MEDIA_LIMIT = 45;
 
-const MEDIA_FIELDS = "id,caption,like_count,comments_count,view_count,media_type,media_product_type,timestamp,permalink";
+const MEDIA_FIELDS = "id,caption,like_count,comments_count,view_count,media_type,media_product_type,timestamp,permalink,media_url,thumbnail_url";
 const userFields = (limit: number) => `id,username,name,biography,profile_picture_url,followers_count,media_count,media.limit(${limit}){${MEDIA_FIELDS}}`;
 /** When Instagram says "reduce the amount of data", ask again for fewer posts. */
 const SMALLER_LIMITS = [IG_MEDIA_LIMIT, 25, 12];
@@ -26,6 +26,10 @@ interface IgMedia {
   media_product_type?: "FEED" | "REELS" | "STORY" | "AD";
   timestamp: string;
   permalink?: string;
+  /** The image (photos, carousels) or the video file. */
+  media_url?: string;
+  /** Cover image of a video. */
+  thumbnail_url?: string;
 }
 
 interface IgUser {
@@ -129,6 +133,7 @@ async function fetchWithLimit(username: string, config: InstagramConfig, fetcher
         views: typeof m.view_count === "number" ? m.view_count : null,
         url: m.permalink ?? "",
         caption: (m.caption ?? "").slice(0, 2200),
+        thumbnailUrl: m.thumbnail_url ?? (m.media_type === "VIDEO" ? null : (m.media_url ?? null)),
       })),
   };
 }

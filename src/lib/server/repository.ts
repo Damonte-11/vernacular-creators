@@ -57,12 +57,7 @@ export async function findCreator(db: SupabaseClient, platform: Platform, handle
  * score and flags at this moment. Team-entered fields (niche, city, notes,
  * tags) are never overwritten.
  */
-export async function saveFetchedCreator(
-  db: SupabaseClient,
-  f: FetchedCreator,
-  settings: Settings,
-  userId: string | null,
-): Promise<Creator> {
+export async function saveFetchedCreator(db: SupabaseClient, f: FetchedCreator, settings: Settings, userId: string | null): Promise<Creator> {
   const now = new Date().toISOString();
   const profile = {
     platform: f.platform,
@@ -126,8 +121,16 @@ export async function saveFetchedCreator(
       views: p.views,
       url: p.url,
       caption: p.caption,
+      thumbnail_url: p.thumbnailUrl ?? null,
     }));
-    const { error } = await db.from("posts").upsert(rows, { onConflict: "creator_id,platform_post_id" });
+    let { error } = await db.from("posts").upsert(rows, { onConflict: "creator_id,platform_post_id" });
+    // Before database update 0019 there's no thumbnail column: save the rest rather than fail the refresh.
+    if (error && /thumbnail_url/.test(error.message)) {
+      ({ error } = await db.from("posts").upsert(
+        rows.map((r) => ({ ...r, thumbnail_url: undefined })),
+        { onConflict: "creator_id,platform_post_id" },
+      ));
+    }
     if (error) throw error;
     const keep = f.posts.map((p) => quote(p.platformPostId)).join(",");
     const { error: delError } = await db.from("posts").delete().eq("creator_id", id).not("platform_post_id", "in", `(${keep})`);
@@ -182,7 +185,11 @@ export async function countFetchesSince(db: SupabaseClient, platform: Platform, 
 }
 
 /** Creators due a refresh. TikTok is left out: each refresh costs Apify credit, so it's refreshed by hand. */
-export async function staleCreators(db: SupabaseClient, intervalHours: number, limit: number): Promise<{ id: string; platform: Platform; handle: string; platform_id: string }[]> {
+export async function staleCreators(
+  db: SupabaseClient,
+  intervalHours: number,
+  limit: number,
+): Promise<{ id: string; platform: Platform; handle: string; platform_id: string }[]> {
   const cutoff = new Date(Date.now() - intervalHours * 3_600_000).toISOString();
   const { data, error } = await db
     .from("creators")
