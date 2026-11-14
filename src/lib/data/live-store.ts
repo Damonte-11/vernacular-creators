@@ -87,26 +87,40 @@ function startSyncing() {
 
 type Loaded = Pick<AppState, "creators" | "settings" | "campaignResults" | "projects">;
 
-/** Every creator, fetched in pages side by side rather than one after another. */
+/** Creators per request. Each comes with its posts and follower history, so pages stay small enough to answer fast. */
+const LOAD_PAGE = 200;
+/** Requests at a time: enough to overlap the waiting, few enough that the database doesn't hit its time limit. */
+const LOAD_AT_ONCE = 2;
+
+/** One slice of creators; if the database runs out of time on it, the slice is split in two and tried again. */
+async function fetchSlice(from: number, size: number): Promise<CreatorRow[]> {
+  const r = await db()
+    .from("creators")
+    .select(CREATOR_SELECT)
+    .order("id")
+    .range(from, from + size - 1);
+  if (!r.error) return r.data as CreatorRow[];
+  if (size <= 25) throw r.error;
+  const half = Math.ceil(size / 2);
+  return [...(await fetchSlice(from, half)), ...(await fetchSlice(from + half, size - half))];
+}
+
+/** Every creator, a couple of pages at a time. */
 async function fetchCreators() {
   const head = await db().from("creators").select("id", { count: "exact", head: true });
   if (head.error) throw head.error;
-  const total = head.count ?? 0;
-  const pages = await Promise.all(
-    Array.from({ length: Math.max(1, Math.ceil(total / PAGE)) }, (_, i) =>
-      db()
-        .from("creators")
-        .select(CREATOR_SELECT)
-        .order("created_at")
-        .range(i * PAGE, i * PAGE + PAGE - 1),
-    ),
-  );
-  const creators = [];
-  for (const r of pages) {
-    if (r.error) throw r.error;
-    creators.push(...(r.data as CreatorRow[]).map(creatorFromRow));
-  }
-  // Anything added between the count and the pages is picked up by the next sync.
+  const starts = Array.from({ length: Math.max(1, Math.ceil((head.count ?? 0) / LOAD_PAGE)) }, (_, i) => i * LOAD_PAGE);
+  const rows: CreatorRow[][] = new Array(starts.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < starts.length) {
+      const i = next++;
+      rows[i] = await fetchSlice(starts[i], LOAD_PAGE);
+    }
+  };
+  await Promise.all(Array.from({ length: LOAD_AT_ONCE }, worker));
+  // A creator added while loading can shift the pages; keep each one once. The next sync picks up anything missed.
+  const creators = rows.flat().map(creatorFromRow);
   return [...new Map(creators.map((c) => [c.id, c])).values()];
 }
 
