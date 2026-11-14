@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { buttonClass, cx } from "@/components/ui";
 import { fmt, lookalikes, pct, type Pro } from "./data";
@@ -164,16 +164,114 @@ export default function Verdict() {
   );
 }
 
-function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro[]; onClose: () => void; onOpen: (p: Pro) => void; onReport: () => void }) {
+export interface DrawerExtras {
+  /** Step through the results without closing (buttons and ← → keys). */
+  nav?: { index: number; total: number; onPrev: () => void; onNext: () => void };
+  compare?: { on: boolean; toggle: () => void };
+  saved?: { on: boolean; toggle: () => void };
+}
+
+const SECTIONS = [
+  ["summary", "Summary"],
+  ["posts", "Posts"],
+  ["audience", "Audience"],
+  ["us", "With us"],
+  ["notes", "Notes"],
+] as const;
+
+export function VerdictDrawer({
+  p,
+  all,
+  onClose,
+  onOpen,
+  onReport,
+  extras = {},
+}: {
+  p: Pro;
+  all: Pro[];
+  onClose: () => void;
+  onOpen: (p: Pro) => void;
+  onReport: () => void;
+  extras?: DrawerExtras;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const { nav, compare, saved } = extras;
+  useEffect(() => {
+    if (!nav) return;
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      if (e.key === "ArrowRight") nav!.onNext();
+      if (e.key === "ArrowLeft") nav!.onPrev();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [nav]);
+  const jump = (id: string) => scroller.current?.querySelector(`#v-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const pill = "rounded-full px-2.5 py-1 text-xs font-medium transition-colors";
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between px-6 pt-5">
-        <span className="text-[13px] text-white/50">Quick look</span>
-        <button onClick={onClose} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close">
-          <Icon name="close" size={16} />
-        </button>
+      <div className="flex shrink-0 items-center gap-2 px-6 pt-4">
+        {nav ? (
+          <span className="flex items-center gap-1 text-[13px] text-white/60">
+            <button
+              onClick={nav.onPrev}
+              disabled={nav.index === 0}
+              className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-30"
+              aria-label="Previous creator"
+            >
+              <Icon name="back" size={15} />
+            </button>
+            <span className="tabular-nums">
+              {nav.index + 1} of {nav.total}
+            </span>
+            <button
+              onClick={nav.onNext}
+              disabled={nav.index >= nav.total - 1}
+              className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-30"
+              aria-label="Next creator"
+            >
+              <Icon name="back" size={15} className="rotate-180" />
+            </button>
+          </span>
+        ) : (
+          <span className="text-[13px] text-white/50">Quick look</span>
+        )}
+        <span className="ml-auto flex items-center gap-1.5">
+          {saved && (
+            <button onClick={saved.toggle} className={cx(pill, saved.on ? "bg-white text-[#171715]" : "bg-white/10 text-white hover:bg-white/20")}>
+              {saved.on ? "Saved" : "Save"}
+            </button>
+          )}
+          {compare && (
+            <button onClick={compare.toggle} className={cx(pill, compare.on ? "bg-[#f75115] text-white" : "bg-white/10 text-white hover:bg-white/20")}>
+              {compare.on ? "In compare" : "Compare"}
+            </button>
+          )}
+          <button
+            onClick={() => {
+              void navigator.clipboard?.writeText(`${location.origin}/creators/${p.id}`).catch(() => undefined);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className={cx(pill, "bg-white/10 text-white hover:bg-white/20")}
+          >
+            {copied ? "Link copied" : "Copy link"}
+          </button>
+          <button onClick={onClose} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close">
+            <Icon name="close" size={16} />
+          </button>
+        </span>
       </div>
-      <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 pb-6 pt-3">
+      <nav className="flex shrink-0 gap-1 overflow-x-auto px-6 pb-1 pt-3" aria-label="Sections">
+        {SECTIONS.map(([id, label]) => (
+          <button key={id} onClick={() => jump(id)} className={cx(pill, "shrink-0 text-white/60 ring-1 ring-white/15 hover:text-white hover:ring-white/40")}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div ref={scroller} key={p.id} className="proto-rise min-h-0 flex-1 space-y-7 overflow-y-auto px-6 pb-6 pt-3">
         <div className="flex items-center gap-4">
           <Avatar p={p} size={64} />
           <div className="min-w-0 flex-1">
@@ -184,7 +282,7 @@ function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro
           </div>
           <ScoreRing score={p.score} size={64} stroke={5} dark />
         </div>
-        <Block title="The short version">
+        <Block id="summary" title="The short version">
           <p className="text-xl font-semibold leading-snug tracking-tight">{p.verdict}</p>
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             {[
@@ -197,6 +295,10 @@ function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro
                 <p className="text-xs text-white/50">{k}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-4 rounded-xl bg-white/5 p-3">
+            <p className="mb-1 text-xs text-white/50">Views on their last 12 posts · hover a bar</p>
+            <ViewsBars p={p} height={110} dark />
           </div>
         </Block>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -225,21 +327,21 @@ function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro
             )}
           </Block>
         </div>
-        <Block title="Their best posts">
+        <Block id="posts" title="Their best posts">
           <div className="grid grid-cols-3 gap-1.5">
             {p.best.slice(0, 6).map((x) => (
               <Cover key={x.id} post={x} className="aspect-[3/4]" />
             ))}
           </div>
         </Block>
-        <Block title="What their audience says">
+        <Block id="audience" title="What their audience says">
           <p className="text-[13px] text-white/80">
             {p.sentiment.positive}% of comments are positive. People mostly talk about {p.commentThemes.join(", ")}. Comments are mostly in{" "}
             {p.languages[0].label} and {p.languages[1].label}
             {p.spamShare > 10 ? `; ${p.spamShare}% look like bots, which is high.` : "."}
           </p>
         </Block>
-        <Block title="With Vernacular">
+        <Block id="us" title="With Vernacular">
           {p.chorus.length ? (
             <ul className="space-y-1 text-[13px]">
               {p.chorus.map((c) => (
@@ -253,7 +355,7 @@ function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro
             <p className="text-[13px] text-white/60">Not booked by Vernacular yet.</p>
           )}
         </Block>
-        <Block title="The team's notes">
+        <Block id="notes" title="The team's notes">
           <CrmPanel p={p} dark />
         </Block>
         <Block title="Similar creators">
@@ -280,16 +382,16 @@ function VerdictDrawer({ p, all, onClose, onOpen, onReport }: { p: Pro; all: Pro
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+function Block({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section>
+    <section id={id ? `v-${id}` : undefined} className="scroll-mt-3">
       <p className="mb-2 text-xs font-medium text-[#f75115]">{title}</p>
       {children}
     </section>
   );
 }
 
-function VerdictReport({ p, all, onBack, onOpen }: { p: Pro; all: Pro[]; onBack: () => void; onOpen: (p: Pro) => void }) {
+export function VerdictReport({ p, all, onBack, onOpen }: { p: Pro; all: Pro[]; onBack: () => void; onOpen: (p: Pro) => void }) {
   return (
     <article className="proto-rise mx-auto max-w-5xl space-y-4">
       <div className="no-print flex items-center justify-between">

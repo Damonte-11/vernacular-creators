@@ -4,7 +4,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recha
 import { Icon } from "@/components/icons";
 import { buttonClass, cx } from "@/components/ui";
 import { CITIES, fmt, lookalikes, NICHES, pct, SIZE_BANDS, type Pro, type SortKey } from "./data";
-import { Avatar, Cover, Drawer, ScoreRing, Spark, toggleIn, Trend, useSearch, type Search } from "./bits";
+import { Avatar, Cover, Drawer, RangeHistogram, ScoreRing, Spark, toggleIn, Trend, useSearch, type Search } from "./bits";
 import { CrmPanel } from "./crm";
 import { AudienceSignals, ChorusHistory, Collabs, GrowthChart, LookalikeList, ViewsBars } from "./report-parts";
 
@@ -243,6 +243,17 @@ export default function Signal() {
   );
 }
 
+/** "20k", "1.5m" or "20000" → a number. */
+const parseCount = (t: string) => {
+  const m = t
+    .trim()
+    .toLowerCase()
+    .replace(/,/g, "")
+    .match(/^([\d.]+)\s*(k|m)?$/);
+  if (!m) return null;
+  return Math.round(Number(m[1]) * (m[2] === "m" ? 1e6 : m[2] === "k" ? 1e3 : 1));
+};
+
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 /** A bar for this creator with a tick at the average for creators their size. */
@@ -267,7 +278,7 @@ function Versus({ value, mean, label }: { value: number; mean: number; label: st
   );
 }
 
-function Group({ title, children, open = true }: { title: string; children: React.ReactNode; open?: boolean }) {
+export function Group({ title, children, open = true }: { title: string; children: React.ReactNode; open?: boolean }) {
   const [o, setO] = useState(open);
   return (
     <div className="border-b border-line py-3">
@@ -279,7 +290,7 @@ function Group({ title, children, open = true }: { title: string; children: Reac
   );
 }
 
-function Check({ on, onClick, label, count }: { on: boolean; onClick: () => void; label: React.ReactNode; count: number }) {
+export function Check({ on, onClick, label, count }: { on: boolean; onClick: () => void; label: React.ReactNode; count: number }) {
   return (
     <label className={cx("flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-[13px] hover:bg-surface-2", count === 0 && !on && "opacity-40")}>
       <input type="checkbox" checked={on} onChange={onClick} className="accent-[#f75115]" />
@@ -289,12 +300,12 @@ function Check({ on, onClick, label, count }: { on: boolean; onClick: () => void
   );
 }
 
-function FilterRail({ s }: { s: Search }) {
+export function FilterRail({ s }: { s: Search }) {
   const f = s.filters;
   const set = s.setFilters;
   const n = (pred: (p: Pro) => boolean) => s.all.filter(pred).length;
   return (
-    <aside className="lg:sticky lg:top-4 lg:self-start">
+    <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Filters</p>
         <button className="text-xs text-muted underline" onClick={s.reset}>
@@ -337,6 +348,35 @@ function FilterRail({ s }: { s: Search }) {
           <Check key={v} on={f.cities.includes(v)} onClick={() => set({ ...f, cities: toggleIn(f.cities, v) })} label={v} count={n((x) => x.city === v)} />
         ))}
       </Group>
+      <Group title="Expected views">
+        <p className="px-1.5 pb-1 text-xs text-muted">Typical views per post</p>
+        <RangeHistogram
+          values={s.all.map((x) => x.avgViews ?? -1).filter((v) => v >= 0)}
+          edges={[0, 1_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, Infinity]}
+          min={f.minViews}
+          max={f.maxViews}
+          onChange={(minViews, maxViews) => set({ ...f, minViews, maxViews })}
+          format={(v) => fmt(v)}
+          parse={parseCount}
+          unit="views"
+        />
+      </Group>
+      <Group title="Engagement">
+        <p className="px-1.5 pb-1 text-xs text-muted">Likes and comments ÷ followers</p>
+        <RangeHistogram
+          values={s.all.map((x) => x.er ?? -1).filter((v) => v >= 0)}
+          edges={[0, 0.005, 0.01, 0.02, 0.03, 0.05, 0.08, 0.12, Infinity]}
+          min={f.minEr}
+          max={f.maxEr}
+          onChange={(minEr, maxEr) => set({ ...f, minEr, maxEr })}
+          format={(v) => `${+(v * 100).toFixed(1)}%`}
+          parse={(t) => {
+            const n = parseFloat(t.replace("%", ""));
+            return Number.isFinite(n) ? n / 100 : null;
+          }}
+          unit="engagement"
+        />
+      </Group>
       <Group title="Quality">
         <label className="block px-1.5 text-[13px]">
           <span className="flex justify-between text-xs text-muted">
@@ -353,12 +393,6 @@ function FilterRail({ s }: { s: Search }) {
           />
         </label>
         <Check on={f.noFlags} onClick={() => set({ ...f, noFlags: !f.noFlags })} label="No warning flags" count={n((x) => !x.flags.length)} />
-        <Check
-          on={f.minEr !== null}
-          onClick={() => set({ ...f, minEr: f.minEr === null ? 0.03 : null })}
-          label="Engagement 3%+"
-          count={n((x) => (x.er ?? 0) >= 0.03)}
-        />
       </Group>
       <Group title="Contact and activity" open={false}>
         <Check on={f.emailOnly} onClick={() => set({ ...f, emailOnly: !f.emailOnly })} label="Has email" count={n((x) => x.email)} />
@@ -521,7 +555,7 @@ function PostingDays({ p }: { p: Pro }) {
   );
 }
 
-function Compare({ list, onClose }: { list: Pro[]; onClose: () => void }) {
+export function Compare({ list, onClose }: { list: Pro[]; onClose: () => void }) {
   const rows: [string, (p: Pro) => number | null, (p: Pro) => string][] = [
     ["Creator Score", (p) => p.score, (p) => String(p.score ?? "—")],
     ["Followers", (p) => p.followers, (p) => fmt(p.followers)],

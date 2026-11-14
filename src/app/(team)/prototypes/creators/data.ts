@@ -229,6 +229,10 @@ export interface Filters {
   cities: string[];
   sizes: SizeBand[];
   minEr: number | null;
+  maxEr: number | null;
+  /** Typical (expected) views per post. */
+  minViews: number | null;
+  maxViews: number | null;
   minScore: number | null;
   emailOnly: boolean;
   activeOnly: boolean;
@@ -241,6 +245,9 @@ export const EMPTY_FILTERS: Filters = {
   cities: [],
   sizes: [],
   minEr: null,
+  maxEr: null,
+  minViews: null,
+  maxViews: null,
   minScore: null,
   emailOnly: false,
   activeOnly: false,
@@ -325,6 +332,9 @@ export function applyFilters(list: Pro[], f: Filters): Pro[] {
     )
       return false;
     if (f.minEr !== null && (x.er ?? 0) < f.minEr) return false;
+    if (f.maxEr !== null && (x.er ?? Infinity) >= f.maxEr) return false;
+    if (f.minViews !== null && (x.avgViews ?? 0) < f.minViews) return false;
+    if (f.maxViews !== null && (x.avgViews ?? Infinity) >= f.maxViews) return false;
     if (f.minScore !== null && (x.score ?? 0) < f.minScore) return false;
     if (f.emailOnly && !x.email) return false;
     if (f.activeOnly && x.lastPostDays > 14) return false;

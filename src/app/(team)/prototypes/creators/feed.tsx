@@ -100,7 +100,7 @@ export default function Feed() {
   );
 }
 
-function SearchHero({ s, onAsk }: { s: Search; onAsk: () => void }) {
+export function SearchHero({ s, onAsk }: { s: Search; onAsk: () => void }) {
   const [q, setQ] = useState(s.query);
   return (
     <section className="relative overflow-hidden rounded-2xl bg-[#171715] px-5 py-6 text-white sm:px-8 sm:py-8">
@@ -232,7 +232,7 @@ function FilterChips({ s }: { s: Search }) {
   );
 }
 
-function CreatorCard({
+export function CreatorCard({
   p,
   i,
   saved,

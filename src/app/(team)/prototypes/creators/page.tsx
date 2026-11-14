@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Feed from "./feed";
+import Mix from "./mix";
 import Signal from "./signal";
 import Verdict from "./verdict";
 
 const VARIANTS = [
+  { name: "Mix", C: Mix },
   { name: "Feed", C: Feed },
   { name: "Signal", C: Signal },
   { name: "Verdict", C: Verdict },
@@ -67,8 +69,8 @@ export default function CreatorPrototypes() {
     <>
       <style>{PROTO_CSS}</style>
       <p className="no-print mb-4 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn ring-1 ring-warn/20">
-        <b className="font-semibold">Design prototype.</b> Three directions for finding creators, the quick look and the full report, on made-up sample
-        creators. Flip with the picker at the bottom or keys 1–3. Nothing here is saved.
+        <b className="font-semibold">Design prototype.</b> Four directions (Mix combines the ones you liked) for finding creators, the quick look and the full
+        report, on made-up sample creators. Flip with the picker at the bottom or keys 1–4. Nothing here is saved.
       </p>
       <div key={`${current}-${mountKey}`} className="pb-24">
         <C />

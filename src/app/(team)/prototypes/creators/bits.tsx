@@ -248,3 +248,83 @@ export function Drawer({
     </div>
   );
 }
+
+/**
+ * A range filter drawn as a small bar chart of how creators are spread.
+ * Click a bar to pick that range; click another to stretch the range to it;
+ * click the only picked bar again to clear. From/To boxes take typed numbers.
+ */
+export function RangeHistogram({
+  values,
+  edges,
+  min,
+  max,
+  onChange,
+  format,
+  parse,
+  unit,
+}: {
+  values: number[];
+  edges: number[];
+  min: number | null;
+  max: number | null;
+  onChange: (min: number | null, max: number | null) => void;
+  format: (n: number) => string;
+  parse: (s: string) => number | null;
+  unit: string;
+}) {
+  const buckets = edges.slice(0, -1).map((lo, i) => ({ lo, hi: edges[i + 1], n: values.filter((v) => v >= lo && v < edges[i + 1]).length }));
+  const top = Math.max(...buckets.map((b) => b.n), 1);
+  const lo = min ?? -Infinity;
+  const hi = max ?? Infinity;
+  const picked = (b: { lo: number; hi: number }) => (min !== null || max !== null) && b.lo >= lo && b.hi <= hi;
+  function click(i: number) {
+    const b = buckets[i];
+    const sel = buckets.map((x, j) => (picked(x) ? j : -1)).filter((j) => j >= 0);
+    if (sel.length === 1 && sel[0] === i) return onChange(null, null);
+    if (!sel.length) return onChange(b.lo, Number.isFinite(b.hi) ? b.hi : null);
+    const first = Math.min(sel[0], i);
+    const last = Math.max(sel.at(-1)!, i);
+    onChange(buckets[first].lo || null, Number.isFinite(buckets[last].hi) ? buckets[last].hi : null);
+  }
+  return (
+    <div className="px-1.5">
+      <div className="flex h-12 items-end gap-[3px]" role="group" aria-label={`Spread of ${unit}`}>
+        {buckets.map((b, i) => (
+          <button
+            key={i}
+            onClick={() => click(i)}
+            title={`${format(b.lo)}–${Number.isFinite(b.hi) ? format(b.hi) : "more"} ${unit}: ${b.n} creators`}
+            className={cx("flex-1 rounded-t-[3px] transition-colors duration-150", picked(b) ? "bg-[#f75115]" : "bg-[#d6d0c1] hover:bg-[#b9b3a4]")}
+            style={{ height: `${Math.max(8, (b.n / top) * 100)}%` }}
+          />
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted">
+        <span>{format(edges[0])}</span>
+        <span>{format(edges[edges.length - 2])}+</span>
+      </div>
+      <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+        <input
+          key={`min-${min}`}
+          defaultValue={min !== null ? format(min) : ""}
+          onBlur={(e) => onChange(parse(e.target.value), max)}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          placeholder="From"
+          className="w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-[13px] tabular-nums outline-none focus:border-[#f75115]"
+          aria-label={`Lowest ${unit}`}
+        />
+        <span className="text-xs text-muted">–</span>
+        <input
+          key={`max-${max}`}
+          defaultValue={max !== null ? format(max) : ""}
+          onBlur={(e) => onChange(min, parse(e.target.value))}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          placeholder="To"
+          className="w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-[13px] tabular-nums outline-none focus:border-[#f75115]"
+          aria-label={`Highest ${unit}`}
+        />
+      </div>
+    </div>
+  );
+}
