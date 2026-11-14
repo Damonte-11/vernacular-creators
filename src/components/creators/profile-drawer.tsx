@@ -275,7 +275,7 @@ function ViewBars({ v }: { v: CreatorView }) {
 }
 
 /** Past projects with this creator: their views against their usual, and whether they posted on time. */
-function History({ v }: { v: CreatorView }) {
+export function History({ v, light }: { v: CreatorView; light?: boolean }) {
   const { projects } = useAppState();
   const rows = useMemo(
     () =>
@@ -290,7 +290,8 @@ function History({ v }: { v: CreatorView }) {
       }),
     [projects, v.id, v.views],
   );
-  if (!rows.length) return <p className="text-[13px] text-white/60">Not on any Vernacular project yet.</p>;
+  const muted = light ? "text-muted" : "text-white/50";
+  if (!rows.length) return <p className={cx("text-[13px]", light ? "text-muted" : "text-white/60")}>Not on any Vernacular project yet.</p>;
   return (
     <ul className="space-y-1.5 text-[13px]">
       {rows.map((r) => (
@@ -300,11 +301,13 @@ function History({ v }: { v: CreatorView }) {
           </Link>
           <span className="tabular-nums">
             {r.vsUsual === null ? (
-              <span className="text-white/50">numbers not read yet</span>
+              <span className={muted}>numbers not read yet</span>
             ) : (
-              <b className={r.vsUsual >= 1 ? "text-[#3ccf5a]" : "text-[#ff6b5b]"}>{r.vsUsual.toFixed(1)}× their usual views</b>
+              <b className={r.vsUsual >= 1 ? (light ? "text-good" : "text-[#3ccf5a]") : light ? "text-bad" : "text-[#ff6b5b]"}>
+                {r.vsUsual.toFixed(1)}× their usual views
+              </b>
             )}
-            <span className="text-white/50">{r.late ? " · posted late" : ""}</span>
+            <span className={muted}>{r.late ? " · posted late" : ""}</span>
           </span>
         </li>
       ))}
