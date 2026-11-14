@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CreatorCard } from "@/components/creators/card";
 import { CompareView } from "@/components/creators/compare";
 import { Avatar, SideDrawer } from "@/components/creators/media";
@@ -8,7 +8,7 @@ import { ProfileDrawer } from "@/components/creators/profile-drawer";
 import { FilterColumn } from "@/components/creators/rail";
 import { BandShapes } from "@/components/creators/band";
 import { Icon } from "@/components/icons";
-import { VBubble, YouBubble } from "@/components/voice";
+import { Typing, VBubble, YouBubble } from "@/components/voice";
 import { buttonClass, cx } from "@/components/ui";
 import { SIZE_BANDS } from "@config/size-bands";
 import { NOW, useAnalyses } from "@/lib/data/creators";
@@ -52,35 +52,50 @@ export default function CreatorsPage() {
     setLikeOf(null);
   }
   const [asking, setAsking] = useState(false);
-  /** Gemini reads the request on the live app; simple word matching is the fallback (and the demo). */
+  const askId = useRef(0);
+  const fNow = useRef(f);
+  fNow.current = f;
+  /**
+   * Results show straight away from plain word matching; on the live app Gemini then reads the request
+   * properly and sharpens them, unless the team has already changed the filters by hand.
+   */
   async function ask(q: string) {
     setQuery(q);
-    const quick = readQuery(q, niches, cities);
     if (!q.trim()) return reset();
-    if (IS_LIVE) {
-      setAsking(true);
-      try {
-        const res = await fetch("/api/creators/understand", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q, niches, cities }),
-        });
-        if (res.ok) {
-          const body = (await res.json()) as { filters: Partial<ViewFilters>; chips: string[] };
-          setChips(body.chips.length ? body.chips : quick.chips);
-          set({ ...NO_FILTERS, ...body.filters });
-          setAskedF({ ...NO_FILTERS, ...body.filters });
-          return;
-        }
-      } catch {
-        // Fall back to simple matching below.
-      } finally {
-        setAsking(false);
-      }
+    const id = ++askId.current;
+    const apply = (filters: Partial<ViewFilters>, chips: string[]) => {
+      const next = { ...NO_FILTERS, ...filters };
+      setChips(chips);
+      set(next);
+      setAskedF(next);
+      return next;
+    };
+    const key = q.trim().toLowerCase();
+    const known = understood.get(key);
+    if (known) return void apply(known.filters, known.chips);
+    const quick = readQuery(q, niches, cities);
+    const shown = apply(quick.filters, quick.chips);
+    if (!IS_LIVE) return;
+    setAsking(true);
+    try {
+      const res = await fetch("/api/creators/understand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q, niches, cities }),
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as { filters: Partial<ViewFilters>; chips: string[] };
+      const better = { filters: body.filters, chips: body.chips.length ? body.chips : quick.chips };
+      understood.set(key, better);
+      // A newer search, or filters changed by hand since: keep what's on screen.
+      if (id !== askId.current || JSON.stringify(fNow.current) !== JSON.stringify(shown)) return;
+      apply(better.filters, better.chips);
+    } catch {
+      // Too slow or offline: the quick results stay.
+    } finally {
+      if (id === askId.current) setAsking(false);
     }
-    setChips(quick.chips);
-    set({ ...NO_FILTERS, ...quick.filters });
-    setAskedF({ ...NO_FILTERS, ...quick.filters });
   }
   function reset() {
     setQuery("");
@@ -261,6 +276,9 @@ export default function CreatorsPage() {
   );
 }
 
+/** What Gemini made of each request this visit, so asking again is instant. */
+const understood = new Map<string, { filters: Partial<ViewFilters>; chips: string[] }>();
+
 function SearchBand({
   query,
   chips,
@@ -304,17 +322,14 @@ function SearchBand({
           placeholder="e.g. food creators in Lagos with high engagement"
           aria-label="Describe the creators you need"
         />
-        <button
-          disabled={asking}
-          className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[.97] disabled:opacity-70"
-        >
-          {asking ? "Reading…" : "Find creators"}
+        <button className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[.97] disabled:opacity-70">
+          Find creators
         </button>
       </form>
       {query.trim() ? (
         <div className="relative mt-4 flex max-w-2xl flex-col gap-2.5" aria-live="polite">
           <YouBubble dark>{query}</YouBubble>
-          <VBubble dark typing={asking} size="sm">
+          <VBubble dark size="sm">
             {edited ? (
               <span className="block">
                 You&apos;ve changed the filters since.{" "}
@@ -342,7 +357,11 @@ function SearchBand({
                 {found ? `${formatFull(found)} ${found === 1 ? "creator" : "creators"} came up.` : "Nothing came up."}
               </span>
             )}
-            {!asking && (
+            {asking ? (
+              <span className="mt-1 flex items-center gap-2 text-xs text-quiet">
+                Reading it more carefully <Typing />
+              </span>
+            ) : (
               <button className="mt-1 text-xs text-quiet underline underline-offset-2 hover:text-white" onClick={onClear}>
                 Start over
               </button>

@@ -38,6 +38,8 @@ function perMinute(): number {
   return Math.max(1, Number(process.env.GEMINI_PER_MINUTE) || 5);
 }
 const recent: number[] = [];
+/** How long a quick question (someone waiting on screen) may take before the plain-rules answer stands. */
+const QUICK_MS = 8_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Wait for a free slot under the per-minute limit. False when that would take longer than `maxWait`. */
@@ -68,18 +70,23 @@ export async function askGemini<T extends z.ZodType>(
   fetcher: Fetcher = fetch,
   /** A video (or other file) for Gemini to watch along with the prompt. */
   file?: { uri: string; mimeType?: string },
+  /**
+   * quick: someone is waiting on screen (search). No queueing for the per-minute limit, no retries, and a
+   * time limit; the caller already shows a plain-rules answer, so giving up fast is better than waiting.
+   */
+  opts: { quick?: boolean } = {},
 ): Promise<z.infer<T> | null> {
   const key = geminiKey();
   if (!key) return null;
   // Busy (503) and per-minute (429) answers are waited out and tried again a few times.
   for (let attempt = 0; ; attempt++) {
-    if (!(await slot(45_000))) {
+    if (!(await slot(opts.quick ? 0 : 45_000))) {
       lastGeminiProblem = "Gemini's free per-minute limit is full; try again in a minute.";
       return null;
     }
-    const out = await askOnce(key, system, prompt, schema, validate, fetcher, file);
+    const out = await askOnce(key, system, prompt, schema, validate, fetcher, file, opts.quick ? QUICK_MS : undefined);
     if (out.ok) return out.value;
-    if (attempt >= 3 || !out.retryAfter) return null;
+    if (opts.quick || attempt >= 3 || !out.retryAfter) return null;
     await sleep(out.retryAfter);
   }
 }
@@ -92,9 +99,11 @@ async function askOnce<T extends z.ZodType>(
   validate: T,
   fetcher: Fetcher,
   file?: { uri: string; mimeType?: string },
+  timeoutMs?: number,
 ): Promise<{ ok: true; value: z.infer<T> } | { ok: false; retryAfter?: number }> {
   try {
     const res = await fetcher(`${API}/${encodeURIComponent(geminiModel())}:generateContent`, {
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({

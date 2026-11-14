@@ -90,6 +90,8 @@ export async function POST(request: Request) {
       `- understood: 2–6 short labels of what you understood, for the team to see (e.g. "Food", "Lagos", "Engagement 3%+").`,
     Answer,
     SCHEMA,
+    "low",
+    { quick: true },
   );
   if (!answer) return Response.json({ error: "The AI didn't answer; using simple matching instead." }, { status: 503 });
   const pick = (list: string[], allowed: string[]) => list.filter((x) => allowed.includes(x));

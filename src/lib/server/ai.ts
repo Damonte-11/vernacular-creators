@@ -27,8 +27,10 @@ export async function askAI<T extends z.ZodType>(
   schema: T,
   geminiSchema: GeminiSchema,
   effort: "low" | "medium" = "low",
+  /** Someone is waiting on screen: answer fast or not at all (see askGemini). */
+  opts: { quick?: boolean } = {},
 ): Promise<z.infer<T> | null> {
-  if (geminiKey()) return askGemini(system, prompt, geminiSchema, schema);
+  if (geminiKey()) return askGemini(system, prompt, geminiSchema, schema, fetch, undefined, opts);
   if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
     client ??= new Anthropic();
