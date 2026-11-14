@@ -16,7 +16,7 @@ export function CreatorCard({
   v: CreatorView;
   i: number;
   inCompare: boolean;
-  onCompare: () => void;
+  onCompare?: () => void;
   onOpen: () => void;
   onLike: () => void;
 }) {
@@ -73,15 +73,17 @@ export function CreatorCard({
           <button onClick={onLike} className={buttonClass.ghost} title="Creators like this one">
             Lookalikes
           </button>
-          <label
-            className={cx(
-              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium ring-1 transition-colors",
-              inCompare ? "bg-brand text-white ring-brand" : "text-ink-2 ring-line-strong hover:bg-surface-2",
-            )}
-          >
-            <input type="checkbox" className="sr-only" checked={inCompare} onChange={onCompare} />
-            {inCompare ? "Comparing" : "Compare"}
-          </label>
+          {onCompare && (
+            <label
+              className={cx(
+                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium ring-1 transition-colors",
+                inCompare ? "bg-brand text-white ring-brand" : "text-ink-2 ring-line-strong hover:bg-surface-2",
+              )}
+            >
+              <input type="checkbox" className="sr-only" checked={inCompare} onChange={onCompare} />
+              {inCompare ? "Comparing" : "Compare"}
+            </label>
+          )}
         </span>
       </div>
     </article>
