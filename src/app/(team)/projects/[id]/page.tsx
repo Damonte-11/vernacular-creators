@@ -12,17 +12,18 @@ import { ProjectForm } from "@/components/project/project-form";
 import { ReportView } from "@/components/project/report-view";
 import { SheetView } from "@/components/project/sheet-view";
 import { ProjectSummary } from "@/components/project/summary";
-import { buttonClass, Card, cx, EmptyState, Loading, tabClass, tabCountClass, tabListClass } from "@/components/ui";
+import { buttonClass, Card, cx, EmptyState, tabClass, tabCountClass, tabListClass } from "@/components/ui";
 import { useCreators } from "@/lib/data/creators";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
 import { chorusLabel, OBJECTIVES, projectPhase, projectWindow, shortDate, todayLagos, type AttentionItem } from "@/lib/projects";
+import { PageSkeleton } from "@/components/skeletons";
 
 type Tab = "overview" | "creators" | "posts" | "sheet" | "brief" | "documents" | "report";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { projects } = useAppState();
+  const { projects, stale } = useAppState();
   const hydrated = useHydrated();
   const creators = useCreators();
   const byId = useMemo(() => new Map(creators.map((c) => [c.id, c])), [creators]);
@@ -40,7 +41,7 @@ export default function ProjectPage() {
     if (t && ["overview", "creators", "posts", "sheet", "brief", "documents", "report"].includes(t)) setTab(t);
   }, []);
 
-  if (!p && !hydrated) return <Loading />;
+  if (!p && (!hydrated || stale)) return <PageSkeleton />;
   if (!p)
     return (
       <EmptyState

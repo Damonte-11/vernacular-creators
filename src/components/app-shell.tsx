@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { BRAND } from "@config/brand";
 import { Icon, type IconName } from "./icons";
 import { Wordmark } from "./logo";
-import { buttonClass, cx, Loading } from "./ui";
+import { SkeletonFor } from "./skeletons";
+import { buttonClass, cx } from "./ui";
 import { actions, useAppState } from "@/lib/data/store";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { clearCache } from "@/lib/data/local-cache";
 
 type NavItem = { href: string; label: string; icon: IconName };
 
@@ -181,7 +183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ErrorBanner />
         <main key={pathname} className={cx(isMove(pathname) && "tone-move", "page-enter mx-auto")}>
           <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-            <Ready>{children}</Ready>
+            <Ready path={pathname}>{children}</Ready>
           </div>
         </main>
       </div>
@@ -190,9 +192,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 /** Shows the page once this browser has loaded the data. */
-function Ready({ children }: { children: React.ReactNode }) {
+function Ready({ path, children }: { path: string; children: React.ReactNode }) {
   const { ready } = useAppState();
-  return ready ? <>{children}</> : <Loading />;
+  return ready ? <>{children}</> : <SkeletonFor path={path} />;
 }
 
 function ErrorBanner() {
@@ -230,6 +232,7 @@ function AccountBox() {
       <button
         className="mt-1.5 font-semibold text-ink-2 hover:text-ink hover:underline"
         onClick={async () => {
+          await clearCache();
           await supabaseBrowser().auth.signOut();
           window.location.href = "/login";
         }}

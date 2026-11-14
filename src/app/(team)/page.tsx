@@ -11,7 +11,7 @@ import { LookupForm } from "@/components/lookup-form";
 import { PaceBar, TONE_TEXT, verdictText } from "@/components/project/summary";
 import { QueueStatusCard } from "@/components/queue-status";
 import { buttonClass, cx, EmptyState } from "@/components/ui";
-import { creatorView, sortViews } from "@/lib/creator-view";
+import { viewsOf, sortViews } from "@/lib/creator-view";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { useDialect } from "@/lib/data/dialect-store";
 import { useAppState } from "@/lib/data/store";
@@ -28,7 +28,7 @@ function greeting(): string {
 /** Home: look someone up, see the database at a glance, and pick up what's waiting. */
 export default function HomePage() {
   const analyses = useAnalyses();
-  const all = useMemo(() => analyses.map((a) => creatorView(a, NOW)), [analyses]);
+  const all = useMemo(() => viewsOf(analyses, NOW), [analyses]);
   const { projects } = useAppState();
   const dialect = useDialect();
   const today = todayLagos();

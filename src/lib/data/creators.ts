@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { analyzeCreator } from "../analyze";
 import { IS_LIVE } from "../supabase/config";
-import type { Creator, CreatorAnalysis } from "../types";
+import type { CampaignResult, Creator, CreatorAnalysis, Settings } from "../types";
 import { sampleNow } from "@/sample-data/creators";
 import { useAppState } from "./store";
 
@@ -17,10 +17,20 @@ export function useCreators(): Creator[] {
   return useAppState().creators;
 }
 
-/** Every creator with metrics, reach, flags and score worked out. */
+/**
+ * Every creator with metrics, reach, flags and score worked out. Worked out once per change to the data and
+ * shared by every part of the page: a page used to score the whole list again for each component that asked.
+ */
+let cache: { creators: Creator[]; settings: Settings; results: CampaignResult[]; out: CreatorAnalysis[] } | null = null;
+export function analysesFor(creators: Creator[], settings: Settings, results: CampaignResult[]): CreatorAnalysis[] {
+  if (cache && cache.creators === creators && cache.settings === settings && cache.results === results) return cache.out;
+  const out = creators.map((c) => analyzeCreator(c, settings, NOW, results, creators));
+  cache = { creators, settings, results, out };
+  return out;
+}
 export function useAnalyses(): CreatorAnalysis[] {
   const { creators, settings, campaignResults } = useAppState();
-  return useMemo(() => creators.map((c) => analyzeCreator(c, settings, NOW, campaignResults, creators)), [creators, settings, campaignResults]);
+  return useMemo(() => analysesFor(creators, settings, campaignResults), [creators, settings, campaignResults]);
 }
 
 export function useAnalysis(id: string): CreatorAnalysis | undefined {

@@ -219,6 +219,32 @@ a {
 .wm-build path:nth-child(9) {
   animation-delay: 120ms;
 }
+/* Loading bars: a soft light passes over them, left to right. */
+@keyframes bone {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.bone,
+.bone-dark {
+  background-size: 200% 100%;
+  animation: bone 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.bone {
+  background-image: linear-gradient(90deg, rgb(23 23 21 / 0.06) 30%, rgb(23 23 21 / 0.11) 50%, rgb(23 23 21 / 0.06) 70%);
+}
+.bone-dark {
+  background-image: linear-gradient(90deg, rgb(255 255 255 / 0.08) 30%, rgb(255 255 255 / 0.15) 50%, rgb(255 255 255 / 0.08) 70%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bone,
+  .bone-dark {
+    animation: none;
+  }
+}
 /* The REC dot on the video viewfinder. */
 @keyframes rec-blink {
   50% {

@@ -6,7 +6,7 @@ import { ProfileDrawer } from "@/components/creators/profile-drawer";
 import { cityOptions, nicheOptions } from "@/components/filters";
 import { Icon } from "@/components/icons";
 import { cx, EmptyState } from "@/components/ui";
-import { creatorView, sortViews, type CreatorView } from "@/lib/creator-view";
+import { viewsOf, sortViews, type CreatorView } from "@/lib/creator-view";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { PLATFORMS, platformName } from "@/lib/platforms";
@@ -18,7 +18,7 @@ const SELECT = "rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-
 /** The highest Creator Scores, ranked only against creators of the same size. */
 export default function LeaderboardsPage() {
   const analyses = useAnalyses();
-  const all = useMemo(() => analyses.map((a) => creatorView(a, NOW)), [analyses]);
+  const all = useMemo(() => viewsOf(analyses, NOW), [analyses]);
   const [platform, setPlatform] = useState<Platform | "">("");
   const [niche, setNiche] = useState("");
   const [city, setCity] = useState("");

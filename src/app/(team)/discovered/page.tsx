@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
 import { SideDrawer } from "@/components/creators/media";
 import { ProfileDrawer } from "@/components/creators/profile-drawer";
-import { Avatar, buttonClass, cx, EmptyState, Loading } from "@/components/ui";
+import { Avatar, buttonClass, cx, EmptyState } from "@/components/ui";
 import { creatorView } from "@/lib/creator-view";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { actions, useAppState } from "@/lib/data/store";
@@ -15,6 +15,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { IS_LIVE } from "@/lib/supabase/config";
 import type { Platform } from "@/lib/types";
 import { BandShapes } from "@/components/creators/band";
+import { DiscoveredSkeleton } from "@/components/skeletons";
 
 interface Candidate {
   id: number;
@@ -169,7 +170,7 @@ export default function DiscoveredPage() {
     await load();
   }
 
-  if (rows === null) return <Loading />;
+  if (rows === null) return <DiscoveredSkeleton />;
   const shown = lists[tab];
   // Creators found earlier (under looser rules) that don't meet today's bar.
   const belowBar = analyses

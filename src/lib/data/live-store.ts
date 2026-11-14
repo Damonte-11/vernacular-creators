@@ -23,6 +23,7 @@ import { DEFAULT_COMMENT_CAP, emptyBrief, normaliseUrl, todayLagos } from "../pr
 import type { Project, ProjectPost, Settings } from "../types";
 import { DEFAULT_SETTINGS, upsertCreators } from "./demo-store";
 import type { AppState, Backend } from "./types";
+import { readCache, writeCache } from "./local-cache";
 
 const EMPTY: AppState = { ready: false, error: null, creators: [], settings: DEFAULT_SETTINGS, campaignResults: [], projects: [] };
 /** Creators are loaded in pages of this size. */
@@ -84,21 +85,42 @@ function startSyncing() {
   window.addEventListener("focus", onVisible);
 }
 
-async function loadAll() {
-  try {
-    syncedAt = new Date().toISOString();
-    const creators = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await db()
+type Loaded = Pick<AppState, "creators" | "settings" | "campaignResults" | "projects">;
+
+/** Every creator, fetched in pages side by side rather than one after another. */
+async function fetchCreators() {
+  const head = await db().from("creators").select("id", { count: "exact", head: true });
+  if (head.error) throw head.error;
+  const total = head.count ?? 0;
+  const pages = await Promise.all(
+    Array.from({ length: Math.max(1, Math.ceil(total / PAGE)) }, (_, i) =>
+      db()
         .from("creators")
         .select(CREATOR_SELECT)
         .order("created_at")
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      creators.push(...(data as CreatorRow[]).map(creatorFromRow));
-      if (data.length < PAGE) break;
-    }
-    const [settings, results, projects] = await Promise.all([
+        .range(i * PAGE, i * PAGE + PAGE - 1),
+    ),
+  );
+  const creators = [];
+  for (const r of pages) {
+    if (r.error) throw r.error;
+    creators.push(...(r.data as CreatorRow[]).map(creatorFromRow));
+  }
+  // Anything added between the count and the pages is picked up by the next sync.
+  return [...new Map(creators.map((c) => [c.id, c])).values()];
+}
+
+async function loadAll() {
+  // On the first load, show this browser's copy straight away (if there is one) while the database catches up.
+  const userId = (await db().auth.getSession()).data.session?.user.id ?? null;
+  if (!state.ready && userId) {
+    const cached = await readCache<Loaded>(userId);
+    if (cached) set({ ...cached, ready: true, stale: true, error: null });
+  }
+  try {
+    syncedAt = new Date().toISOString();
+    const [creators, settings, results, projects] = await Promise.all([
+      fetchCreators(),
       db().from("settings").select("*").eq("id", 1).maybeSingle<SettingsRow>(),
       db().from("campaign_results").select("*").order("logged_at"),
       db().from("projects").select(PROJECT_SELECT).order("created_at"),
@@ -107,16 +129,16 @@ async function loadAll() {
     // Projects need migration 0012; until it's run, the rest of the app still works.
     const projectsMissing = !!projects.error && /project/.test(projects.error.message);
     if (projects.error && !projectsMissing) throw projects.error;
-    set({
-      ready: true,
+    const fresh: Loaded = {
       creators,
       settings: settingsFromRow(settings.data),
       campaignResults: ((results.data ?? []) as CampaignResultRow[]).map(campaignResultFromRow),
       projects: projectsMissing ? [] : ((projects.data ?? []) as ProjectRow[]).map(projectFromRow),
-      error: projectsMissing ? `Projects need a small database update: ${message(projects.error)}` : null,
-    });
+    };
+    set({ ready: true, stale: false, ...fresh, error: projectsMissing ? `Projects need a small database update: ${message(projects.error)}` : null });
+    if (userId) void writeCache(userId, fresh);
   } catch (e) {
-    set({ ready: true, error: `Couldn't load data: ${message(e)}` });
+    set({ ready: true, stale: false, error: `Couldn't load data: ${message(e)}` });
   }
 }
 

@@ -49,6 +49,14 @@ export interface CreatorView {
 
 const PAID = /#ad\b|#sponsored|#partner|paid partnership|#collab|in partnership with/i;
 
+/** Every creator's view, built once per list of analyses and shared by the pages that ask. */
+const viewCache = new WeakMap<CreatorAnalysis[], CreatorView[]>();
+export function viewsOf(analyses: CreatorAnalysis[], now: number): CreatorView[] {
+  let v = viewCache.get(analyses);
+  if (!v) viewCache.set(analyses, (v = analyses.map((a) => creatorView(a, now))));
+  return v;
+}
+
 export function creatorView(a: CreatorAnalysis, now: number): CreatorView {
   const c = a.creator;
   const m = a.metrics;

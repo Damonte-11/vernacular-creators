@@ -1,17 +1,18 @@
 "use client";
 import { use } from "react";
 import { BrandPage } from "@/components/dialect/brand-page";
-import { buttonClass, EmptyState, Loading } from "@/components/ui";
+import { buttonClass, EmptyState } from "@/components/ui";
 import { dialectActions, useDialect } from "@/lib/data/dialect-store";
 import { todayLagos } from "@/lib/projects";
 import { IS_LIVE } from "@/lib/supabase/config";
+import { PageSkeleton } from "@/components/skeletons";
 
 /** One Dialect brand, saved in the database. */
 export default function DialectProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { ready, projects, error } = useDialect();
   const p = projects.find((x) => x.id === id);
-  if (!ready) return <Loading />;
+  if (!ready) return <PageSkeleton />;
   if (!p) return <EmptyState title="Project not found" body={error ?? "It may have been deleted."} />;
   return (
     <>

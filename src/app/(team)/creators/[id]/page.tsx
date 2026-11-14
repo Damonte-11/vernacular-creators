@@ -15,9 +15,8 @@ import { Icon } from "@/components/icons";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { buttonClass, Card, cx, EmptyState, EngagementChip, FlagList, inputClass, labelClass, EstimateTag, SectionHeader, TrendLine } from "@/components/ui";
 import { platformName, profileLink } from "@/lib/platforms";
-import { Loading } from "@/components/ui";
 import { NOW, useAnalyses, useAnalysis } from "@/lib/data/creators";
-import { creatorView, similar } from "@/lib/creator-view";
+import { creatorView, similar, viewsOf } from "@/lib/creator-view";
 import { refreshCreator } from "@/lib/data/lookup";
 import { IS_LIVE } from "@/lib/supabase/config";
 import { actions, useAppState, useHydrated } from "@/lib/data/store";
@@ -27,13 +26,16 @@ import { sizeBandLabel } from "@/lib/size-bands";
 import type { Creator, CreatorAnalysis, Metrics, Post } from "@/lib/types";
 import { BandShapes } from "@/components/creators/band";
 import { VBubble } from "@/components/voice";
+import { ProfileSkeleton } from "@/components/skeletons";
 
 export default function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
   const analysis = useAnalysis(decodeURIComponent(id));
   const hydrated = useHydrated();
 
-  if (!analysis && !hydrated) return <Loading />;
+  const { stale } = useAppState();
+  // Opened from this browser's saved copy: someone just added may only arrive with the fresh data.
+  if (!analysis && (!hydrated || stale)) return <ProfileSkeleton />;
   if (!analysis) {
     return (
       <EmptyState
@@ -54,7 +56,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
   const { creator: c, metrics: m, reach, flags, score } = analysis;
   const { settings } = useAppState();
   const analyses = useAnalyses();
-  const all = useMemo(() => analyses.map((a) => creatorView(a, NOW)), [analyses]);
+  const all = useMemo(() => viewsOf(analyses, NOW), [analyses]);
   const v = useMemo(() => creatorView(analysis, NOW), [analysis]);
   const bandName = sizeBandLabel(m.band);
   // Just looked up (?discover=1): look for their other platforms straight away.

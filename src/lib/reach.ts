@@ -15,12 +15,7 @@ export const MIN_VIEW_POSTS = 3;
  * 2. Otherwise → followers × benchmark reach ratio for the size band,
  *    blended with logged campaign results where we have them.
  */
-export function estimateReach(
-  creator: Creator,
-  metrics: Metrics,
-  campaignResults: CampaignResult[] = [],
-  allCreators: Creator[] = [],
-): ReachEstimate {
+export function estimateReach(creator: Creator, metrics: Metrics, campaignResults: CampaignResult[] = [], allCreators: Creator[] = []): ReachEstimate {
   const views = metrics.viewPosts.map((p) => (p.views as number) * metrics.viewsAdjustment);
   if (views.length >= MIN_VIEW_POSTS) {
     const f = viewsToReach(campaignResults);
@@ -59,19 +54,24 @@ export function estimateReach(
   };
 }
 
-function campaignRatio(
-  creator: Creator,
-  results: CampaignResult[],
-  allCreators: Creator[],
-): { ratio: number; count: number; scope: string } | null {
-  const byId = new Map(allCreators.map((c) => [c.id, c]));
+/** One id lookup per creator list, shared by every creator scored against it (it was rebuilt per creator). */
+const lookups = new WeakMap<Creator[], Map<string, Creator>>();
+function byIdOf(all: Creator[]): Map<string, Creator> {
+  let m = lookups.get(all);
+  if (!m) lookups.set(all, (m = new Map(all.map((c) => [c.id, c]))));
+  return m;
+}
+
+function campaignRatio(creator: Creator, results: CampaignResult[], allCreators: Creator[]): { ratio: number; count: number; scope: string } | null {
+  // No logged reach yet (the usual case): nothing to blend, so skip building the lookup.
+  if (!results.some((r) => r.reach !== null)) return null;
+  const byId = byIdOf(allCreators);
   const band = sizeBandFor(creator.followers);
   const rows = results
     .filter((r) => r.reach !== null)
     .map((r) => ({ r, c: byId.get(r.creatorId) }))
     .filter(
-      (x): x is { r: CampaignResult; c: Creator } =>
-        !!x.c && x.c.platform === creator.platform && x.c.followers > 0 && sizeBandFor(x.c.followers) === band,
+      (x): x is { r: CampaignResult; c: Creator } => !!x.c && x.c.platform === creator.platform && x.c.followers > 0 && sizeBandFor(x.c.followers) === band,
     );
 
   const sameNiche = creator.niche ? rows.filter((x) => x.c.niche === creator.niche) : [];
@@ -87,9 +87,7 @@ function campaignRatio(
  * moves towards what logged campaign results (with both reach and views) show.
  */
 export function viewsToReach(results: CampaignResult[]): { factor: number; fromCampaigns: number } {
-  const ratios = results
-    .filter((r) => r.reach !== null && r.views !== null && r.views > 0)
-    .map((r) => Math.min(1, (r.reach as number) / (r.views as number)));
+  const ratios = results.filter((r) => r.reach !== null && r.views !== null && r.views > 0).map((r) => Math.min(1, (r.reach as number) / (r.views as number)));
   if (ratios.length < CAMPAIGN_BLEND.minResults) return { factor: VIEWS_TO_REACH, fromCampaigns: 0 };
   const w = Math.min(ratios.length / (ratios.length + CAMPAIGN_BLEND.smoothing), CAMPAIGN_BLEND.maxWeight);
   return { factor: (1 - w) * VIEWS_TO_REACH + w * median(ratios)!, fromCampaigns: ratios.length };
@@ -98,4 +96,3 @@ export function viewsToReach(results: CampaignResult[]): { factor: number; fromC
 function pct(n: number): string {
   return `${Math.round(n * 100)}%`;
 }
-

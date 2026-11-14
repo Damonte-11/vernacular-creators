@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { creatorView } from "@/lib/creator-view";
+import { viewsOf } from "@/lib/creator-view";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { CHORUS_TYPES } from "@/lib/projects";
@@ -27,7 +27,7 @@ export function CrowdMix({ guarantee, type, onType }: { guarantee: number | null
   // Picking a Chorus type above moves the slider to it.
   useEffect(() => setM((x) => (typeAt(x) === type ? x : startAt[type])), [type]);
   const pools = useMemo(() => {
-    const all = analyses.map((a) => creatorView(a, NOW)).filter((v) => v.views !== null && v.views > 0);
+    const all = viewsOf(analyses, NOW).filter((v) => v.views !== null && v.views > 0);
     const pick = (small: boolean) => {
       const xs = all.filter((v) => SMALL.has(v.band) === small);
       return {

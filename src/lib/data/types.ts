@@ -24,6 +24,8 @@ export type NewProjectDocument = Pick<ProjectDocument, "kind" | "title" | "url">
 export interface AppState {
   /** False until this browser has loaded the data. */
   ready: boolean;
+  /** True while the page shows this browser's saved copy and the database hasn't answered yet. */
+  stale?: boolean;
   /** Last problem loading or saving, shown to the team. */
   error: string | null;
   creators: Creator[];

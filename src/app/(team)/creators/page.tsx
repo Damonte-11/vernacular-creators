@@ -12,7 +12,7 @@ import { VBubble, YouBubble } from "@/components/voice";
 import { buttonClass, cx } from "@/components/ui";
 import { SIZE_BANDS } from "@config/size-bands";
 import { NOW, useAnalyses } from "@/lib/data/creators";
-import { creatorView, filterViews, NO_FILTERS, readQuery, similar, sortViews, type ViewFilters, type ViewSort } from "@/lib/creator-view";
+import { viewsOf, filterViews, NO_FILTERS, readQuery, similar, sortViews, type ViewFilters, type ViewSort } from "@/lib/creator-view";
 import { formatFull, formatNumber } from "@/lib/format";
 import { IS_LIVE } from "@/lib/supabase/config";
 
@@ -23,7 +23,7 @@ const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x
 /** All creators: describe who you need or filter, see them by their content, open a quick look, compare. */
 export default function CreatorsPage() {
   const analyses = useAnalyses();
-  const all = useMemo(() => analyses.map((a) => creatorView(a, NOW)), [analyses]);
+  const all = useMemo(() => viewsOf(analyses, NOW), [analyses]);
   const [f, setF] = useState<ViewFilters>(NO_FILTERS);
   const [sort, setSort] = useState<ViewSort>("score");
   const [query, setQuery] = useState("");

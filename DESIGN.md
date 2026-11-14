@@ -199,3 +199,4 @@ Motion: 150ms colour transitions on controls; a 220ms rise on page change; the p
 - **Chapter rail**: on screens 1720px and wider the full profile's section nav becomes a slim rail at the right edge.
 - **Wordmark build**: the sign-in wordmark drops into place once. Nowhere else.
 - Left out on purpose: the 3D cube, pinned scroll scenes, ribbons and giant headlines. This is a tool used all day.
+- **Loading** (`components/skeletons.tsx`): every page loads as a skeleton of itself: real headings and labels straight away, soft shimmering bars where names and numbers will land. No spinners. Return visits open from this browser's saved copy and refresh quietly.
