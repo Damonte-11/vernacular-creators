@@ -9,6 +9,7 @@ import { AddToProject } from "../add-to-project";
 import { Icon } from "../icons";
 import { cx } from "../ui";
 import { Avatar, PostCover, ScoreRing } from "./media";
+import { VBubble } from "../voice";
 
 export interface ProfileNav {
   index: number;
@@ -127,7 +128,10 @@ export function ProfileDrawer({
         </div>
 
         <Block id="summary" title="The short version">
-          <p className="text-xl font-semibold leading-snug tracking-tight">{v.verdict}</p>
+          <VBubble dark>
+            <span className="block text-[17px] font-semibold leading-snug tracking-tight text-white">{v.verdict}</span>
+            {v.watchOut[0] && <span className="mt-1 block text-[13px] text-[#c9c3b8]">Watch out: {v.watchOut[0].replace(/^./, (x) => x.toLowerCase())}</span>}
+          </VBubble>
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             {[
               [formatNumber(v.followers), "followers"],

@@ -2,8 +2,10 @@
 import { useState } from "react";
 import { formatDate } from "@/lib/format";
 import { IS_LIVE } from "@/lib/supabase/config";
+import { meaning } from "@/lib/audience-meaning";
 import type { AudienceSignals, Creator } from "@/lib/types";
 import { buttonClass, cx } from "../ui";
+import { VBubble } from "../voice";
 
 function Bars({ items }: { items: { label: string; share: number }[] }) {
   const top = Math.max(...items.map((x) => x.share), 1);
@@ -27,6 +29,7 @@ export function AudiencePanel({ creator }: { creator: Creator }) {
   const [a, setA] = useState<AudienceSignals | null>(creator.audience ?? null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [view, setView] = useState<"say" | "mean">("say");
   const paid = creator.platform !== "youtube";
 
   async function read() {
@@ -66,44 +69,77 @@ export function AudiencePanel({ creator }: { creator: Creator }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
-          <p className="mb-3 text-[13px] font-semibold">Languages they comment in</p>
-          {a.languages.length ? <Bars items={a.languages} /> : <p className="text-[13px] text-muted">Not enough real comments.</p>}
-        </div>
-        <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
-          <p className="mb-3 text-[13px] font-semibold">How they feel</p>
-          <div className="flex h-2.5 overflow-hidden rounded-full">
-            <span className="bg-good" style={{ width: `${a.sentiment.positive}%` }} />
-            <span className="mx-[2px] bg-line-strong" style={{ width: `${a.sentiment.neutral}%` }} />
-            <span className="bg-bad" style={{ width: `${a.sentiment.negative}%` }} />
-          </div>
-          <p className="mt-2 text-xs text-ink-2">
-            Positive {a.sentiment.positive}% · neutral {a.sentiment.neutral}% · negative {a.sentiment.negative}%
-          </p>
-          <p className="mt-3 text-[13px]">
-            <b className="tabular-nums">{a.questionShare}%</b> ask questions · <b className="tabular-nums">{a.buyingShare}%</b> show buying interest
-          </p>
-        </div>
-        <div className={cx("rounded-2xl p-4 sm:p-5", a.spamShare > 15 ? "bg-bad-soft ring-1 ring-bad/20" : "bg-surface ring-1 ring-line")}>
-          <p className="mb-1 text-[13px] font-semibold">Bots and spam</p>
-          <p className={cx("text-3xl font-bold tabular-nums tracking-tight", a.spamShare > 15 && "text-bad")}>{a.spamShare}%</p>
-          <p className="mt-1 text-xs text-ink-2">
-            of comments look like bots, promos or emoji floods{a.spamShare > 15 ? ". That's high: check the comments before booking." : "."}
-          </p>
-        </div>
+      <div className="no-print inline-flex rounded-full bg-surface p-1 ring-1 ring-line" role="radiogroup" aria-label="Show">
+        {(
+          [
+            ["say", "What the comments say"],
+            ["mean", "What it means for a brand"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            role="radio"
+            aria-checked={view === id}
+            onClick={() => setView(id)}
+            className={cx(
+              "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-200",
+              view === id ? "bg-brand text-white" : "text-ink-2 hover:text-ink",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      {a.themes.length > 0 && (
-        <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
-          <p className="mb-2 text-[13px] font-semibold">What people keep talking about</p>
-          <div className="flex flex-wrap gap-1.5">
-            {a.themes.map((t) => (
-              <span key={t} className="rounded-full bg-surface-2 px-3 py-1 text-[13px] ring-1 ring-line">
-                {t}
-              </span>
+      {view === "mean" ? (
+        <VBubble className="max-w-3xl">
+          <ul className="space-y-1.5">
+            {meaning(a).map((m) => (
+              <li key={m}>{m}</li>
             ))}
+          </ul>
+        </VBubble>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
+              <p className="mb-3 text-[13px] font-semibold">Languages they comment in</p>
+              {a.languages.length ? <Bars items={a.languages} /> : <p className="text-[13px] text-muted">Not enough real comments.</p>}
+            </div>
+            <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
+              <p className="mb-3 text-[13px] font-semibold">How they feel</p>
+              <div className="flex h-2.5 overflow-hidden rounded-full">
+                <span className="bg-good" style={{ width: `${a.sentiment.positive}%` }} />
+                <span className="mx-[2px] bg-line-strong" style={{ width: `${a.sentiment.neutral}%` }} />
+                <span className="bg-bad" style={{ width: `${a.sentiment.negative}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-ink-2">
+                Positive {a.sentiment.positive}% · neutral {a.sentiment.neutral}% · negative {a.sentiment.negative}%
+              </p>
+              <p className="mt-3 text-[13px]">
+                <b className="tabular-nums">{a.questionShare}%</b> ask questions · <b className="tabular-nums">{a.buyingShare}%</b> show buying interest
+              </p>
+            </div>
+            <div className={cx("rounded-2xl p-4 sm:p-5", a.spamShare > 15 ? "bg-bad-soft ring-1 ring-bad/20" : "bg-surface ring-1 ring-line")}>
+              <p className="mb-1 text-[13px] font-semibold">Bots and spam</p>
+              <p className={cx("text-3xl font-bold tabular-nums tracking-tight", a.spamShare > 15 && "text-bad")}>{a.spamShare}%</p>
+              <p className="mt-1 text-xs text-ink-2">
+                of comments look like bots, promos or emoji floods{a.spamShare > 15 ? ". That's high: check the comments before booking." : "."}
+              </p>
+            </div>
           </div>
-        </div>
+          {a.themes.length > 0 && (
+            <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
+              <p className="mb-2 text-[13px] font-semibold">What people keep talking about</p>
+              <div className="flex flex-wrap gap-1.5">
+                {a.themes.map((t) => (
+                  <span key={t} className="rounded-full bg-surface-2 px-3 py-1 text-[13px] ring-1 ring-line">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
         <span>

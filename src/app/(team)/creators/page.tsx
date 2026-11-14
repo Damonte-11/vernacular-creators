@@ -6,7 +6,9 @@ import { CompareView } from "@/components/creators/compare";
 import { Avatar, SideDrawer } from "@/components/creators/media";
 import { ProfileDrawer } from "@/components/creators/profile-drawer";
 import { FilterColumn } from "@/components/creators/rail";
+import { BandShapes } from "@/components/creators/band";
 import { Icon } from "@/components/icons";
+import { VBubble, YouBubble } from "@/components/voice";
 import { buttonClass, cx } from "@/components/ui";
 import { SIZE_BANDS } from "@config/size-bands";
 import { NOW, useAnalyses } from "@/lib/data/creators";
@@ -26,6 +28,8 @@ export default function CreatorsPage() {
   const [sort, setSort] = useState<ViewSort>("score");
   const [query, setQuery] = useState("");
   const [chips, setChips] = useState<string[]>([]);
+  // The filters a search set, so V can tell when the team has changed them by hand since.
+  const [askedF, setAskedF] = useState<ViewFilters | null>(null);
   const [shown, setShown] = useState(STEP);
   const [likeOf, setLikeOf] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -65,6 +69,7 @@ export default function CreatorsPage() {
           const body = (await res.json()) as { filters: Partial<ViewFilters>; chips: string[] };
           setChips(body.chips.length ? body.chips : quick.chips);
           set({ ...NO_FILTERS, ...body.filters });
+          setAskedF({ ...NO_FILTERS, ...body.filters });
           return;
         }
       } catch {
@@ -75,6 +80,7 @@ export default function CreatorsPage() {
     }
     setChips(quick.chips);
     set({ ...NO_FILTERS, ...quick.filters });
+    setAskedF({ ...NO_FILTERS, ...quick.filters });
   }
   function reset() {
     setQuery("");
@@ -93,7 +99,16 @@ export default function CreatorsPage() {
 
   return (
     <div className="space-y-5">
-      <SearchBand query={query} chips={chips} total={all.length} asking={asking} onAsk={ask} onClear={reset} />
+      <SearchBand
+        query={query}
+        chips={chips}
+        total={all.length}
+        found={list.length}
+        edited={!!askedF && JSON.stringify(askedF) !== JSON.stringify(f)}
+        asking={asking}
+        onAsk={ask}
+        onClear={reset}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-4 lg:self-start">
@@ -250,6 +265,8 @@ function SearchBand({
   query,
   chips,
   total,
+  found,
+  edited,
   asking,
   onAsk,
   onClear,
@@ -257,6 +274,8 @@ function SearchBand({
   query: string;
   chips: string[];
   total: number;
+  found: number;
+  edited: boolean;
   asking: boolean;
   onAsk: (q: string) => void;
   onClear: () => void;
@@ -265,8 +284,7 @@ function SearchBand({
   useEffect(() => setQ(query), [query]);
   return (
     <section className="relative overflow-hidden rounded-2xl bg-brand px-5 py-6 text-white sm:px-8 sm:py-7">
-      <span className="pointer-events-none absolute right-0 top-0 hidden h-20 w-20 bg-accent sm:block" aria-hidden />
-      <span className="pointer-events-none absolute right-20 top-20 hidden h-20 w-20 bg-rail sm:block" aria-hidden />
+      <BandShapes />
       <h1 className="relative max-w-xl text-2xl font-semibold leading-tight tracking-tight sm:text-[28px]">Who are you looking for?</h1>
       <p className="relative mt-1 text-[13px] text-white/60">
         {formatFull(total)} creators saved. Describe who you need: niche, city, platform, size, engagement, email.
@@ -293,37 +311,61 @@ function SearchBand({
           {asking ? "Reading…" : "Find creators"}
         </button>
       </form>
-      <div className="relative mt-3 flex flex-wrap items-center gap-2 text-xs">
-        {chips.length ? (
-          <>
-            <span className="text-white/60">Understood as</span>
-            {chips.map((c) => (
-              <span key={c} className="cr-rise rounded-full bg-white/10 px-2.5 py-1 font-medium text-white ring-1 ring-white/15">
-                {c}
+      {query.trim() ? (
+        <div className="relative mt-4 flex max-w-2xl flex-col gap-2.5" aria-live="polite">
+          <YouBubble dark>{query}</YouBubble>
+          <VBubble dark typing={asking} size="sm">
+            {edited ? (
+              <span className="block">
+                You&apos;ve changed the filters since.{" "}
+                {found ? `${formatFull(found)} ${found === 1 ? "creator fits" : "creators fit"} now.` : "Nobody fits now."}
               </span>
-            ))}
-            <button className="text-white/60 underline underline-offset-2 hover:text-white" onClick={onClear}>
-              Clear
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="text-white/60">Try</span>
-            {EXAMPLES.map((e) => (
-              <button
-                key={e}
-                onClick={() => {
-                  setQ(e);
-                  onAsk(e);
-                }}
-                className="rounded-full bg-white/10 px-2.5 py-1 text-white/85 ring-1 ring-white/10 transition-colors hover:bg-white/20"
-              >
-                {e}
+            ) : chips.length ? (
+              <>
+                <span className="block">
+                  I read that as{" "}
+                  {chips.map((c, i) => (
+                    <span key={c}>
+                      <b className="font-semibold text-white">{c}</b>
+                      {i < chips.length - 2 ? ", " : i === chips.length - 2 ? " and " : ""}
+                    </span>
+                  ))}
+                  .{" "}
+                  {found
+                    ? `${formatFull(found)} ${found === 1 ? "creator fits" : "creators fit"}, best first.`
+                    : "Nobody saved fits all of that yet. Loosen a filter, or run discovery."}
+                </span>
+              </>
+            ) : (
+              <span className="block">
+                I couldn&apos;t pick a niche, city or size out of that, so I matched the words.{" "}
+                {found ? `${formatFull(found)} ${found === 1 ? "creator" : "creators"} came up.` : "Nothing came up."}
+              </span>
+            )}
+            {!asking && (
+              <button className="mt-1 text-xs text-quiet underline underline-offset-2 hover:text-white" onClick={onClear}>
+                Start over
               </button>
-            ))}
-          </>
-        )}
-      </div>
+            )}
+          </VBubble>
+        </div>
+      ) : (
+        <div className="relative mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-quiet">Try</span>
+          {EXAMPLES.map((e) => (
+            <button
+              key={e}
+              onClick={() => {
+                setQ(e);
+                onAsk(e);
+              }}
+              className="rounded-full bg-white/10 px-2.5 py-1 text-white/85 ring-1 ring-white/10 transition-colors hover:bg-white/20"
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

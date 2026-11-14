@@ -38,7 +38,7 @@ function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 rounded-md text-ink" aria-label={`${BRAND.companyName} Creators home`}>
       <Wordmark className="h-5 w-auto" />
-      <span className="rounded-md border border-line-strong px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-ink-2">Creators</span>
+      <span className="rounded-full bg-accent-soft px-2 py-px text-[10px] font-semibold uppercase tracking-wider text-accent-ink">Creators</span>
     </Link>
   );
 }
@@ -83,7 +83,10 @@ function QuickSearch({ onGo }: { onGo: () => void }) {
         aria-label="Search saved creators"
         className="h-8 w-full rounded-lg border border-line-strong/70 bg-surface/70 pl-8 pr-8 text-[13px] placeholder:text-muted transition-colors focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20"
       />
-      <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-line-strong bg-surface px-1 text-[10px] font-medium text-muted lg:block" aria-hidden>
+      <kbd
+        className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-line-strong bg-surface px-1 text-[10px] font-medium text-muted lg:block"
+        aria-hidden
+      >
         /
       </kbd>
     </form>
@@ -94,6 +97,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Campaign work speaks in Vernacular Orange; everything about creators is purple.
+  const isMove = (href: string) => href.startsWith("/projects") || href.startsWith("/campaign-results");
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -111,6 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-current={active ? "page" : undefined}
         className={cx(
           "flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors duration-150 max-lg:h-10",
+          isMove(n.href) && "tone-move",
           active ? "bg-surface text-ink shadow-[0_0_0_1px_var(--color-line),0_1px_2px_rgb(23_23_21/0.06)]" : "text-ink-2 hover:bg-ink/5 hover:text-ink",
         )}
       >
@@ -149,7 +155,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Phone top bar */}
-      <header className="no-print sticky top-0 z-30 flex h-12 items-center justify-between border-b border-line bg-rail px-4 lg:hidden">
+      <header className="no-print sticky top-0 z-30 flex h-12 items-center justify-between border-b border-line bg-rail/75 px-4 backdrop-blur-md backdrop-saturate-150 lg:hidden">
         <Logo />
         <button className={cx(buttonClass.icon, "h-10 w-10")} onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" size={20} />
@@ -173,8 +179,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-w-0 flex-1">
         {!IS_LIVE && <SampleBanner />}
         <ErrorBanner />
-        <main key={pathname} className="page-enter mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-          <Ready>{children}</Ready>
+        <main key={pathname} className={cx(isMove(pathname) && "tone-move", "page-enter mx-auto")}>
+          <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+            <Ready>{children}</Ready>
+          </div>
         </main>
       </div>
     </div>
@@ -214,7 +222,11 @@ function AccountBox() {
   if (!IS_LIVE) return null;
   return (
     <div className="border-t border-line-strong/60 px-2.5 pt-3 text-xs text-muted">
-      {email && <p className="truncate" title={email}>Signed in as <span className="font-medium text-ink-2">{email}</span></p>}
+      {email && (
+        <p className="truncate" title={email}>
+          Signed in as <span className="font-medium text-ink-2">{email}</span>
+        </p>
+      )}
       <button
         className="mt-1.5 font-semibold text-ink-2 hover:text-ink hover:underline"
         onClick={async () => {

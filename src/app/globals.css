@@ -8,9 +8,19 @@
 @theme {
   --color-brand: #171715; /* Eerie Black: buttons, active nav, report header */
   --color-brand-ink: #ffffff; /* text on top of Eerie Black */
-  --color-accent: #f75115; /* Vernacular Orange: chart bars, highlights */
-  --color-accent-ink: #c64111; /* Orange 600: orange text on light backgrounds (readable contrast) */
-  --color-accent-soft: #feeee8; /* Orange 50: light orange backgrounds */
+  /*
+   * Vern Creators is a Vernacular product. On the website creators are purple (brands are orange,
+   * agencies cyan), so the creator side of the app is purple and campaign work (Chorus, Dialect,
+   * results) stays orange through .tone-move below.
+   */
+  --color-accent: #8a52f2; /* Creator purple, a step deeper than the site's #9A62F7 so white text on it stays readable */
+  --color-accent-ink: #6b3bd1; /* purple text on light backgrounds */
+  --color-accent-soft: #f1eafe; /* light purple backgrounds */
+  --color-accent-bright: #9a62f7; /* the website's purple, for shapes and big fills only */
+  --color-vern: #f75115; /* Vernacular Orange: the company's own voice (the V that speaks, the wordmark accents) */
+  --color-vern-soft: #feeee8;
+  --color-signal: #ffc21c; /* the website's yellow: keyboard focus */
+  --color-quiet: #8e8a83; /* the website's grey: quiet text on black */
 
   --color-surface: #ffffff; /* panels, tables, inputs */
   --color-surface-2: #f8f6f1; /* quiet areas: table headers, hover rows, notes */
@@ -41,6 +51,14 @@
   --radius-2xl: 0.625rem;
 
   --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Campaign pages (Chorus, Dialect, results) speak in Vernacular Orange, as "Move it" does on the website. */
+.tone-move {
+  --color-accent: #f75115;
+  --color-accent-ink: #c64111;
+  --color-accent-soft: #feeee8;
+  --color-accent-bright: #f75115;
 }
 
 html {
@@ -126,6 +144,90 @@ a {
   transform-origin: left;
   animation: cr-grow 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
+/* V's voice: bubbles pop in, typing dots pulse (from the website's group chat). */
+@keyframes v-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+@keyframes v-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.v-pop {
+  transform-origin: bottom left;
+  animation: v-pop 0.36s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.v-dot {
+  animation: v-dot 1s ease-in-out infinite;
+}
+/* A step that's running fills slowly towards the end, so long jobs still look alive. */
+@keyframes step-fill {
+  from {
+    transform: scaleX(0.04);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+.step-fill {
+  transform-origin: left;
+  animation: step-fill 90s cubic-bezier(0.1, 0.7, 0.2, 1) both;
+}
+/* The wordmark builds itself on the sign-in page. */
+@keyframes wm-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) rotate(-8deg) scale(0.8);
+  }
+}
+.wm-build path {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-in 0.8s cubic-bezier(0.3, 1.25, 0.4, 1) both;
+}
+.wm-build path:nth-child(1) {
+  animation-delay: 300ms;
+}
+.wm-build path:nth-child(2) {
+  animation-delay: 360ms;
+}
+.wm-build path:nth-child(3) {
+  animation-delay: 0ms;
+}
+.wm-build path:nth-child(4) {
+  animation-delay: 240ms;
+}
+.wm-build path:nth-child(5) {
+  animation-delay: 60ms;
+}
+.wm-build path:nth-child(6) {
+  animation-delay: 180ms;
+}
+.wm-build path:nth-child(7) {
+  animation-delay: 420ms;
+}
+.wm-build path:nth-child(8) {
+  animation-delay: 480ms;
+}
+.wm-build path:nth-child(9) {
+  animation-delay: 120ms;
+}
+/* The REC dot on the video viewfinder. */
+@keyframes rec-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.rec-blink {
+  animation: rec-blink 1s steps(1) infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -140,10 +242,12 @@ a {
   color: var(--color-ink);
 }
 
-/* One visible focus style for keyboard users, everywhere. */
-:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+/* One visible focus style for keyboard users, everywhere: the website's yellow ring, edged in black so it shows on white too. */
+:where(a, button, input, select, textarea, summary, [tabindex], label:has(input)):focus-visible,
+label:has(input:focus-visible) {
+  outline: 3px solid var(--color-signal);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px var(--color-brand);
 }
 
 /* Score-weight sliders: thin track, brand-coloured fill. */

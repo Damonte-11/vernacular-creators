@@ -3,6 +3,7 @@ import { useState } from "react";
 import { addDays, CHORUS_TYPES, DEFAULT_COMMENT_CAP, OBJECTIVES, parseViews, todayLagos } from "@/lib/projects";
 import type { CampaignObjective, ChorusType, Project, ProjectFields } from "@/lib/types";
 import { buttonClass, cx, inputClass, labelClass } from "../ui";
+import { CrowdMix } from "./crowd-mix";
 
 export type ProjectFormValues = Required<
   Pick<ProjectFields, "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "sheetUrl" | "commentCap">
@@ -115,6 +116,8 @@ export function ProjectForm({
           <input className={inputClass} inputMode="decimal" value={guarantee} onChange={(e) => setGuarantee(e.target.value)} placeholder="e.g. 750k" />
         </label>
       </fieldset>
+
+      <CrowdMix guarantee={guarantee.trim() ? parseViews(guarantee) : null} type={chorusType} onType={setChorusType} />
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold">Objective</legend>

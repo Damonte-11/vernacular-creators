@@ -14,6 +14,7 @@ import { platformName, profileLink } from "@/lib/platforms";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { IS_LIVE } from "@/lib/supabase/config";
 import type { Platform } from "@/lib/types";
+import { BandShapes } from "@/components/creators/band";
 
 interface Candidate {
   id: number;
@@ -189,7 +190,7 @@ export default function DiscoveredPage() {
   return (
     <div className="space-y-5">
       <section className="relative overflow-hidden rounded-2xl bg-brand px-5 py-6 text-white sm:px-8 sm:py-7">
-        <span className="pointer-events-none absolute right-0 top-0 hidden h-20 w-20 bg-accent sm:block" aria-hidden />
+        <BandShapes />
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">Discovered</h1>

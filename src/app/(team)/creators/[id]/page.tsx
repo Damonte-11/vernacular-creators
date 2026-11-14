@@ -25,6 +25,8 @@ import { formatDate, formatFull, formatNumber, formatPercent, formatRange, timeA
 import { suggestNiches } from "@/lib/niche";
 import { sizeBandLabel } from "@/lib/size-bands";
 import type { Creator, CreatorAnalysis, Metrics, Post } from "@/lib/types";
+import { BandShapes } from "@/components/creators/band";
+import { VBubble } from "@/components/voice";
 
 export default function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -90,7 +92,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
 
       {/* Cover */}
       <section className="relative overflow-hidden rounded-3xl bg-brand px-6 py-8 text-white sm:px-10 sm:py-10">
-        <span className="absolute right-0 top-0 hidden h-[22%] w-[11%] bg-accent sm:block" aria-hidden />
+        <BandShapes />
         <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
@@ -130,8 +132,8 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
         </div>
       </section>
 
-      <nav className="no-print sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto bg-canvas/90 px-1 py-2 backdrop-blur" aria-label="Sections">
-        {[
+      <SectionRail
+        sections={[
           ["summary", "Summary"],
           ["performance", "Performance"],
           ["posts", `Posts · ${posts.length}`],
@@ -139,19 +141,16 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           ["tags", "Tags"],
           ["us", "With us"],
           ["team", "Team"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => jump(id)}
-            className="shrink-0 rounded-full px-3 py-1 text-[13px] font-medium text-ink-2 ring-1 ring-line hover:bg-surface-2 hover:text-ink"
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+        ]}
+        onJump={jump}
+      />
 
       {/* The short version */}
-      <Sheet id="summary" title={v.verdict}>
+      <Sheet id="summary" title="The short version">
+        <VBubble className="mb-5 max-w-3xl">
+          <span className="block text-lg font-semibold leading-snug tracking-tight sm:text-xl">{v.verdict}</span>
+          {v.watchOut[0] && <span className="mt-1 block text-[13px] text-ink-2">Watch out: {v.watchOut[0].replace(/^./, (x) => x.toLowerCase())}</span>}
+        </VBubble>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Tile big={formatNumber(c.followers)} label="Followers" note={`${bandName} creator · ${formatNumber(c.mediaCount)} posts`} />
           <Tile
@@ -196,7 +195,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
       {/* Performance */}
       <Sheet id="performance" title="How their posts perform">
         <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Views on their last posts" note="Dashed line: their usual. Orange: 30%+ above it.">
+          <Panel title="Views on their last posts" note="Dashed line: their usual. Coloured: 30%+ above it.">
             <ViewsAgainstUsual v={v} />
           </Panel>
           <Panel title="Followers over time" note="Saved at every refresh">
@@ -703,5 +702,74 @@ function FollowerHistory({ creator: c }: { creator: Creator }) {
         })}
       </ul>
     </Card>
+  );
+}
+
+/**
+ * Where you are on the profile. Pills along the top on laptops and phones; on wide screens, a slim chapter rail
+ * at the right edge, like the one on the Vernacular website, that lights up the section you're reading.
+ */
+function SectionRail({ sections, onJump }: { sections: string[][]; onJump: (id: string) => void }) {
+  const [on, setOn] = useState(sections[0][0]);
+  const ids = sections.map(([id]) => id).join(",");
+  useEffect(() => {
+    const els = ids
+      .split(",")
+      .map((id) => document.getElementById(`p-${id}`))
+      .filter((x): x is HTMLElement => !!x);
+    const io = new IntersectionObserver(
+      (entries) => {
+        const seen = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (seen) setOn(seen.target.id.slice(2));
+      },
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ids]);
+  return (
+    <>
+      <nav
+        className="no-print sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto bg-canvas/90 px-1 py-2 backdrop-blur min-[1720px]:hidden"
+        aria-label="Sections"
+      >
+        {sections.map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => onJump(id)}
+            aria-current={on === id ? "true" : undefined}
+            className={cx(
+              "shrink-0 rounded-full px-3 py-1 text-[13px] font-medium ring-1 transition-colors",
+              on === id ? "bg-brand text-white ring-brand" : "text-ink-2 ring-line hover:bg-surface-2 hover:text-ink",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <nav className="no-print fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2.5 min-[1720px]:flex" aria-label="Sections">
+        {sections.map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => onJump(id)}
+            aria-current={on === id ? "true" : undefined}
+            className="group flex items-center justify-end gap-2.5 py-0.5 text-xs font-medium text-ink"
+          >
+            <span
+              className={cx(
+                "whitespace-nowrap transition-[opacity,transform] duration-200",
+                on === id ? "opacity-100" : "translate-x-1.5 opacity-0 group-hover:translate-x-0 group-hover:opacity-100",
+              )}
+            >
+              {label}
+            </span>
+            <span
+              className={cx("h-0.5 rounded-full transition-[width,background-color] duration-300", on === id ? "w-7 bg-accent" : "w-3.5 bg-ink/30")}
+              aria-hidden
+            />
+          </button>
+        ))}
+      </nav>
+    </>
   );
 }

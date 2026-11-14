@@ -13,12 +13,16 @@ import {
 import { useAnalyses } from "@/lib/data/creators";
 import { actions } from "@/lib/data/store";
 import { formatDate, formatNumber, formatPercent } from "@/lib/format";
-import { chorusLabel, OBJECTIVES, shortDate, todayLagos } from "@/lib/projects";
+import { PLATFORMS, platformName } from "@/lib/platforms";
+import { chorusLabel, OBJECTIVES, postNumbers, shortDate, todayLagos } from "@/lib/projects";
 import { IS_LIVE } from "@/lib/supabase/config";
 import type { CreatorAnalysis, Project } from "@/lib/types";
 import { Icon } from "../icons";
 import { buttonClass, Card, cx, SectionHeader, StatStrip, StatTile } from "../ui";
 import { PaceBar, TONE_TEXT, verdictText } from "./summary";
+import { SharePills } from "../share-pills";
+import { Viewfinder } from "../viewfinder";
+import { Typing, VBubble } from "../voice";
 
 const pctOf = (n: number, d: number) => (d ? n / d : 0);
 
@@ -85,10 +89,27 @@ export function ReportView({ p }: { p: Project }) {
           </button>
         </div>
       </div>
+      {busy && <ReportSteps step={step} />}
+      {busy && step && /video/i.test(step) && (
+        <Viewfinder
+          className="no-print max-w-3xl"
+          title="Watching the videos"
+          detail={step.match(/\((.*)\)/)?.[1] ?? "Checking each one against the brief: product, key message, must-says and don'ts."}
+        />
+      )}
       {(step || note) && (
-        <p role="status" className="no-print rounded-lg bg-surface-2 px-3 py-2 text-[13px] text-ink-2 ring-1 ring-line">
-          {step ? `${step} Keep this page open.` : note}
-        </p>
+        <div role="status" className="no-print max-w-3xl">
+          <VBubble size="sm">
+            {step ? (
+              <span className="flex flex-wrap items-center gap-x-2">
+                {step.replace(/…$/, "")} <Typing className="text-muted" />
+                <span className="w-full text-xs text-muted">Keep this page open.</span>
+              </span>
+            ) : (
+              note
+            )}
+          </VBubble>
+        </div>
       )}
 
       {/* Print header */}
@@ -107,6 +128,13 @@ export function ReportView({ p }: { p: Project }) {
         <div className="mt-4">
           <PaceBar p={p} t={n.totals} />
         </div>
+        <SharePills
+          className="mt-5"
+          items={PLATFORMS.map((pl) => ({
+            label: platformName(pl),
+            value: p.posts.filter((x) => x.creatorId && x.platform === pl).reduce((a, x) => a + (postNumbers(x).views ?? 0), 0),
+          }))}
+        />
       </Card>
       <StatStrip cols={5}>
         <StatTile label="Views" value={formatNumber(n.totals.views)} />
@@ -541,5 +569,31 @@ function CommentsPanel({
         </div>
       </Card>
     </div>
+  );
+}
+
+/** The three things "Create report" does, filling in turn like the steps on the Vernacular website. */
+const REPORT_STEPS = [
+  { label: "Read the brief", colour: "#ffc21c", match: /brief/i },
+  { label: "Watch the videos", colour: "#16cdeb", match: /video/i },
+  { label: "Read comments and write", colour: "#f75115", match: /comment|writ/i },
+];
+function ReportSteps({ step }: { step: string | null }) {
+  const at = Math.max(
+    0,
+    REPORT_STEPS.findIndex((x) => step && x.match.test(step)),
+  );
+  return (
+    <ol className="no-print grid max-w-3xl grid-cols-3 gap-3" aria-label="Report progress">
+      {REPORT_STEPS.map((x, i) => (
+        <li key={x.label} aria-current={i === at ? "step" : undefined}>
+          <span className={cx("block text-[13px] font-medium", i <= at ? "text-ink" : "text-muted")}>{x.label}</span>
+          <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-line">
+            {i < at && <span className="block h-full w-full rounded-full" style={{ background: x.colour }} />}
+            {i === at && <span key={step ?? ""} className="step-fill block h-full w-full rounded-full" style={{ background: x.colour }} />}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

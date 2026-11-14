@@ -4,9 +4,12 @@ description: The Vernacular team's working tool for finding, vetting and ranking
 colors:
   brand: "#171715"
   brand-ink: "#ffffff"
-  accent: "#f75115"
-  accent-ink: "#c64111"
-  accent-soft: "#feeee8"
+  accent: "#8a52f2"
+  accent-ink: "#6b3bd1"
+  accent-soft: "#f1eafe"
+  accent-bright: "#9a62f7"
+  vern: "#f75115"
+  signal: "#ffc21c"
   canvas: "#ffffff"
   surface: "#ffffff"
   surface-2: "#f8f6f1"
@@ -113,12 +116,14 @@ Colours live as Tailwind theme tokens in `src/app/globals.css` (look for "BRAND 
 
 - **Eerie Black `#171715`**: text and primary buttons.
 - **Alabaster `#f2eee3`** (`rail`): the side menu and phone top bar. Pages themselves are white.
-- **Vernacular Orange `#f75115`** (`accent`): the active tab underline, the active menu icon, chart bars, the views-guarantee bar, focus rings and the text caret. `accent-ink #c64111` is the readable version for orange text on white.
+- **Creator purple** (`accent #8a52f2`, `accent-ink #6b3bd1` for text on white, `accent-soft #f1eafe`, `accent-bright #9a62f7` for shapes): the accent on everything about creators. On the Vernacular website creators are purple (brands orange, agencies cyan), and Vern Creators is a Vernacular product for creator work. `#8a52f2` is a step deeper than the site's `#9a62f7` so white text on it passes 4.5:1.
+- **Vernacular Orange `#f75115`**: campaign work (Projects, Chorus, Dialect, results) through the `.tone-move` class, which swaps the accent back to orange, as "Move it" is orange on the website. Also `vern`: the orange V that speaks for the app's AI.
+- **Signal yellow `#ffc21c`**: the keyboard focus ring (edged in black so it shows on white), from the website.
 - **Neutrals**: `surface-2` for table headers and hover rows, `line` for hairlines, `line-strong` for input borders, `ink-2` and `muted` for secondary text.
 - **Status**: green, golden yellow, red and blue, each with a soft background. Red is not in the brand palette; it is kept for problems so it is never confused with Orange.
 
 ### Named rules
-- **Orange is a pointer, not a paint.** It marks what is active or measured. Never use it for large fills, body text or more than one button.
+- **The accent is a pointer, not a paint.** It marks what is active or measured. Never use it for large fills, body text or more than one button.
 - **Status always has a word.** A green, yellow or red dot or chip always sits next to a label ("Good", "Late"), so colour is never the only signal.
 
 ## Typography
@@ -181,3 +186,16 @@ Motion: 150ms colour transitions on controls; a 220ms rise on page change; the p
 - Don't use Orange for anything that is not active, measured or focused.
 - Don't put Alabaster behind content; it belongs to the menu.
 - Don't show rates, payments, notes or contacts on anything a client can see.
+
+## Borrowed from the Vernacular website (November 2026)
+
+- **V speaks** (`components/voice.tsx`): wherever the AI talks (search, verdicts, report progress, what an audience means), it's the orange V from the wordmark plus a bubble with the tight corner at the bottom left. What the team typed is a filled bubble on the right.
+- **Creator oval** (`creators/band.tsx`): dark bands on creator pages carry a purple oval and a cream oval; campaign pages keep the square.
+- **Step bar** (report progress): yellow, cyan, orange, filling in turn.
+- **Viewfinder** (`viewfinder.tsx`): corner brackets, blinking REC and a timecode while the AI watches videos.
+- **Share pills** (`share-pills.tsx`): channel shares as tinted pills over one split bar, in the website's six colours.
+- **Crowd mix** (`project/crowd-mix.tsx`): plan Seedlings to Headliners from real expected views.
+- **Case cards** (`project/case-cards.tsx`): finished campaigns as the website's work cards.
+- **Chapter rail**: on screens 1720px and wider the full profile's section nav becomes a slim rail at the right edge.
+- **Wordmark build**: the sign-in wordmark drops into place once. Nowhere else.
+- Left out on purpose: the 3D cube, pinned scroll scenes, ribbons and giant headlines. This is a tool used all day.

@@ -11,6 +11,7 @@ import { NOW, useAnalyses } from "@/lib/data/creators";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { PLATFORMS, platformName } from "@/lib/platforms";
 import type { Platform } from "@/lib/types";
+import { BandShapes } from "@/components/creators/band";
 
 const SELECT = "rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-accent [&>option]:text-ink";
 
@@ -44,7 +45,7 @@ export default function LeaderboardsPage() {
   return (
     <div className="space-y-5">
       <section className="relative overflow-hidden rounded-2xl bg-brand px-5 py-6 text-white sm:px-8 sm:py-7">
-        <span className="pointer-events-none absolute right-0 top-0 hidden h-20 w-20 bg-accent sm:block" aria-hidden />
+        <BandShapes />
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">Leaderboards</h1>
         <p className="mt-1 max-w-xl text-[13px] text-white/60">
           The highest Creator Scores, ranked only against creators of the same size, so a 9K creator is never up against a 1.4M one.

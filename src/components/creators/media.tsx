@@ -8,7 +8,7 @@ import { youtubeVideoId } from "@/lib/post-links";
 import { Icon } from "../icons";
 import { cx } from "../ui";
 
-const TONES = ["#f75115", "#171715", "#2f4f3e", "#7a2e1d", "#23365e", "#5b3a5e", "#a8841c", "#0f6e8c"];
+const TONES = ["#9a62f7", "#171715", "#2f4f3e", "#7a2e1d", "#23365e", "#5b3a5e", "#a8841c", "#0f6e8c"];
 const tone = (s: string) => TONES[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
 
 /** Profile photo, or initials when there isn't one (or it no longer loads), with the platform in the corner. */
@@ -164,8 +164,15 @@ export function Spark({ values, w = 96, h = 26 }: { values: (number | null)[]; w
   const pts = v.map((y, i) => [(i / Math.max(1, v.length - 1)) * (w - 4) + 2, h - 3 - (y / max) * (h - 6)] as const);
   return (
     <svg width={w} height={h} aria-hidden>
-      <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="#f75115" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={pts.at(-1)![0]} cy={pts.at(-1)![1]} r={2.5} fill="#f75115" />
+      <polyline
+        points={pts.map((p) => p.join(",")).join(" ")}
+        fill="none"
+        stroke="var(--color-accent)"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx={pts.at(-1)![0]} cy={pts.at(-1)![1]} r={2.5} fill="var(--color-accent)" />
     </svg>
   );
 }

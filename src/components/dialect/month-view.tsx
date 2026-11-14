@@ -12,6 +12,7 @@ import {
   monthOf,
   monthStats,
   paceVerdict,
+  platformLabel,
   purposeLabel,
   type DialectProject,
   type Metric,
@@ -22,6 +23,7 @@ import { AttentionList, type UpdatePost } from "./attention-list";
 import { PlatformTag, TargetBar, VerdictText } from "./bits";
 import { PaceChart } from "./pace-chart";
 import { PostsTable } from "./posts-table";
+import { SharePills } from "../share-pills";
 
 /** A: the agreement's months on top · B: a column per platform · C: the pace chart leads. */
 export type MonthLayout = "timeline" | "platforms" | "pace";
@@ -150,6 +152,13 @@ function Platforms(c: Ctx) {
           <div className="mt-2">
             <TargetBar done={s.views} target={t.views} pace={c.pace} />
           </div>
+          <SharePills
+            className="mt-4"
+            items={p.platforms.map(({ platform }) => ({
+              label: platformLabel(platform),
+              value: posts.filter((x) => x.platform === platform).reduce((a, x) => a + countedViews(x), 0),
+            }))}
+          />
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px] tabular-nums">
           {METRICS.filter((m) => m.id !== "views").map((m) => {

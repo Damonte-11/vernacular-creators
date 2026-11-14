@@ -18,6 +18,7 @@ import { useAppState } from "@/lib/data/store";
 import { attention, monthName, monthOf, monthStats, paceVerdict } from "@/lib/dialect";
 import { formatFull, formatNumber } from "@/lib/format";
 import { attentionItems, projectPhase, projectTotals, todayLagos } from "@/lib/projects";
+import { BandShapes } from "@/components/creators/band";
 
 function greeting(): string {
   const h = Number(new Date().toLocaleString("en-GB", { hour: "2-digit", hour12: false, timeZone: "Africa/Lagos" }));
@@ -74,8 +75,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-3xl bg-brand px-5 py-7 text-white sm:px-8 sm:py-8">
-        <span className="pointer-events-none absolute right-0 top-0 hidden h-24 w-24 bg-accent sm:block" aria-hidden />
-        <span className="pointer-events-none absolute right-24 top-24 hidden h-24 w-24 bg-rail sm:block" aria-hidden />
+        <BandShapes />
         <h1 className="relative text-3xl font-bold tracking-tight sm:text-4xl">{greeting()}.</h1>
         <p className="relative mt-1 text-[14px] text-white/60">Look a creator up, or pick up where the team left off.</p>
         <div className="relative mt-5 max-w-3xl rounded-2xl bg-surface p-3 text-ink shadow-[0_8px_30px_rgba(0,0,0,.25)] sm:p-4">
@@ -159,7 +159,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <section>
+      <section className="tone-move">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-xl font-bold tracking-tight">Running now</h2>
           <Link href="/projects" className={buttonClass.ghost}>
