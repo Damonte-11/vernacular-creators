@@ -24,6 +24,8 @@ import { PlatformTag, TargetBar, VerdictText } from "./bits";
 import { PaceChart } from "./pace-chart";
 import { PostsTable } from "./posts-table";
 import { SharePills } from "../share-pills";
+import { MonthInsights } from "./insights";
+import { changeShare, monthChange, type Change } from "@/lib/dialect-insights";
 
 /** A: the agreement's months on top · B: a column per platform · C: the pace chart leads. */
 export type MonthLayout = "timeline" | "platforms" | "pace";
@@ -66,6 +68,7 @@ type Ctx = Props & { s: MonthStats; t: DialectProject["monthTargets"][string]; c
 
 function Timeline(c: Ctx) {
   const { p, s, t, pace, today, month, setMonth } = c;
+  const changes = changesFor(c);
   const all = agreementMonths(p);
   const soFar = all.filter((m) => m <= monthOf(today)).map((m) => monthStats(p, m, today));
   const sum = (k: Metric) => soFar.reduce((a, x) => a + x[k], 0);
@@ -116,10 +119,20 @@ function Timeline(c: Ctx) {
       </p>
       <Card className="grid grid-cols-2 divide-line lg:grid-cols-4 lg:divide-x [&>*:nth-child(-n+2)]:border-b [&>*:nth-child(-n+2)]:border-line lg:[&>*:nth-child(-n+2)]:border-b-0">
         {METRICS.map((m) => (
-          <TargetCell key={m.id} label={m.label} done={s[m.id as Metric]} goal={t[m.id as Metric]} s={s} pace={pace} />
+          <TargetCell
+            key={m.id}
+            label={m.label}
+            done={s[m.id as Metric]}
+            goal={t[m.id as Metric]}
+            s={s}
+            pace={pace}
+            change={changes.pill(m.id as Metric)}
+            extra={m.id === "engagements" ? changes.erLine : null}
+          />
         ))}
       </Card>
       <HeldBackNote c={c} />
+      <MonthInsights p={p} month={month} today={today} />
       <PostsAndAttention c={c} />
     </>
   );
@@ -129,6 +142,7 @@ function Timeline(c: Ctx) {
 
 function Platforms(c: Ctx) {
   const { p, s, t, month } = c;
+  const viewsChange = changesFor(c).pill("views");
   const v = paceVerdict(s.views, t.views, s.day, s.days);
   const posts = p.posts.filter((x) => monthOf(x.postedAt) === month);
   return (
@@ -136,8 +150,9 @@ function Platforms(c: Ctx) {
       <Card className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold">
+            <h2 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
               {monthName(month)}: {formatFull(s.views)} of {formatFull(t.views)} organic views
+              {viewsChange && <ChangePill share={changeShare(viewsChange.c)} vs={viewsChange.vs} />}
             </h2>
             <span>
               <VerdictText v={v} />
@@ -229,6 +244,7 @@ function Platforms(c: Ctx) {
           );
         })}
       </div>
+      <MonthInsights p={c.p} month={c.month} today={c.today} />
       <AttentionCard c={c} />
     </>
   );
@@ -238,6 +254,8 @@ function Platforms(c: Ctx) {
 
 function Pace(c: Ctx) {
   const { s, t, month, pace } = c;
+  const changes = changesFor(c);
+  const viewsChange = changes.pill("views");
   const v = paceVerdict(s.views, t.views, s.day, s.days);
   return (
     <>
@@ -249,6 +267,7 @@ function Pace(c: Ctx) {
               <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
                 <span className="text-xl font-semibold tabular-nums tracking-tight">{formatFull(s.views)}</span>
                 <span className="text-[13px] text-muted">of {formatFull(t.views)}</span>
+                {viewsChange && <ChangePill share={changeShare(viewsChange.c)} vs={viewsChange.vs} />}
                 <VerdictText v={v} />
                 {c.current && (
                   <span className="text-xs text-muted">
@@ -277,11 +296,21 @@ function Pace(c: Ctx) {
         </Card>
         <Card className="divide-y divide-line">
           {METRICS.filter((m) => m.id !== "views").map((m) => (
-            <TargetCell key={m.id} label={m.label} done={s[m.id as Metric]} goal={t[m.id as Metric]} s={s} pace={pace} />
+            <TargetCell
+              key={m.id}
+              label={m.label}
+              done={s[m.id as Metric]}
+              goal={t[m.id as Metric]}
+              s={s}
+              pace={pace}
+              change={changes.pill(m.id as Metric)}
+              extra={m.id === "engagements" ? changes.erLine : null}
+            />
           ))}
           <AgreementSoFar c={c} />
         </Card>
       </div>
+      <MonthInsights p={c.p} month={c.month} today={c.today} />
       <PostsAndAttention c={c} />
     </>
   );
@@ -289,18 +318,80 @@ function Pace(c: Ctx) {
 
 /* ---------- Shared pieces ---------- */
 
-function TargetCell({ label, done, goal, s, pace }: { label: string; done: number; goal: number; s: MonthStats; pace: number | null }) {
+function TargetCell({
+  label,
+  done,
+  goal,
+  s,
+  pace,
+  change,
+  extra,
+}: {
+  label: string;
+  done: number;
+  goal: number;
+  s: MonthStats;
+  pace: number | null;
+  change?: { c: Change | null; vs: string } | null;
+  extra?: React.ReactNode;
+}) {
   return (
     <div className="p-4">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-xs font-medium text-ink-2">{label}</span>
         <span className="text-xs tabular-nums text-muted">target {formatFull(goal)}</span>
       </div>
-      <p className="mb-2 mt-0.5 text-xl font-semibold tabular-nums tracking-tight">{formatFull(done)}</p>
+      <p className="mb-2 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="text-xl font-semibold tabular-nums tracking-tight">{formatFull(done)}</span>
+        {change?.c && <ChangePill share={changeShare(change.c)} vs={change.vs} />}
+      </p>
       <TargetBar done={done} target={goal} pace={pace} />
       <VerdictText className="mt-1.5 block" v={paceVerdict(done, goal, s.day, s.days)} />
+      {extra}
     </div>
   );
+}
+
+/** "↑ 18% vs Oct": this month against the last, on the same days while the month is running. */
+function ChangePill({ share, vs }: { share: number | null; vs: string }) {
+  if (share === null) return null;
+  const pct = Math.round(share * 100);
+  const flat = Math.abs(pct) < 1;
+  return (
+    <span
+      className={cx(
+        "rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+        flat ? "bg-surface-2 text-ink-2" : pct > 0 ? "bg-good-soft text-good" : "bg-bad-soft text-bad",
+      )}
+      title={vs}
+    >
+      {flat ? "→ same" : `${pct > 0 ? "↑" : "↓"} ${Math.abs(pct)}%`} {vs.split(" ")[1]}
+    </span>
+  );
+}
+
+/** Change pills for each target, and the engagement-rate line, from monthChange. */
+function changesFor(c: Ctx) {
+  const ch = monthChange(c.p, c.month, c.today);
+  if (!ch) return { pill: () => null, erLine: null };
+  const vs = `vs ${monthName(ch.prev, "short")}${ch.sameDays ? ` (days 1–${ch.sameDays})` : ""}`;
+  const pill = (m: Metric) => {
+    const x = m === "followers" ? ch.followers : ch[m];
+    return x ? { c: x, vs } : null;
+  };
+  const { now, before } = ch.er;
+  const erLine =
+    now === null ? null : (
+      <p className="mt-1.5 text-xs tabular-nums text-muted">
+        ER by views <b className="font-semibold text-ink">{formatPercent(now)}</b>
+        {before !== null && (
+          <span className={cx("ml-1.5 font-semibold", Math.abs(now - before) < 0.0005 ? "text-ink-2" : now > before ? "text-good" : "text-bad")}>
+            {now >= before ? "↑" : "↓"} {(Math.abs(now - before) * 100).toFixed(1)} pts
+          </span>
+        )}
+      </p>
+    );
+  return { pill, erLine };
 }
 
 function AgreementSoFar({ c }: { c: Ctx }) {

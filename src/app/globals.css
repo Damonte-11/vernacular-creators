@@ -140,6 +140,15 @@ a {
 .cr-fade {
   animation: fade-in 0.2s ease-out both;
 }
+@keyframes cr-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.cr-grow-y {
+  transform-origin: bottom;
+  animation: cr-grow-y 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 .cr-grow {
   transform-origin: left;
   animation: cr-grow 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;

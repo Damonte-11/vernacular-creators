@@ -27,6 +27,7 @@ export default function DialectProjectPage({ params }: { params: Promise<{ id: s
       <BrandPage
         p={p}
         today={todayLagos()}
+        brands={projects.map((x) => ({ id: x.id, brand: x.brand }))}
         ops={{
           updatePost: (postId, patch) => void dialectActions.updatePost(id, postId, patch),
           addPost: (post) => dialectActions.addPost(id, post),

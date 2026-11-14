@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { selectClass } from "./bits";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { formatFull } from "@/lib/format";
 import {
   agreementMonths,
@@ -38,8 +39,26 @@ export interface BrandOps {
 }
 
 /** A Dialect project: one brand's pages, month by month, against the agreement's targets. */
-export function BrandPage({ p, today, ops, preview }: { p: DialectProject; today: string; ops: BrandOps; preview?: boolean }) {
+export function BrandPage({
+  p,
+  today,
+  ops,
+  preview,
+  brands = [],
+}: {
+  p: DialectProject;
+  today: string;
+  ops: BrandOps;
+  preview?: boolean;
+  /** Every Dialect brand, for the switcher next to the name. */
+  brands?: { id: string; brand: string }[];
+}) {
   const [tab, setTab] = useState<Tab>("month");
+  // Switching brand keeps the tab you were on (?tab= in the address).
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    if (t && ["month", "posts", "report", "settings"].includes(t)) setTab(t);
+  }, []);
   const [logging, setLogging] = useState(false);
   const [reading, setReading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -88,7 +107,11 @@ export function BrandPage({ p, today, ops, preview }: { p: DialectProject; today
       </Link>
       <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold leading-7 tracking-tight">{p.brand}</h1>
+          {brands.length > 1 ? (
+            <BrandSwitcher current={p} brands={brands} tab={tab} />
+          ) : (
+            <h1 className="text-xl font-semibold leading-7 tracking-tight">{p.brand}</h1>
+          )}
           <p className="mt-0.5 text-[13px] text-muted">
             Dialect · {p.platforms.map((x) => platformLabel(x.platform)).join(", ")} · Agreement {monthName(p.startMonth, "short")} {p.startMonth.slice(0, 4)} –{" "}
             {monthName(agreementMonths(p).at(-1)!, "short")} {agreementMonths(p).at(-1)!.slice(0, 4)} · month {monthIndex} of {p.months}
@@ -440,6 +463,65 @@ function SettingsTab({ saved, onSave }: { saved: DialectProject; onSave: (patch:
           <p className="mt-1 text-xs text-muted">Separate with commas. Purpose is always one of differentiation, safety or trend.</p>
         </Card>
       </div>
+    </div>
+  );
+}
+
+/** The brand name doubles as a menu to jump to another Dialect brand, staying on the same tab. */
+function BrandSwitcher({ current, brands, tab }: { current: DialectProject; brands: { id: string; brand: string }[]; tab: Tab }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const others = [...brands].sort((a, b) => a.brand.localeCompare(b.brand));
+  return (
+    <div ref={box} className="relative">
+      <h1 className="text-xl font-semibold leading-7 tracking-tight">
+        <button
+          className="-mx-1.5 inline-flex items-center gap-1.5 rounded-lg px-1.5 hover:bg-surface-2"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+        >
+          {current.brand}
+          <Icon name="back" size={14} className={cx("text-muted transition-transform duration-200", open ? "rotate-90" : "-rotate-90")} />
+        </button>
+      </h1>
+      {open && (
+        <div
+          role="menu"
+          className="cr-fade absolute left-0 top-full z-30 mt-1.5 w-64 rounded-xl bg-surface p-1.5 shadow-[0_12px_32px_rgba(23,23,21,.14)] ring-1 ring-line"
+        >
+          <p className="px-2.5 pb-1 pt-1.5 text-xs font-medium text-muted">Switch brand</p>
+          {others.map((b) => (
+            <button
+              key={b.id}
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                if (b.id !== current.id) router.push(`/projects/dialect/${b.id}${tab === "month" ? "" : `?tab=${tab}`}`);
+              }}
+              className={cx(
+                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium",
+                b.id === current.id ? "bg-accent-soft text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+              )}
+            >
+              <span className="truncate">{b.brand}</span>
+              {b.id === current.id && <Icon name="check" size={14} className="shrink-0 text-accent-ink" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
