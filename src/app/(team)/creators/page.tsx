@@ -72,7 +72,7 @@ export default function CreatorsPage() {
       <SearchBand query={query} chips={chips} total={all.length} onAsk={ask} onClear={reset} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
-        <div>
+        <div className="lg:sticky lg:top-4 lg:self-start">
           <button onClick={() => setShowFilters((s) => !s)} className={cx(buttonClass.secondary, "w-full lg:hidden")} aria-expanded={showFilters}>
             {showFilters ? "Hide filters" : "Filters"}
           </button>

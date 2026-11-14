@@ -38,7 +38,7 @@ export default function Mix() {
     <div className="space-y-5">
       <SearchHero s={s} onAsk={() => setLikeOf(null)} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
-        <div>
+        <div className="lg:sticky lg:top-4 lg:self-start">
           <button onClick={() => setShowFilters((v) => !v)} className={cx(buttonClass.secondary, "w-full lg:hidden")} aria-expanded={showFilters}>
             {showFilters ? "Hide filters" : "Filters"}
           </button>

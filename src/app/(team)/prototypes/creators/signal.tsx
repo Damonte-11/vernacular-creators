@@ -305,7 +305,7 @@ export function FilterRail({ s }: { s: Search }) {
   const set = s.setFilters;
   const n = (pred: (p: Pro) => boolean) => s.all.filter(pred).length;
   return (
-    <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+    <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1 [scrollbar-width:thin]">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Filters</p>
         <button className="text-xs text-muted underline" onClick={s.reset}>
