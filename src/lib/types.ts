@@ -61,6 +61,29 @@ export interface Creator {
   posts: Post[];
   snapshots: Snapshot[];
   isSample: boolean;
+  /** What the people commenting on their posts look like, read on request. */
+  audience?: AudienceSignals | null;
+}
+
+/** Read from comments on a creator's recent posts: estimates, not platform data. */
+export interface AudienceSignals {
+  readAt: string;
+  posts: number;
+  comments: number;
+  /** Comments labelled by the AI (the rest by plain rules). */
+  byAI: number;
+  /** Share of real (non-spam) comments in each language, percent. */
+  languages: { label: string; share: number }[];
+  /** Mood of real comments, percent. */
+  sentiment: { positive: number; neutral: number; negative: number };
+  /** Share of all comments that look like bots or spam, percent. */
+  spamShare: number;
+  /** Share of real comments that ask a question or show buying interest, percent. */
+  questionShare: number;
+  buyingShare: number;
+  /** What people keep talking about, a few words each. */
+  themes: string[];
+  note?: string | null;
 }
 
 export interface Settings {
@@ -341,4 +364,9 @@ export interface Project {
 }
 
 /** The project fields edited on the project form. */
-export type ProjectFields = Partial<Pick<Project, "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "brief" | "sheetUrl" | "commentCap" | "report">>;
+export type ProjectFields = Partial<
+  Pick<
+    Project,
+    "name" | "client" | "chorusType" | "vertical" | "startDate" | "endDate" | "guarantee" | "objective" | "brief" | "sheetUrl" | "commentCap" | "report"
+  >
+>;

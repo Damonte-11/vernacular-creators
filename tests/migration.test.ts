@@ -8,7 +8,7 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql", "0010_discovery.sql", "0011_import_queue.sql", "0012_projects.sql", "0013_post_checks.sql", "0014_sheet_agent.sql", "0015_campaign_report.sql", "0016_content_review.sql", "0017_post_comments.sql", "0018_dialect.sql", "0019_post_thumbnails.sql"];
+    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql", "0010_discovery.sql", "0011_import_queue.sql", "0012_projects.sql", "0013_post_checks.sql", "0014_sheet_agent.sql", "0015_campaign_report.sql", "0016_content_review.sql", "0017_post_comments.sql", "0018_dialect.sql", "0019_post_thumbnails.sql", "0020_audience.sql"];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run

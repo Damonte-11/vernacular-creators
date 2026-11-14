@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CITIES, NICHES, TIKTOK_LIMITS } from "@config/app";
 import { FLAG_THRESHOLDS } from "@config/flags";
 import { AddToProject } from "@/components/add-to-project";
+import { AudiencePanel } from "@/components/creators/audience";
 import { FollowerGrowth, ViewsAgainstUsual } from "@/components/creators/charts";
 import { Avatar as CrAvatar, PostCover, ScoreRing } from "@/components/creators/media";
 import { History } from "@/components/creators/profile-drawer";
@@ -12,19 +13,7 @@ import { EngagementChart } from "@/components/engagement-chart";
 import { LinkedProfiles } from "@/components/linked-profiles";
 import { Icon } from "@/components/icons";
 import { ScoreBreakdown } from "@/components/score-breakdown";
-import {
-  buttonClass,
-  Card,
-  cx,
-  EmptyState,
-  EngagementChip,
-  FlagList,
-  inputClass,
-  labelClass,
-  EstimateTag,
-  SectionHeader,
-  TrendLine,
-} from "@/components/ui";
+import { buttonClass, Card, cx, EmptyState, EngagementChip, FlagList, inputClass, labelClass, EstimateTag, SectionHeader, TrendLine } from "@/components/ui";
 import { platformName, profileLink } from "@/lib/platforms";
 import { Loading } from "@/components/ui";
 import { NOW, useAnalyses, useAnalysis } from "@/lib/data/creators";
@@ -146,6 +135,7 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           ["summary", "Summary"],
           ["performance", "Performance"],
           ["posts", `Posts · ${posts.length}`],
+          ["audience", "Audience"],
           ["tags", "Tags"],
           ["us", "With us"],
           ["team", "Team"],
@@ -300,6 +290,11 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
         <div className="no-print">
           <PostGrid creatorId={c.id} posts={posts} metrics={m} />
         </div>
+      </Sheet>
+
+      {/* Audience */}
+      <Sheet id="audience" title="Who comments on their posts">
+        <AudiencePanel creator={c} />
       </Sheet>
 
       {/* Tags */}

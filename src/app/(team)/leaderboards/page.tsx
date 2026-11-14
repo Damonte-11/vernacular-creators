@@ -1,74 +1,88 @@
 "use client";
 import { useMemo, useState } from "react";
-import { SCORE_FACTOR_LABELS, type ScoreFactor } from "@config/scoring";
 import { SIZE_BANDS, type SizeBandId } from "@config/size-bands";
-import { AddToProject } from "@/components/add-to-project";
-import { AlsoOn } from "@/components/creator-table";
+import { Avatar, PostCover, ScoreRing, SideDrawer, Trend } from "@/components/creators/media";
+import { ProfileDrawer } from "@/components/creators/profile-drawer";
 import { cityOptions, nicheOptions } from "@/components/filters";
 import { Icon } from "@/components/icons";
-import { isLimited } from "@/components/score-breakdown";
-import { Avatar, Card, CreatorLink, cx, EmptyState, EngagementChip, inputClass, PageHeader, PlatformBadge, ScoreBadge, scoreTone, VerifiedBadge, tabClass, tabCountClass, tabListClass } from "@/components/ui";
-import { useAnalyses, useCreators } from "@/lib/data/creators";
-import { applyFilters, EMPTY_FILTERS, sortAnalyses } from "@/lib/filter";
+import { cx, EmptyState } from "@/components/ui";
+import { creatorView, sortViews, type CreatorView } from "@/lib/creator-view";
+import { NOW, useAnalyses } from "@/lib/data/creators";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { PLATFORMS, platformName } from "@/lib/platforms";
-import type { CreatorAnalysis, Platform } from "@/lib/types";
+import type { Platform } from "@/lib/types";
 
-/** Ranks within one size band, so a 9K creator is never ranked against a 1.4M one. */
+const SELECT = "rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-accent [&>option]:text-ink";
+
+/** The highest Creator Scores, ranked only against creators of the same size. */
 export default function LeaderboardsPage() {
-  const all = useAnalyses();
-  const creators = useCreators();
+  const analyses = useAnalyses();
+  const all = useMemo(() => analyses.map((a) => creatorView(a, NOW)), [analyses]);
   const [platform, setPlatform] = useState<Platform | "">("");
   const [niche, setNiche] = useState("");
   const [city, setCity] = useState("");
   const [band, setBand] = useState<SizeBandId | "all" | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const pool = useMemo(
-    () => applyFilters(all, { ...EMPTY_FILTERS, platform, niche, city }).filter((a) => a.score.total !== null),
+    () => all.filter((v) => v.score !== null && (!platform || v.platform === platform) && (!niche || v.niche === niche) && (!city || v.city === city)),
     [all, platform, niche, city],
   );
   const counts = useMemo(() => {
     const m = new Map<SizeBandId, number>();
-    for (const a of pool) m.set(a.metrics.band, (m.get(a.metrics.band) ?? 0) + 1);
+    for (const v of pool) m.set(v.band, (m.get(v.band) ?? 0) + 1);
     return m;
   }, [pool]);
   // Until someone picks a size, open on the size with the most creators.
   const busiest = SIZE_BANDS.reduce<SizeBandId>((best, b) => ((counts.get(b.id) ?? 0) > (counts.get(best) ?? 0) ? b.id : best), SIZE_BANDS[0].id);
   const activeBand = band ?? busiest;
-  const rows = useMemo(() => sortAnalyses(activeBand === "all" ? pool : pool.filter((a) => a.metrics.band === activeBand), "score"), [pool, activeBand]);
-  const podium = rows.slice(0, 3);
-  const rest = rows.slice(3);
+  const rows = useMemo(() => sortViews(activeBand === "all" ? pool : pool.filter((v) => v.band === activeBand), "score"), [pool, activeBand]);
+  const index = rows.findIndex((x) => x.id === openId);
+  const open = openId ? (all.find((x) => x.id === openId) ?? null) : null;
+  const bandLabel = activeBand === "all" ? "all sizes" : SIZE_BANDS.find((b) => b.id === activeBand)!.label.toLowerCase();
 
   return (
-    <>
-      <PageHeader title="Leaderboards" subtitle="The highest Creator Scores, ranked against creators of the same size." />
-
-      <div className="mb-5 space-y-3">
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className={cx(tabListClass, "min-w-full")} role="tablist" aria-label="Creator size">
-            {SIZE_BANDS.map((b) => (
-              <BandTab key={b.id} active={activeBand === b.id} onClick={() => setBand(b.id)} label={b.label} count={counts.get(b.id) ?? 0} />
-            ))}
-            <BandTab active={activeBand === "all"} onClick={() => setBand("all")} label="All sizes" count={pool.length} />
-          </div>
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-2xl bg-brand px-5 py-6 text-white sm:px-8 sm:py-7">
+        <span className="pointer-events-none absolute right-0 top-0 hidden h-20 w-20 bg-accent sm:block" aria-hidden />
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">Leaderboards</h1>
+        <p className="mt-1 max-w-xl text-[13px] text-white/60">
+          The highest Creator Scores, ranked only against creators of the same size, so a 9K creator is never up against a 1.4M one.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-1.5" role="tablist" aria-label="Creator size">
+          {[
+            ...SIZE_BANDS.map((b) => ({ id: b.id as SizeBandId | "all", label: b.label, n: counts.get(b.id) ?? 0 })),
+            { id: "all" as const, label: "All sizes", n: pool.length },
+          ].map((b) => (
+            <button
+              key={b.id}
+              role="tab"
+              aria-selected={activeBand === b.id}
+              onClick={() => setBand(b.id)}
+              className={cx(
+                "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
+                activeBand === b.id ? "bg-accent text-white" : "bg-white/10 text-white/80 hover:bg-white/20",
+              )}
+            >
+              {b.label} <span className={activeBand === b.id ? "text-white/80" : "text-white/50"}>{b.n}</span>
+            </button>
+          ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg bg-surface-2 p-0.5 ring-1 ring-line" role="radiogroup" aria-label="Platform">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg bg-white/5 p-0.5 ring-1 ring-white/15" role="radiogroup" aria-label="Platform">
             {(["", ...PLATFORMS] as (Platform | "")[]).map((p) => (
               <button
                 key={p || "all"}
-                type="button"
                 role="radio"
                 aria-checked={platform === p}
                 onClick={() => setPlatform(p)}
                 className={cx(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-colors",
-                  platform === p ? "bg-surface text-ink shadow-sm ring-1 ring-line" : "text-ink-2 hover:text-ink",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium",
+                  platform === p ? "bg-white text-ink" : "text-white/70 hover:text-white",
                 )}
               >
                 {p ? <Icon name={p} size={14} /> : null}
                 {p ? <span className="hidden sm:inline">{platformName(p)}</span> : "All"}
-                {p && <span className="sr-only sm:hidden">{platformName(p)}</span>}
               </button>
             ))}
           </div>
@@ -89,144 +103,129 @@ export default function LeaderboardsPage() {
             ))}
           </select>
         </div>
-      </div>
+      </section>
 
       {rows.length === 0 ? (
         <EmptyState title="Nobody here yet" body="No scored creators match these choices. Try another size, platform or niche." />
       ) : (
         <>
-          <ol className="grid gap-3 md:grid-cols-3" aria-label="Top 3">
-            {podium.map((a, i) => (
-              <PodiumCard key={a.creator.id} a={a} rank={i + 1} creators={creators} />
+          <ol className="grid gap-4 lg:grid-cols-3" aria-label={`Top 3, ${bandLabel}`}>
+            {rows.slice(0, 3).map((v, i) => (
+              <Podium key={v.id} v={v} rank={i + 1} onOpen={() => setOpenId(v.id)} />
             ))}
           </ol>
-
-          {rest.length > 0 && (
-            <Card className="mt-4 overflow-hidden">
-              <ol className="divide-y divide-line" start={4}>
-                {rest.map((a, i) => (
-                  <li key={a.creator.id} className="flex items-center gap-3 px-4 py-2 text-[13px] transition-colors duration-100 hover:bg-surface-2 sm:gap-4">
-                    <span className="w-6 shrink-0 text-right font-medium tabular-nums text-muted">{i + 4}</span>
-                    <CreatorLink id={a.creator.id} className="flex min-w-0 flex-1 items-center gap-3 rounded-md">
-                      <Avatar name={a.creator.name} photoUrl={a.creator.photoUrl} size={30} />
-                      <span className="min-w-0">
-                        <span className="flex items-center gap-2">
-                          <span className="truncate font-medium">{a.creator.name}</span>
-                          <VerifiedBadge verified={a.creator.verified} />
-                        </span>
-                        <span className="flex items-center gap-1.5 text-xs text-muted">
-                          <PlatformBadge platform={a.creator.platform} compact />
-                          <span className="truncate">@{a.creator.handle}</span>
-                          <AlsoOn creator={a.creator} all={creators} />
-                        </span>
-                      </span>
-                    </CreatorLink>
-                    <span className="hidden w-28 text-xs text-muted lg:block">
-                      <span className="block font-medium text-ink-2">{strongest(a)}</span>
-                      strongest
-                    </span>
-                    <span className="hidden w-20 text-right text-sm sm:block">
-                      <span className="block font-semibold tabular-nums">{formatNumber(a.creator.followers)}</span>
-                      <span className="text-xs text-muted">followers</span>
-                    </span>
-                    <ScoreBar score={a.score.total ?? 0} />
-                    <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="sm" />
-                    <AddToProject creatorId={a.creator.id} compact />
-                  </li>
-                ))}
-              </ol>
-            </Card>
+          {rows.length > 3 && (
+            <ol className="space-y-2" start={4}>
+              {rows.slice(3).map((v, i) => (
+                <Row key={v.id} v={v} rank={i + 4} onOpen={() => setOpenId(v.id)} />
+              ))}
+            </ol>
           )}
         </>
       )}
-    </>
+
+      <SideDrawer open={!!open} onClose={() => setOpenId(null)} dark>
+        {open && (
+          <ProfileDrawer
+            v={open}
+            all={all}
+            onClose={() => setOpenId(null)}
+            onOpen={setOpenId}
+            compare={{ on: false, toggle: () => undefined }}
+            nav={
+              index >= 0
+                ? {
+                    index,
+                    total: rows.length,
+                    onPrev: () => index > 0 && setOpenId(rows[index - 1].id),
+                    onNext: () => index < rows.length - 1 && setOpenId(rows[index + 1].id),
+                  }
+                : undefined
+            }
+          />
+        )}
+      </SideDrawer>
+    </div>
   );
 }
 
-function BandTab({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
+function Podium({ v, rank, onOpen }: { v: CreatorView; rank: number; onOpen: () => void }) {
   return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={tabClass(active)}
+    <li
+      onClick={onOpen}
+      className={cx(
+        "cr-rise group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(23,23,21,.14)]",
+        rank === 1 ? "bg-brand text-white" : "bg-surface ring-1 ring-line",
+      )}
+      style={{ animationDelay: `${rank * 50}ms` }}
     >
-      {label}
-      <span className={tabCountClass}>{count}</span>
-    </button>
-  );
-}
-
-/** Compact select for the filter row (the shared input style is full-width). */
-const SELECT = cx(inputClass.replace("w-full ", ""), "w-auto");
-
-const RANK_STYLE = ["bg-accent text-white", "bg-ink text-white", "bg-ink-2 text-white"];
-
-function PodiumCard({ a, rank, creators }: { a: CreatorAnalysis; rank: number; creators: ReturnType<typeof useCreators> }) {
-  const c = a.creator;
-  const m = a.metrics;
-  return (
-    <li className="relative">
-      <Card className={cx("flex h-full flex-col p-4", rank === 1 && "border-accent/70")}>
-        <div className="flex items-start justify-between gap-3">
-          <span className={cx("flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-semibold", RANK_STYLE[rank - 1])} aria-label={`Rank ${rank}`}>
-            {rank}
-          </span>
-          <AddToProject creatorId={c.id} compact />
-        </div>
-        <CreatorLink id={c.id} className="group mt-2.5 flex items-center gap-3 rounded-md">
-          <Avatar name={c.name} photoUrl={c.photoUrl} size={40} />
-          <span className="min-w-0">
-            <span className="flex items-center gap-2">
-              <span className="truncate font-semibold group-hover:underline">{c.name}</span>
-              <VerifiedBadge verified={c.verified} />
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-muted">
-              <PlatformBadge platform={c.platform} compact />
-              <span className="truncate">@{c.handle}</span>
-              <AlsoOn creator={c} all={creators} />
-            </span>
-          </span>
-        </CreatorLink>
-        <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-3">
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-1 text-sm">
-            <dt className="text-xs text-muted">Followers</dt>
-            <dt className="text-xs text-muted">Engagement</dt>
-            <dd className="font-semibold tabular-nums">{formatNumber(c.followers)}</dd>
-            <dd className="flex items-center gap-1.5 font-semibold tabular-nums">
-              {formatPercent(m.engagementRate)}
-              {m.engagementLabel && <EngagementChip label={m.engagementLabel} />}
-            </dd>
-          </dl>
-          <ScoreBadge limited={isLimited(a.score)} score={a.score.total} size="md" />
-        </div>
-        <p className="mt-2.5 text-xs text-muted">
-          Strongest: <span className="font-medium text-ink-2">{strongest(a)}</span>
-        </p>
-      </Card>
+      <span className={cx("absolute right-4 top-3 text-5xl font-bold tabular-nums", rank === 1 ? "text-accent" : "text-line-strong")}>{rank}</span>
+      <div className="flex items-center gap-3">
+        <Avatar v={v} size={52} ring={rank === 1} />
+        <ScoreRing score={v.score} size={52} stroke={5} dark={rank === 1} />
+      </div>
+      <p className="mt-3 truncate text-lg font-semibold tracking-tight group-hover:underline">{v.name}</p>
+      <p className={cx("truncate text-xs", rank === 1 ? "text-white/60" : "text-muted")}>
+        @{v.handle} · {formatNumber(v.followers)} followers{v.niche ? ` · ${v.niche}` : ""}
+      </p>
+      <p className={cx("mt-2 line-clamp-2 text-[13px]", rank === 1 ? "text-white/85" : "text-ink-2")}>{v.verdict}</p>
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        {v.best.slice(0, 3).map((p) => (
+          <PostCover key={p.id} post={p} className="aspect-[3/4]" />
+        ))}
+      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-2 text-[13px]">
+        {[
+          ["Engagement", v.er === null ? "—" : formatPercent(v.er)],
+          ["Expected views", v.views === null ? "—" : formatNumber(v.views)],
+          ["Posts a week", v.postsPerWeek === null ? "—" : v.postsPerWeek.toFixed(1)],
+        ].map(([k, n]) => (
+          <div key={k}>
+            <dt className={cx("text-xs", rank === 1 ? "text-white/50" : "text-muted")}>{k}</dt>
+            <dd className="font-semibold tabular-nums">{n}</dd>
+          </div>
+        ))}
+      </dl>
     </li>
   );
 }
 
-function ScoreBar({ score }: { score: number }) {
-  const tone = scoreTone(score);
+function Row({ v, rank, onOpen }: { v: CreatorView; rank: number; onOpen: () => void }) {
   return (
-    <span className="hidden w-32 md:block" aria-hidden>
-      <span className="block h-1.5 rounded-full bg-line">
-        <span className={cx("block h-1.5 rounded-full", tone === "good" ? "bg-good" : tone === "warn" ? "bg-warn" : "bg-bad")} style={{ width: `${score}%` }} />
-      </span>
-    </span>
+    <li>
+      <button
+        onClick={onOpen}
+        className="group flex w-full items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-left ring-1 ring-line transition-shadow duration-150 hover:shadow-[0_8px_24px_rgba(23,23,21,.08)] sm:gap-4"
+      >
+        <span className="w-7 shrink-0 text-right text-lg font-bold tabular-nums text-accent">{rank}</span>
+        <Avatar v={v} size={40} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-semibold group-hover:underline">{v.name}</span>
+          <span className="block truncate text-xs text-muted">
+            @{v.handle}
+            {v.niche ? ` · ${v.niche}` : ""}
+            {v.city ? ` · ${v.city}` : ""}
+          </span>
+        </span>
+        <span className="hidden gap-1 md:flex">
+          {v.best.slice(0, 2).map((p) => (
+            <span key={p.id} className="pointer-events-none w-10">
+              <PostCover post={p} className="aspect-[3/4]" />
+            </span>
+          ))}
+        </span>
+        <span className="hidden w-24 text-right sm:block">
+          <span className="block text-[13px] font-semibold tabular-nums">{formatNumber(v.followers)}</span>
+          <span className="text-xs text-muted">followers</span>
+        </span>
+        <span className="hidden w-28 text-right sm:block">
+          <span className="block text-[13px] font-semibold tabular-nums">
+            {v.views === null ? "—" : formatNumber(v.views)} <Trend change={v.trend} />
+          </span>
+          <span className="text-xs text-muted">expected views</span>
+        </span>
+        <ScoreRing score={v.score} size={40} stroke={4} />
+      </button>
+    </li>
   );
-}
-
-/**
- * The score factor this creator does best on, e.g. "Engagement 90". Authenticity
- * is left out: it starts at 100 for everyone, so it never sets anyone apart.
- */
-function strongest(a: CreatorAnalysis): string {
-  const entries = (Object.entries(a.score.breakdown) as [ScoreFactor, number][]).filter(([f]) => f !== "authenticity");
-  if (!entries.length) return "—";
-  const [f, v] = entries.sort((x, y) => y[1] - x[1])[0];
-  return `${SCORE_FACTOR_LABELS[f].label} ${v}`;
 }

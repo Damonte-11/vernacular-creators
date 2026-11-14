@@ -12,6 +12,7 @@ import { SIZE_BANDS } from "@config/size-bands";
 import { NOW, useAnalyses } from "@/lib/data/creators";
 import { creatorView, filterViews, NO_FILTERS, readQuery, similar, sortViews, type ViewFilters, type ViewSort } from "@/lib/creator-view";
 import { formatFull, formatNumber } from "@/lib/format";
+import { IS_LIVE } from "@/lib/supabase/config";
 
 const STEP = 24;
 const EXAMPLES = ["Food creators in Lagos with high engagement", "Comedy on TikTok over 100k", "Safe fashion creators in Abuja with email"];
@@ -46,11 +47,34 @@ export default function CreatorsPage() {
     setShown(STEP);
     setLikeOf(null);
   }
-  function ask(q: string) {
+  const [asking, setAsking] = useState(false);
+  /** Gemini reads the request on the live app; simple word matching is the fallback (and the demo). */
+  async function ask(q: string) {
     setQuery(q);
-    const r = readQuery(q, niches, cities);
-    setChips(q.trim() ? r.chips : []);
-    set({ ...NO_FILTERS, ...r.filters });
+    const quick = readQuery(q, niches, cities);
+    if (!q.trim()) return reset();
+    if (IS_LIVE) {
+      setAsking(true);
+      try {
+        const res = await fetch("/api/creators/understand", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q, niches, cities }),
+        });
+        if (res.ok) {
+          const body = (await res.json()) as { filters: Partial<ViewFilters>; chips: string[] };
+          setChips(body.chips.length ? body.chips : quick.chips);
+          set({ ...NO_FILTERS, ...body.filters });
+          return;
+        }
+      } catch {
+        // Fall back to simple matching below.
+      } finally {
+        setAsking(false);
+      }
+    }
+    setChips(quick.chips);
+    set({ ...NO_FILTERS, ...quick.filters });
   }
   function reset() {
     setQuery("");
@@ -69,7 +93,7 @@ export default function CreatorsPage() {
 
   return (
     <div className="space-y-5">
-      <SearchBand query={query} chips={chips} total={all.length} onAsk={ask} onClear={reset} />
+      <SearchBand query={query} chips={chips} total={all.length} asking={asking} onAsk={ask} onClear={reset} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-4 lg:self-start">
@@ -226,12 +250,14 @@ function SearchBand({
   query,
   chips,
   total,
+  asking,
   onAsk,
   onClear,
 }: {
   query: string;
   chips: string[];
   total: number;
+  asking: boolean;
   onAsk: (q: string) => void;
   onClear: () => void;
 }) {
@@ -260,7 +286,12 @@ function SearchBand({
           placeholder="e.g. food creators in Lagos with high engagement"
           aria-label="Describe the creators you need"
         />
-        <button className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[.97]">Find creators</button>
+        <button
+          disabled={asking}
+          className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[.97] disabled:opacity-70"
+        >
+          {asking ? "Reading…" : "Find creators"}
+        </button>
       </form>
       <div className="relative mt-3 flex flex-wrap items-center gap-2 text-xs">
         {chips.length ? (

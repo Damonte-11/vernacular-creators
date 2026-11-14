@@ -6,6 +6,7 @@ import { emptyBrief } from "../projects";
 import type { CampaignReport } from "../campaign-report";
 import type { SheetState } from "../sheet-sync";
 import type {
+  AudienceSignals,
   CampaignObjective,
   CampaignResult,
   ChorusType,
@@ -69,6 +70,7 @@ export interface CreatorRow {
   discovered_at?: string | null;
   posts?: PostRow[];
   creator_snapshots?: SnapshotRow[];
+  audience?: AudienceSignals | null;
 }
 
 /** The select string that loads a creator with posts and follower history. */
@@ -112,6 +114,7 @@ export function creatorFromRow(r: CreatorRow): Creator {
     })),
     snapshots: (r.creator_snapshots ?? []).map((s): Snapshot => ({ followers: s.followers, capturedAt: s.captured_at })),
     isSample: false,
+    audience: r.audience ?? null,
   };
 }
 

@@ -164,6 +164,23 @@ export function ProfileDrawer({
           )}
         </Block>
 
+        {v.a.creator.audience && v.a.creator.audience.comments > 0 && (
+          <Block title="Who comments">
+            <p className="text-[13px] text-white/80">
+              Mostly{" "}
+              {v.a.creator.audience.languages
+                .slice(0, 2)
+                .map((l) => l.label)
+                .join(" and ") || "—"}{" "}
+              · {v.a.creator.audience.sentiment.positive}% positive ·{" "}
+              <span className={v.a.creator.audience.spamShare > 15 ? "font-semibold text-[#ff6b5b]" : ""}>
+                {v.a.creator.audience.spamShare}% look like bots
+              </span>
+              {v.a.creator.audience.themes.length ? ` · talk about ${v.a.creator.audience.themes.slice(0, 2).join(", ")}` : ""}.
+            </p>
+          </Block>
+        )}
+
         <Block id="tags" title="Brands and accounts they tag">
           {v.mentions.length ? (
             <div className="flex flex-wrap gap-1.5">

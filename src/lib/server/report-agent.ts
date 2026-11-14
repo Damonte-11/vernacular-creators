@@ -25,7 +25,7 @@ import {
 } from "../campaign-report";
 import { postNumbers, todayLagos } from "../projects";
 import { CREATOR_SELECT, creatorFromRow, PROJECT_SELECT, projectFromRow, type CreatorRow, type ProjectRow } from "../supabase/mappers";
-import type { CreatorAnalysis, Project } from "../types";
+import type { CreatorAnalysis, Project, ProjectBrief } from "../types";
 import { aiLabel, aiReady, askAI } from "./ai";
 import { readComments } from "./comments";
 import type { GeminiSchema } from "./gemini";
@@ -123,14 +123,28 @@ async function labelWithAI(
   /** Labels the AI already gave (from an earlier report); only the rest are sent to the AI. */
   known: (CommentLabel | null)[] = [],
 ): Promise<{ labels: CommentLabel[]; ai: boolean[]; byAI: number }> {
-  const labels: CommentLabel[] = comments.map((c, i) => known[i] ?? ruleLabel(c.text, p.brief));
-  const ai = comments.map((_, i) => !!known[i]);
-  const todo = comments.map((_, i) => i).filter((i) => !known[i]);
-  if (!aiReady() || todo.length === 0) return { labels, ai, byAI: ai.filter(Boolean).length };
   const b = p.brief;
   const context =
     `Campaign: ${p.name}. Brand: ${b.brand || p.client || "unknown"}. Product: ${b.product || "—"}. Key message: ${b.keyMessage || "—"}. ` +
     `Must-says: ${b.mustSay.join("; ") || "—"}. Hashtags: ${b.hashtags.join(" ") || "—"}. Competitors: ${b.competitors.join(", ") || "—"}. Objective: ${p.objective}.`;
+  return labelComments(context, b, comments, known);
+}
+
+/**
+ * Labels comments (about, sentiment, signals, language) with the AI, in
+ * batches; plain rules fill in where the AI is busy or unavailable.
+ * `context` says what the comments are under (a campaign, or a creator's posts).
+ */
+export async function labelComments(
+  context: string,
+  brief: ProjectBrief,
+  comments: RawComment[],
+  known: (CommentLabel | null)[] = [],
+): Promise<{ labels: CommentLabel[]; ai: boolean[]; byAI: number }> {
+  const labels: CommentLabel[] = comments.map((c, i) => known[i] ?? ruleLabel(c.text, brief));
+  const ai = comments.map((_, i) => !!known[i]);
+  const todo = comments.map((_, i) => i).filter((i) => !known[i]);
+  if (!aiReady() || todo.length === 0) return { labels, ai, byAI: ai.filter(Boolean).length };
   const batches: number[][] = [];
   for (let i = 0; i < todo.length; i += LABEL_BATCH) batches.push(todo.slice(i, i + LABEL_BATCH));
   const work = async (idx: number[]) => {
