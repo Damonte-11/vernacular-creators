@@ -159,6 +159,7 @@ export function BrandPage({
             onClose={() => setLogging(false)}
             onLog={ops.addPost}
             onAddType={(t) => ops.updateProject({ contentTypes: [...p.contentTypes, t] })}
+            onSetPurposes={(purposes) => ops.updateProject({ purposes })}
           />
         </div>
       )}

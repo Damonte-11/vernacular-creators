@@ -17,6 +17,8 @@ interface Props {
   onLog: (p: DialectPost) => Promise<string | null> | void;
   /** Add a content type to the brand's list, from the form. */
   onAddType: (type: string) => void;
+  /** Replace the brand's purposes, from the form. */
+  onSetPurposes: (purposes: Purpose[]) => void;
   onClose: () => void;
 }
 
@@ -152,9 +154,74 @@ function TypeSelect({
   );
 }
 
+/**
+ * "What it's for": the brand's purposes to pick from, and a way to add some right here.
+ * A brand with none shows only "Add purposes", so brands that don't use them aren't asked.
+ */
+function PurposePicker({
+  purposes,
+  value,
+  onChange,
+  onSetPurposes,
+}: {
+  purposes: Purpose[];
+  value: Purpose | null;
+  onChange: (p: Purpose) => void;
+  onSetPurposes: (p: Purpose[]) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+  const save = () => {
+    const fresh = text
+      .split(",")
+      .map((x) => x.trim().toLowerCase())
+      .filter((x) => x && !purposes.includes(x));
+    if (fresh.length) onSetPurposes([...purposes, ...fresh]);
+    if (fresh.length === 1) onChange(fresh[0]);
+    setText("");
+    setAdding(false);
+  };
+  return (
+    <div>
+      <span className={labelClass}>What it&apos;s for</span>
+      {adding ? (
+        <span className="flex gap-1.5">
+          <input
+            className={cx(inputClass, "w-64")}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={purposes.length ? "e.g. launch" : "e.g. differentiation, safety, trend"}
+            aria-label="New purposes, separated by commas"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setAdding(false);
+              if (e.key === "Enter") {
+                e.preventDefault();
+                save();
+              }
+            }}
+          />
+          <button type="button" className={buttonClass.secondary} onClick={save}>
+            Add
+          </button>
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5">
+          {purposes.length > 0 && (
+            <Segmented label="What it's for" value={value} options={purposes.map((id) => ({ id, label: purposeLabel(id) }))} onChange={onChange} />
+          )}
+          <button type="button" className={buttonClass.ghost} onClick={() => setAdding(true)} title="Add this brand's purposes">
+            <Icon name="plus" size={13} /> {purposes.length ? "Add" : "Add purposes"}
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ── One post ─────────────────────────────────────────────────────── */
 
-function One({ contentTypes, purposes, logged, today, onLog, onAddType }: Props) {
+function One({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPurposes }: Props) {
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("");
@@ -219,12 +286,7 @@ function One({ contentTypes, purposes, logged, today, onLog, onAddType }: Props)
           <span className={labelClass}>Content type</span>
           <TypeSelect value={type} onChange={setType} contentTypes={contentTypes} onAddType={onAddType} className="w-48" />
         </div>
-        {purposes.length > 0 && (
-          <div>
-            <span className={labelClass}>What it&apos;s for</span>
-            <Segmented label="What it's for" value={purpose} options={purposes.map((id) => ({ id, label: purposeLabel(id) }))} onChange={setPurpose} />
-          </div>
-        )}
+        <PurposePicker purposes={purposes} value={purpose} onChange={setPurpose} onSetPurposes={onSetPurposes} />
         <button className={cx(buttonClass.primary, "ml-auto")} disabled={busy}>
           {busy ? "Logging…" : "Log post"}
         </button>
@@ -257,7 +319,7 @@ interface Row {
   purpose: Purpose | null;
 }
 
-function Many({ contentTypes, purposes, logged, today, onLog, onAddType }: Props) {
+function Many({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPurposes }: Props) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [all, setAll] = useState<{ type: string; purpose: Purpose | null; date: string }>({ type: "", purpose: null, date: today });
@@ -335,17 +397,7 @@ function Many({ contentTypes, purposes, logged, today, onLog, onAddType }: Props
                 className="w-44"
               />
             </div>
-            {purposes.length > 0 && (
-              <div>
-                <span className={labelClass}>What it&apos;s for</span>
-                <Segmented
-                  label="What it's for"
-                  value={all.purpose}
-                  options={purposes.map((id) => ({ id, label: purposeLabel(id) }))}
-                  onChange={(purpose) => setAll((a) => ({ ...a, purpose }))}
-                />
-              </div>
-            )}
+            <PurposePicker purposes={purposes} value={all.purpose} onChange={(purpose) => setAll((a) => ({ ...a, purpose }))} onSetPurposes={onSetPurposes} />
             <label>
               <span className={labelClass}>Posted on</span>
               <input
