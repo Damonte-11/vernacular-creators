@@ -10,15 +10,17 @@
  *   or over a set number of views, is held back until a manager decides:
  *   count it (it went viral on its own), enter its organic numbers, or leave
  *   it out.
- * - Every post has a content type and a purpose (differentiation, safety or
- *   trend), set when it is logged.
+ * - Every post has a content type, set when it is logged. Brands can also have
+ *   their own list of purposes (inDrive: differentiation, safety, trend); a
+ *   brand without one doesn't ask for a purpose.
  * - Numbers the apps hide (e.g. Instagram carousel views and saves) are
  *   entered by hand.
  */
 
 export type DialectPlatform = "instagram" | "tiktok" | "x" | "youtube";
 export type PostFormat = "reel" | "video" | "carousel" | "photo" | "tweet" | "thread";
-export type Purpose = "differentiation" | "safety" | "trend";
+/** A brand's own purpose for a post, from its list (e.g. inDrive's differentiation, safety, trend). */
+export type Purpose = string;
 /** What a manager decided about a possible ad. */
 export type AdDecision = "organic" | "manual" | "excluded";
 
@@ -30,13 +32,26 @@ export const DIALECT_PLATFORMS: { id: DialectPlatform; label: string }[] = [
 ];
 export const platformLabel = (p: DialectPlatform) => DIALECT_PLATFORMS.find((x) => x.id === p)!.label;
 
-export const DEFAULT_CONTENT_TYPES = ["Skit", "Trend", "Educational", "Behind the scenes", "UGC", "Short-form video", "Trending sound"];
-export const PURPOSES: { id: Purpose; label: string }[] = [
-  { id: "differentiation", label: "Differentiation" },
-  { id: "safety", label: "Safety" },
-  { id: "trend", label: "Trend" },
+export const DEFAULT_CONTENT_TYPES = [
+  "Skit",
+  "Trend",
+  "Educational",
+  "Behind the scenes",
+  "UGC",
+  "Short-form video",
+  "Trending sound",
+  "Tweet",
+  "Thread",
+  "Meme",
 ];
-export const purposeLabel = (p: Purpose) => PURPOSES.find((x) => x.id === p)!.label;
+/** inDrive's purposes: the first brand to use them. Other brands set their own list, or none. */
+export const INDRIVE_PURPOSES: Purpose[] = ["differentiation", "safety", "trend"];
+/** How a purpose reads on screen: the stored word with a capital letter. */
+export const purposeLabel = (p: Purpose) => (p ? p[0].toUpperCase() + p.slice(1) : p);
+/** A brand's purposes as choices for a picker. */
+export const purposeOptions = (p: Pick<DialectProject, "purposes">) => p.purposes.map((id) => ({ id, label: purposeLabel(id) }));
+/** Whether a post still needs labelling: a content type always, a purpose only for brands that use them. */
+export const needsLabel = (p: Pick<DialectProject, "purposes">, x: DialectPost) => !x.contentType || (p.purposes.length > 0 && !x.purpose);
 export const FORMAT_LABEL: Record<PostFormat, string> = {
   reel: "Reel",
   video: "Video",
@@ -109,6 +124,8 @@ export interface DialectProject {
   adRule: { views: number; timesUsual: number };
   competitors: string[];
   contentTypes: string[];
+  /** This brand's purposes (empty: posts aren't given one). */
+  purposes: Purpose[];
   /** Follower counts read with the numbers, each platform, oldest first. */
   followerReads: { at: string; platform: DialectPlatform; followers: number }[];
   /** Followers gained typed in for a month (all platforms), used instead of the reads when set. */
@@ -277,7 +294,7 @@ export function attention(p: DialectProject, month: string): AttentionItem[] {
   return [
     ...posts.filter((x) => x.possibleAd && !x.decision).map((post) => ({ kind: "ad" as const, post, usual: usualViews(p, post.platform, post.postedAt) })),
     ...posts.filter(missingNumbers).map((post) => ({ kind: "numbers" as const, post })),
-    ...posts.filter((x) => !x.contentType || !x.purpose).map((post) => ({ kind: "label" as const, post })),
+    ...posts.filter((x) => needsLabel(p, x)).map((post) => ({ kind: "label" as const, post })),
   ];
 }
 
@@ -287,6 +304,11 @@ export function reportReadyOn(month: string): string {
 }
 export function canMakeReport(month: string, today: string): boolean {
   return today >= reportReadyOn(month);
+}
+
+/** Every link in pasted text: one per line, or a column copied from a sheet. */
+export function linksIn(text: string): string[] {
+  return [...text.matchAll(/https?:\/\/[^\s,;"'<>]+/gi)].map((m) => m[0]);
 }
 
 /** Platform and format from a pasted link. */

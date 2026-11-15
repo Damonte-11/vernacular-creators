@@ -8,7 +8,29 @@ describe("database migration", () => {
     const db = new PGlite();
     // Supabase has an "authenticated" role; PGlite doesn't.
     await db.exec("create role authenticated");
-    const files = ["0001_init.sql", "0002_post_exclusions.sql", "0003_engagement_update.sql", "0004_thirty_posts.sql", "0005_instagram_views_share.sql", "0006_tiktok.sql", "0007_linked_accounts.sql", "0008_auto_link.sql", "0009_lists.sql", "0010_discovery.sql", "0011_import_queue.sql", "0012_projects.sql", "0013_post_checks.sql", "0014_sheet_agent.sql", "0015_campaign_report.sql", "0016_content_review.sql", "0017_post_comments.sql", "0018_dialect.sql", "0019_post_thumbnails.sql", "0020_audience.sql"];
+    const files = [
+      "0001_init.sql",
+      "0002_post_exclusions.sql",
+      "0003_engagement_update.sql",
+      "0004_thirty_posts.sql",
+      "0005_instagram_views_share.sql",
+      "0006_tiktok.sql",
+      "0007_linked_accounts.sql",
+      "0008_auto_link.sql",
+      "0009_lists.sql",
+      "0010_discovery.sql",
+      "0011_import_queue.sql",
+      "0012_projects.sql",
+      "0013_post_checks.sql",
+      "0014_sheet_agent.sql",
+      "0015_campaign_report.sql",
+      "0016_content_review.sql",
+      "0017_post_comments.sql",
+      "0018_dialect.sql",
+      "0019_post_thumbnails.sql",
+      "0020_audience.sql",
+      "0021_dialect_purposes.sql",
+    ];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);
     await db.exec(sql); // safe to re-run
@@ -17,9 +39,7 @@ describe("database migration", () => {
       "insert into creators (platform, platform_id, handle, followers) values ('instagram', '1', 'SomeOne', 100) returning id",
     );
     const id = c.rows[0].id;
-    await expect(
-      db.query("insert into creators (platform, platform_id, handle) values ('instagram', '2', 'someone')"),
-    ).rejects.toThrow(); // handles are unique regardless of case
+    await expect(db.query("insert into creators (platform, platform_id, handle) values ('instagram', '2', 'someone')")).rejects.toThrow(); // handles are unique regardless of case
 
     const s = await db.query<{ share_token: string }>("insert into shortlists (name) values ('Test') returning share_token");
     expect(s.rows[0].share_token).toMatch(/^[0-9a-f]{64}$/);

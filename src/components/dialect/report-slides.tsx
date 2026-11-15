@@ -14,7 +14,7 @@ import {
   monthStats,
   platformLabel,
   purposeLabel,
-  PURPOSES,
+  purposeOptions,
   slotOf,
   type DialectPost,
   type DialectProject,
@@ -71,7 +71,10 @@ export function ReportSlides({ p, month, listening }: { p: DialectProject; month
     }))
     .filter((x) => x.n)
     .sort((a, c) => c.avg - a.avg);
-  const byPurpose = PURPOSES.map((o) => ({ purpose: o.label, avg: avg(posts.filter((x) => x.purpose === o.id && x.platform !== "x").map(countedViews)) }));
+  const byPurpose = purposeOptions(p).map((o) => ({
+    purpose: o.label,
+    avg: avg(posts.filter((x) => x.purpose === o.id && x.platform !== "x").map(countedViews)),
+  }));
   const bySlot = (["Morning", "Midday", "Evening", "Night"] as const).map((slot) => ({
     slot,
     avg: avg(posts.filter((x) => slotOf(x.postedAt) === slot && x.platform !== "x").map(countedViews)),
@@ -354,15 +357,23 @@ export function ReportSlides({ p, month, listening }: { p: DialectProject; month
       {/* 8 What worked */}
       <Slide page={page()} footer={footer("Instagram and TikTok · average organic views per post")}>
         <Headline>
-          {byType[0].type} and {[...byPurpose].sort((a, c) => c.avg - a.avg)[0].purpose.toLowerCase()} posts did best
+          {byPurpose.length ? (
+            <>
+              {byType[0].type} and {[...byPurpose].sort((a, c) => c.avg - a.avg)[0].purpose.toLowerCase()} posts did best
+            </>
+          ) : (
+            <>{byType[0].type} posts did best</>
+          )}
         </Headline>
-        <div className="mt-[1.8cqw] grid grid-cols-[1.5fr_1fr] gap-[1.6cqw]">
+        <div className={cx("mt-[1.8cqw] grid gap-[1.6cqw]", byPurpose.length ? "grid-cols-[1.5fr_1fr]" : "grid-cols-1")}>
           <ChartCard title="By content type, against the page average">
             <HBars data={byType.map((x) => ({ label: x.type, value: Math.round(x.avg) }))} average={pageAvg} />
           </ChartCard>
-          <ChartCard title="By purpose">
-            <HBars data={byPurpose.map((x) => ({ label: x.purpose, value: Math.round(x.avg) }))} average={pageAvg} />
-          </ChartCard>
+          {byPurpose.length > 0 && (
+            <ChartCard title="By purpose">
+              <HBars data={byPurpose.map((x) => ({ label: x.purpose, value: Math.round(x.avg) }))} average={pageAvg} />
+            </ChartCard>
+          )}
         </div>
       </Slide>
 

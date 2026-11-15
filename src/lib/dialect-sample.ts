@@ -3,7 +3,16 @@
  * ("Glide Rides"), three months of posts, targets and listening results.
  * Nothing here is a real client or a real result.
  */
-import { DEFAULT_CONTENT_TYPES, splitTargets, type DialectPlatform, type DialectPost, type DialectProject, type PostFormat, type Purpose } from "./dialect";
+import {
+  DEFAULT_CONTENT_TYPES,
+  INDRIVE_PURPOSES,
+  splitTargets,
+  type DialectPlatform,
+  type DialectPost,
+  type DialectProject,
+  type PostFormat,
+  type Purpose,
+} from "./dialect";
 
 function rng(seed: number) {
   return () => {
@@ -76,7 +85,7 @@ function monthPosts(month: string, count: number, lastDay: number, seed: number,
   for (let i = 0; i < count; i++) {
     const roll = r();
     const platform: DialectPlatform = roll < 0.46 ? "instagram" : roll < 0.86 ? "tiktok" : "x";
-    const type = platform === "x" ? pick(["Trend", "Educational", "Trending sound", "Skit"]) : pick(DEFAULT_CONTENT_TYPES);
+    const type = platform === "x" ? pick(["Trend", "Educational", "Trending sound", "Skit"]) : pick(SAMPLE_TYPES);
     const purpose: Purpose = r() < 0.42 ? "differentiation" : r() < 0.55 ? "safety" : "trend";
     const format: PostFormat =
       platform === "x" ? (r() < 0.25 ? "thread" : "tweet") : platform === "instagram" ? (r() < 0.38 ? "carousel" : "reel") : r() < 0.3 ? "carousel" : "video";
@@ -111,6 +120,9 @@ function monthPosts(month: string, count: number, lastDay: number, seed: number,
   }
   return out;
 }
+
+/** The sample's own types, fixed so the made-up numbers stay the same when the default list grows. */
+const SAMPLE_TYPES = ["Skit", "Trend", "Educational", "Behind the scenes", "UGC", "Short-form video", "Trending sound"];
 
 export const SAMPLE_TODAY = "2026-11-12";
 
@@ -165,6 +177,7 @@ export function sampleDialectProject(): DialectProject {
     adRule: { views: 400_000, timesUsual: 5 },
     competitors: ["RideCo", "Mova"],
     contentTypes: [...DEFAULT_CONTENT_TYPES],
+    purposes: [...INDRIVE_PURPOSES],
     followerReads: [],
     followersManual: { "2026-09": 3_920, "2026-10": 2_940, "2026-11": 1_420 },
     reports: {},

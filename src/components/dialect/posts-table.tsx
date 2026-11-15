@@ -12,7 +12,7 @@ import {
   monthName,
   monthOf,
   purposeLabel,
-  PURPOSES,
+  purposeOptions,
   type DialectPlatform,
   type DialectProject,
   type Purpose,
@@ -68,14 +68,16 @@ export function PostsTable({ p, months, update, limit }: { p: DialectProject; mo
               <option key={t}>{t}</option>
             ))}
           </select>
-          <select className={selectClass} value={purpose} onChange={(e) => setPurpose(e.target.value as Purpose | "all")} aria-label="Purpose">
-            <option value="all">All purposes</option>
-            {PURPOSES.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.label}
-              </option>
-            ))}
-          </select>
+          {p.purposes.length > 0 && (
+            <select className={selectClass} value={purpose} onChange={(e) => setPurpose(e.target.value as Purpose | "all")} aria-label="Purpose">
+              <option value="all">All purposes</option>
+              {purposeOptions(p).map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
+          )}
           <span className="ml-auto text-xs tabular-nums text-muted">{rows.length} posts</span>
         </div>
       )}
@@ -122,23 +124,26 @@ export function PostsTable({ p, months, update, limit }: { p: DialectProject; mo
                             <option key={t}>{t}</option>
                           ))}
                         </select>
-                        <select
-                          className={cx(selectClass, "w-36 py-1", !x.purpose && "border-warn")}
-                          value={x.purpose ?? ""}
-                          onChange={(ev) => update(x.id, { purpose: (ev.target.value || null) as Purpose | null })}
-                          aria-label="Purpose"
-                        >
-                          <option value="">Purpose…</option>
-                          {PURPOSES.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                        {p.purposes.length > 0 && (
+                          <select
+                            className={cx(selectClass, "w-36 py-1", !x.purpose && "border-warn")}
+                            value={x.purpose ?? ""}
+                            onChange={(ev) => update(x.id, { purpose: (ev.target.value || null) as Purpose | null })}
+                            aria-label="Purpose"
+                          >
+                            <option value="">Purpose…</option>
+                            {purposeOptions(p).map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </span>
                     ) : (
                       <span className="text-ink-2">
-                        {x.contentType ?? <Tag tone="warn">No type</Tag>} · {x.purpose ? purposeLabel(x.purpose) : <Tag tone="warn">No purpose</Tag>}
+                        {x.contentType ?? <Tag tone="warn">No type</Tag>}
+                        {p.purposes.length > 0 && <> · {x.purpose ? purposeLabel(x.purpose) : <Tag tone="warn">No purpose</Tag>}</>}
                       </span>
                     )}
                   </td>

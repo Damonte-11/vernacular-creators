@@ -1,6 +1,7 @@
 /** Dialect database rows ↔ the app's types. Used by the browser store and the server jobs. */
 import {
   DEFAULT_CONTENT_TYPES,
+  INDRIVE_PURPOSES,
   type AdDecision,
   type DialectPlatform,
   type DialectPost,
@@ -22,6 +23,7 @@ export interface DialectProjectRow {
   ad_rule: { views: number; timesUsual: number };
   competitors: string[];
   content_types: string[];
+  purposes?: string[];
   follower_reads: DialectProject["followerReads"];
   followers_manual: Record<string, number>;
   commitments: DialectProject["commitments"];
@@ -99,6 +101,8 @@ export function dialectProjectFromRow(r: DialectProjectRow): DialectProject {
     adRule: { ...DEFAULT_AD_RULE, ...((r.ad_rule ?? {}) as Partial<DialectProject["adRule"]>) },
     competitors: r.competitors ?? [],
     contentTypes: r.content_types?.length ? r.content_types : [...DEFAULT_CONTENT_TYPES],
+    // Before migration 0021 there's no column: every brand keeps the purposes it had.
+    purposes: r.purposes ?? [...INDRIVE_PURPOSES],
     followerReads: r.follower_reads ?? [],
     followersManual: r.followers_manual ?? {},
     commitments: r.commitments ?? {},
@@ -121,6 +125,7 @@ export function dialectProjectToRow(p: Partial<DialectProject>): Partial<Dialect
   if (p.adRule !== undefined) r.ad_rule = p.adRule;
   if (p.competitors !== undefined) r.competitors = p.competitors.filter(Boolean);
   if (p.contentTypes !== undefined) r.content_types = p.contentTypes.filter(Boolean);
+  if (p.purposes !== undefined) r.purposes = p.purposes.map((x) => x.trim().toLowerCase()).filter(Boolean);
   if (p.followersManual !== undefined) r.followers_manual = p.followersManual;
   if (p.commitments !== undefined) r.commitments = p.commitments;
   if (p.listeningCapUsd !== undefined) r.listening_cap_usd = p.listeningCapUsd;

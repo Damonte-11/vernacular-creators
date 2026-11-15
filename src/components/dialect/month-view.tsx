@@ -455,7 +455,7 @@ function AttentionCard({ c }: { c: Ctx }) {
     <Card className="p-4 sm:p-5" id="needs-attention">
       <SectionHeader title={`Needs attention · ${items.length}`} description="Clear these before the report on the 1st." />
       <div className="mt-3">
-        <AttentionList items={items} contentTypes={c.p.contentTypes} update={c.update} />
+        <AttentionList items={items} contentTypes={c.p.contentTypes} purposes={c.p.purposes} update={c.update} />
       </div>
     </Card>
   );

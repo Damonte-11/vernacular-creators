@@ -57,3 +57,18 @@ describe("Dialect", () => {
     expect(monthStats(p, "2026-11", SAMPLE_TODAY).heldBack).toHaveLength(1);
   });
 });
+
+describe("Dialect purposes and batch links", () => {
+  it("only asks for a purpose on brands that use them", async () => {
+    const { needsLabel } = await import("@/lib/dialect");
+    const x = post({ purpose: null });
+    expect(needsLabel({ purposes: ["differentiation", "safety", "trend"] }, x)).toBe(true);
+    expect(needsLabel({ purposes: [] }, x)).toBe(false);
+    expect(needsLabel({ purposes: [] }, post({ contentType: null }))).toBe(true);
+  });
+  it("finds every link in pasted text, from lines or a sheet column", async () => {
+    const { linksIn } = await import("@/lib/dialect");
+    const text = 'https://www.tiktok.com/@a/video/1\n\n"https://www.instagram.com/reel/Abc/", https://x.com/a/status/9 and some notes';
+    expect(linksIn(text)).toEqual(["https://www.tiktok.com/@a/video/1", "https://www.instagram.com/reel/Abc/", "https://x.com/a/status/9"]);
+  });
+});

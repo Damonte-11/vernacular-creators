@@ -2,7 +2,7 @@
 import { selectClass } from "./bits";
 import { useState } from "react";
 import { formatFull, formatNumber } from "@/lib/format";
-import { FORMAT_LABEL, PURPOSES, type AttentionItem, type DialectPost, type Purpose } from "@/lib/dialect";
+import { FORMAT_LABEL, purposeLabel, type AttentionItem, type DialectPost, type Purpose } from "@/lib/dialect";
 import { buttonClass, cx, inputClass } from "../ui";
 import { PlatformTag, Segmented, Tag } from "./bits";
 
@@ -15,7 +15,17 @@ const toNumber = (s: string) => {
 };
 
 /** Everything to clear before the month's report: possible ads, numbers the apps hide, missing labels. */
-export function AttentionList({ items, contentTypes, update }: { items: AttentionItem[]; contentTypes: string[]; update: UpdatePost }) {
+export function AttentionList({
+  items,
+  contentTypes,
+  purposes = [],
+  update,
+}: {
+  items: AttentionItem[];
+  contentTypes: string[];
+  purposes?: Purpose[];
+  update: UpdatePost;
+}) {
   if (items.length === 0) return <p className="text-[13px] text-muted">Nothing to clear. The report will use every post as it stands.</p>;
   const numbers = items.filter((i) => i.kind === "numbers");
   return (
@@ -46,7 +56,7 @@ export function AttentionList({ items, contentTypes, update }: { items: Attentio
         .filter((i) => i.kind === "label")
         .map((it) => (
           <div key={it.post.id} className="py-3 first:pt-0 last:pb-0">
-            <LabelItem post={it.post} contentTypes={contentTypes} update={update} />
+            <LabelItem post={it.post} contentTypes={contentTypes} purposes={purposes} update={update} />
           </div>
         ))}
     </div>
@@ -158,7 +168,7 @@ function NumbersRow({ post, update }: { post: DialectPost; update: UpdatePost })
   );
 }
 
-function LabelItem({ post, contentTypes, update }: { post: DialectPost; contentTypes: string[]; update: UpdatePost }) {
+function LabelItem({ post, contentTypes, purposes, update }: { post: DialectPost; contentTypes: string[]; purposes: Purpose[]; update: UpdatePost }) {
   const [type, setType] = useState(post.contentType ?? "");
   const [purpose, setPurpose] = useState<Purpose | null>(post.purpose);
   return (
@@ -172,8 +182,14 @@ function LabelItem({ post, contentTypes, update }: { post: DialectPost; contentT
             <option key={t}>{t}</option>
           ))}
         </select>
-        <Segmented label="Purpose" value={purpose} options={PURPOSES} onChange={setPurpose} />
-        <button className={buttonClass.secondary} disabled={!type || !purpose} onClick={() => update(post.id, { contentType: type, purpose })}>
+        {purposes.length > 0 && (
+          <Segmented label="Purpose" value={purpose} options={purposes.map((id) => ({ id, label: purposeLabel(id) }))} onChange={setPurpose} />
+        )}
+        <button
+          className={buttonClass.secondary}
+          disabled={!type || (purposes.length > 0 && !purpose)}
+          onClick={() => update(post.id, { contentType: type, purpose })}
+        >
           Save
         </button>
       </div>

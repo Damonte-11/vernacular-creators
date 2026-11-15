@@ -151,7 +151,15 @@ export function BrandPage({
 
       {logging && (
         <div className="mt-4">
-          <LogPost contentTypes={p.contentTypes} today={today} onClose={() => setLogging(false)} onLog={ops.addPost} />
+          <LogPost
+            contentTypes={p.contentTypes}
+            purposes={p.purposes}
+            logged={p.posts.map((x) => x.url)}
+            today={today}
+            onClose={() => setLogging(false)}
+            onLog={ops.addPost}
+            onAddType={(t) => ops.updateProject({ contentTypes: [...p.contentTypes, t] })}
+          />
         </div>
       )}
 
@@ -306,6 +314,7 @@ function SettingsTab({ saved, onSave }: { saved: DialectProject; onSave: (patch:
     adRule: x.adRule,
     competitors: x.competitors.filter(Boolean),
     contentTypes: x.contentTypes.filter(Boolean),
+    purposes: x.purposes.map((y) => y.trim().toLowerCase()).filter(Boolean),
     listeningCapUsd: x.listeningCapUsd,
     platforms: x.platforms,
   });
@@ -453,14 +462,27 @@ function SettingsTab({ saved, onSave }: { saved: DialectProject; onSave: (patch:
             </label>
           </div>
         </Card>
-        <Card className="p-4 sm:p-5 lg:col-span-2">
+        <Card className="p-4 sm:p-5">
           <SectionHeader title="Content types" description="The choices when a post is logged. Rename or add the ones this brand uses." />
           <input
             className={cx(inputClass, "mt-3")}
             value={p.contentTypes.join(", ")}
             onChange={(e) => setP((x) => ({ ...x, contentTypes: e.target.value.split(",").map((y) => y.trim()) }))}
           />
-          <p className="mt-1 text-xs text-muted">Separate with commas. Purpose is always one of differentiation, safety or trend.</p>
+          <p className="mt-1 text-xs text-muted">Separate with commas. New types can also be added while logging a post.</p>
+        </Card>
+        <Card className="p-4 sm:p-5">
+          <SectionHeader
+            title="Purposes"
+            description="Only for brands that sort posts by what they're for, like inDrive's differentiation, safety and trend. Leave empty and posts won't ask for one."
+          />
+          <input
+            className={cx(inputClass, "mt-3")}
+            value={p.purposes.join(", ")}
+            placeholder="e.g. differentiation, safety, trend"
+            onChange={(e) => setP((x) => ({ ...x, purposes: e.target.value.split(",").map((y) => y.trimStart()) }))}
+          />
+          <p className="mt-1 text-xs text-muted">Separate with commas. Removing one keeps it on the posts that already have it.</p>
         </Card>
       </div>
     </div>
