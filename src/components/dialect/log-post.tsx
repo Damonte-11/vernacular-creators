@@ -1,6 +1,16 @@
 "use client";
 import { useState } from "react";
-import { FORMAT_LABEL, linksIn, purposeLabel, readLink, type DialectPlatform, type DialectPost, type PostFormat, type Purpose } from "@/lib/dialect";
+import {
+  FORMAT_LABEL,
+  linksIn,
+  postedFromLink,
+  purposeLabel,
+  readLink,
+  type DialectPlatform,
+  type DialectPost,
+  type PostFormat,
+  type Purpose,
+} from "@/lib/dialect";
 import { Icon } from "../icons";
 import { buttonClass, Card, cx, inputClass, labelClass } from "../ui";
 import { PlatformTag, Segmented, selectClass } from "./bits";
@@ -43,7 +53,8 @@ function newPost(
     platform: read.platform,
     url: url.trim(),
     title: title.trim() || "New post",
-    postedAt: `${date}T12:00:00+01:00`,
+    // The exact time from the link when its day wasn't changed; otherwise midday on the day picked.
+    postedAt: postedFromLink(url)?.slice(0, 10) === date ? postedFromLink(url)! : `${date}T12:00:00+01:00`,
     format: read.format,
     contentType: type || null,
     purpose,
@@ -227,6 +238,10 @@ function One({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPur
   const [type, setType] = useState("");
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [date, setDate] = useState(today);
+  // The day comes from the link when it carries one, until someone changes it by hand.
+  const [dateByHand, setDateByHand] = useState(false);
+  const fromLink = url.trim() ? postedFromLink(url) : null;
+  const shownDate = !dateByHand && fromLink ? fromLink.slice(0, 10) : date;
   const [tried, setTried] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -249,13 +264,14 @@ function One({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPur
     setFailed(null);
     if (problem || !read) return;
     setBusy(true);
-    const err = await onLog(newPost(url, read, title, date, type, purpose));
+    const err = await onLog(newPost(url, read, title, shownDate, type, purpose));
     setBusy(false);
     if (err) return setFailed(err);
     setUrl("");
     setTitle("");
     setType("");
     setPurpose(null);
+    setDateByHand(false);
     setTried(false);
   }
 
@@ -278,7 +294,19 @@ function One({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPur
         </label>
         <label>
           <span className={labelClass}>Posted on</span>
-          <input type="date" className={inputClass} value={date} max={today} onChange={(e) => setDate(e.target.value)} />
+          <input
+            type="date"
+            className={inputClass}
+            value={shownDate}
+            max={today}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setDateByHand(true);
+            }}
+          />
+          <span className="mt-1 block text-xs text-muted">
+            {!dateByHand && fromLink ? "From the link" : url.trim() && read ? "Checked when the numbers are read" : "\u00a0"}
+          </span>
         </label>
       </div>
       <div className="flex flex-wrap items-end gap-3">
@@ -315,6 +343,8 @@ interface Row {
   skip: string | null;
   title: string;
   date: string;
+  /** The day was read from the link (so "Apply to all" leaves it alone). */
+  fromLink: boolean;
   type: string;
   purpose: Purpose | null;
 }
@@ -334,9 +364,21 @@ function Many({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPu
       const read = readLink(url);
       const skip = !read ? "Not a post link" : done.has(k) ? "Already logged" : seen.has(k) ? "Pasted twice" : null;
       seen.add(k);
-      return { key: `${k}-${Math.random()}`, url, read, skip, title: "", date: all.date, type: all.type, purpose: all.purpose };
+      const at = read ? postedFromLink(url) : null;
+      return {
+        key: `${k}-${Math.random()}`,
+        url,
+        read,
+        skip,
+        title: "",
+        date: at?.slice(0, 10) ?? all.date,
+        fromLink: !!at,
+        type: all.type,
+        purpose: all.purpose,
+      };
     });
-    setRows((r) => [...r, ...next]);
+    // Oldest first, so the batch reads in the order the posts went up; links to skip go last.
+    setRows((r) => [...r, ...next].sort((a, b) => Number(!!a.skip) - Number(!!b.skip) || a.date.localeCompare(b.date)));
     setText("");
     setNote(next.length ? null : "No links found. Paste full links that start with https://");
   }
@@ -399,7 +441,7 @@ function Many({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPu
             </div>
             <PurposePicker purposes={purposes} value={all.purpose} onChange={(purpose) => setAll((a) => ({ ...a, purpose }))} onSetPurposes={onSetPurposes} />
             <label>
-              <span className={labelClass}>Posted on</span>
+              <span className={labelClass}>Posted on (links without a date)</span>
               <input
                 type="date"
                 className={cx(inputClass, "w-40")}
@@ -411,7 +453,9 @@ function Many({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPu
             <button
               type="button"
               className={buttonClass.secondary}
-              onClick={() => setRows((rs) => rs.map((r) => ({ ...r, type: all.type || r.type, purpose: all.purpose ?? r.purpose, date: all.date })))}
+              onClick={() =>
+                setRows((rs) => rs.map((r) => ({ ...r, type: all.type || r.type, purpose: all.purpose ?? r.purpose, date: r.fromLink ? r.date : all.date })))
+              }
             >
               Apply to all
             </button>
@@ -462,8 +506,9 @@ function Many({ contentTypes, purposes, logged, today, onLog, onAddType, onSetPu
                             className={cx(inputClass, "w-36")}
                             value={r.date}
                             max={today}
-                            onChange={(e) => set(r.key, { date: e.target.value })}
+                            onChange={(e) => set(r.key, { date: e.target.value, fromLink: false })}
                           />
+                          <span className="mt-0.5 block text-[11px] text-muted">{r.fromLink ? "From the link" : "Checked when read"}</span>
                         </td>
                         <td className="px-2 py-2">
                           <TypeSelect

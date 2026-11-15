@@ -311,6 +311,36 @@ export function linksIn(text: string): string[] {
   return [...text.matchAll(/https?:\/\/[^\s,;"'<>]+/gi)].map((m) => m[0]);
 }
 
+/**
+ * When a post went up, from the number in its link (Lagos time, e.g. "2026-11-14T18:05:00+01:00"):
+ * X status numbers, TikTok video numbers and Instagram post codes all carry their creation time.
+ * Null for links without one (short TikTok links, YouTube); the first numbers read fills those in.
+ */
+export function postedFromLink(url: string): string | null {
+  const u = url.trim();
+  let ms: number | null = null;
+  try {
+    const x = u.match(/(?:x|twitter)\.com\/[^/]+\/status(?:es)?\/(\d{15,20})/i);
+    const tt = u.match(/tiktok\.com\/.*\/(?:video|photo)\/(\d{15,20})/i);
+    const ig = u.match(/instagram\.com\/(?:[^/]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]{10,})/i);
+    if (x)
+      ms = Number(BigInt(x[1]) >> 22n) + 1_288_834_974_657; // X's epoch, Nov 2010
+    else if (tt)
+      ms = Number(BigInt(tt[1]) >> 32n) * 1000; // seconds since 1970
+    else if (ig) {
+      const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+      let id = 0n;
+      for (const ch of ig[1].slice(0, 11)) id = id * 64n + BigInt(ABC.indexOf(ch));
+      ms = Number(id >> 23n) + 1_314_220_021_721; // Instagram's epoch, Aug 2011
+    }
+  } catch {
+    return null;
+  }
+  // Anything before 2010 or in the future means the link wasn't what it looked like.
+  if (ms === null || ms < Date.UTC(2010, 0, 1) || ms > Date.now() + 86_400_000) return null;
+  return `${new Date(ms + 3_600_000).toISOString().slice(0, 19)}+01:00`;
+}
+
 /** Platform and format from a pasted link. */
 export function readLink(url: string): { platform: DialectPlatform; format: PostFormat } | null {
   const u = url.trim().toLowerCase();

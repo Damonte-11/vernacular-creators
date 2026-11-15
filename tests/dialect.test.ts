@@ -72,3 +72,28 @@ describe("Dialect purposes and batch links", () => {
     expect(linksIn(text)).toEqual(["https://www.tiktok.com/@a/video/1", "https://www.instagram.com/reel/Abc/", "https://x.com/a/status/9"]);
   });
 });
+
+describe("Posting time from the link", () => {
+  it("reads X, TikTok and Instagram post numbers, in Lagos time", async () => {
+    const { postedFromLink } = await import("@/lib/dialect");
+    const at = Date.UTC(2026, 10, 14, 17, 5, 0); // 18:05 in Lagos
+    const x = ((BigInt(at - 1_288_834_974_657) << 22n) | 12345n).toString();
+    expect(postedFromLink(`https://x.com/inDrive_ng/status/${x}?s=20`)).toBe("2026-11-14T18:05:00+01:00");
+    const tt = ((BigInt(at / 1000) << 32n) | 999n).toString();
+    expect(postedFromLink(`https://www.tiktok.com/@indrive/video/${tt}`)).toBe("2026-11-14T18:05:00+01:00");
+    const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let id = (BigInt(at - 1_314_220_021_721) << 23n) | 777n;
+    let code = "";
+    while (id > 0n) {
+      code = ABC[Number(id % 64n)] + code;
+      id /= 64n;
+    }
+    expect(postedFromLink(`https://www.instagram.com/reel/${code}/?igsh=abc`)).toBe("2026-11-14T18:05:00+01:00");
+    expect(postedFromLink("https://vt.tiktok.com/ZSq6NfXSu/")).toBeNull();
+    expect(postedFromLink("https://www.youtube.com/watch?v=abc")).toBeNull();
+  });
+  it("reads a real inDrive X link", async () => {
+    const { postedFromLink } = await import("@/lib/dialect");
+    expect(postedFromLink("https://x.com/inDrive_ng/status/2095527800165835005?s=20")).toBe("2026-09-03T16:02:15+01:00");
+  });
+});
