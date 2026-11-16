@@ -17,13 +17,7 @@ type FactorResult = { score: number } | { missing: string };
  * against the creator's own size band. Factors without data are left out
  * and the remaining weights are re-balanced.
  */
-export function computeScore(
-  creator: Creator,
-  metrics: Metrics,
-  flags: Flag[],
-  settings: Settings,
-  now: number,
-): ScoreResult {
+export function computeScore(creator: Creator, metrics: Metrics, flags: Flag[], settings: Settings, now: number): ScoreResult {
   const factors: Record<ScoreFactor, FactorResult> = {
     engagement: engagementFactor(creator, metrics),
     authenticity: authenticityFactor(metrics, flags),
@@ -128,11 +122,19 @@ export function consistencyFactor(creator: Creator, metrics: Metrics, now: numbe
   return { score: (frequency + steadiness) / 2 };
 }
 
+/** The earliest and latest saved follower counts, without sorting the whole history. */
+function first_(xs: Creator["snapshots"]) {
+  return xs.reduce((a, x) => (Date.parse(x.capturedAt) < Date.parse(a.capturedAt) ? x : a));
+}
+function last_(xs: Creator["snapshots"]) {
+  return xs.reduce((a, x) => (Date.parse(x.capturedAt) > Date.parse(a.capturedAt) ? x : a));
+}
+
 /** Growth that came from a suspicious follower jump is capped at this score. */
 const JUMP_GROWTH_CAP = 40;
 
 export function growthFactor(creator: Creator, flags: Flag[] = []): FactorResult {
-  const snaps = [...creator.snapshots].sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
+  const snaps = creator.snapshots.length < 2 ? creator.snapshots : [first_(creator.snapshots), last_(creator.snapshots)];
   if (snaps.length < 2) return { missing: "Needs at least two saved follower counts." };
   const first = snaps[0];
   const last = snaps[snaps.length - 1];

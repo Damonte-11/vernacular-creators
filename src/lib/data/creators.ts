@@ -22,9 +22,22 @@ export function useCreators(): Creator[] {
  * shared by every part of the page: a page used to score the whole list again for each component that asked.
  */
 let cache: { creators: Creator[]; settings: Settings; results: CampaignResult[]; out: CreatorAnalysis[] } | null = null;
+/** Each creator's analysis, kept while the settings and campaign results stay the same: a change to one creator re-scores only that one. */
+let perCreator = new WeakMap<Creator, CreatorAnalysis>();
+let perFor: { settings: Settings; results: CampaignResult[] } | null = null;
 export function analysesFor(creators: Creator[], settings: Settings, results: CampaignResult[]): CreatorAnalysis[] {
   if (cache && cache.creators === creators && cache.settings === settings && cache.results === results) return cache.out;
-  const out = creators.map((c) => analyzeCreator(c, settings, NOW, results, creators));
+  // Logged campaign reach is blended across creators of the same size, so with any logged, everyone is re-scored.
+  const blended = results.some((r) => r.reach !== null);
+  if (!perFor || perFor.settings !== settings || perFor.results !== results || blended) {
+    perCreator = new WeakMap();
+    perFor = { settings, results };
+  }
+  const out = creators.map((c) => {
+    let a = perCreator.get(c);
+    if (!a) perCreator.set(c, (a = analyzeCreator(c, settings, NOW, results, creators)));
+    return a;
+  });
   cache = { creators, settings, results, out };
   return out;
 }

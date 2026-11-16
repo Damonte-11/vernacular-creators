@@ -15,8 +15,10 @@ export function minPostAgeHours(platform: Creator["platform"], settings: Pick<Se
 export function eligiblePosts(posts: Post[], minAgeHours: number, now: number): Post[] {
   const cutoff = now - minAgeHours * 60 * 60 * 1000;
   return posts
-    .filter((p) => new Date(p.postedAt).getTime() <= cutoff)
-    .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+    .map((p) => ({ p, t: Date.parse(p.postedAt) }))
+    .filter((x) => x.t <= cutoff)
+    .sort((a, b) => b.t - a.t)
+    .map((x) => x.p);
 }
 
 /**
@@ -84,13 +86,7 @@ interface Selection {
  * replaced by the next older post. The newest MIN_RECENT_POSTS always count;
  * beyond those, posts must be newer than `cutoff`.
  */
-export function selectPosts(
-  sorted: Post[],
-  count: number,
-  value: (p: Post) => number,
-  reason: SetAsideReason,
-  cutoff: number,
-): Selection {
+export function selectPosts(sorted: Post[], count: number, value: (p: Post) => number, reason: SetAsideReason, cutoff: number): Selection {
   const inRange = (p: Post, i: number) => i < Math.min(count, MIN_RECENT_POSTS) || new Date(p.postedAt).getTime() >= cutoff;
   const candidates = sorted.filter(inRange);
   // "Typical" is judged on a wider sample (up to twice the count) so it stays steady.

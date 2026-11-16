@@ -19,10 +19,11 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-  // Refreshes the session cookie when needed.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refreshes the session cookie when needed, and checks the sign-in token's signature here rather than asking
+  // Supabase over the network on every page and prefetch (getUser did), which made each click wait on a round trip.
+  // With older projects that sign tokens with a shared secret, getClaims asks Supabase itself, so it's never less safe.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const path = request.nextUrl.pathname;
   if (!user && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {

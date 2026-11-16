@@ -119,11 +119,12 @@ export function computeFlags(creator: Creator, metrics: Metrics, now: number): F
 }
 
 function biggestFollowerJump(creator: Creator): { growth: number; gained: number; days: number } | null {
-  const snaps = [...creator.snapshots].sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
+  // Dates read once, then compared as numbers: this runs for every creator on every page load.
+  const snaps = creator.snapshots.map((s) => ({ followers: s.followers, t: Date.parse(s.capturedAt) })).sort((a, b) => a.t - b.t);
   let best: { growth: number; gained: number; days: number } | null = null;
   for (let i = 0; i < snaps.length; i++) {
     for (let j = i + 1; j < snaps.length; j++) {
-      const days = (new Date(snaps[j].capturedAt).getTime() - new Date(snaps[i].capturedAt).getTime()) / DAY_MS;
+      const days = (snaps[j].t - snaps[i].t) / DAY_MS;
       if (days > T.followerJumpWindowDays) break;
       if (snaps[i].followers <= 0) continue;
       const growth = (snaps[j].followers - snaps[i].followers) / snaps[i].followers;
@@ -135,11 +136,7 @@ function biggestFollowerJump(creator: Creator): { growth: number; gained: number
   return best;
 }
 
-function longestPostingGap(
-  creator: Creator,
-  metrics: Metrics,
-  now: number,
-): { days: number; sinceLast: boolean } | null {
+function longestPostingGap(creator: Creator, metrics: Metrics, now: number): { days: number; sinceLast: boolean } | null {
   if (creator.posts.length === 0) return null;
   const latest = Math.max(...creator.posts.map((p) => new Date(p.postedAt).getTime()));
   const sinceLast = (now - latest) / DAY_MS;

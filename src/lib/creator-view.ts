@@ -51,16 +51,26 @@ const PAID = /#ad\b|#sponsored|#partner|paid partnership|#collab|in partnership 
 
 /** Every creator's view, built once per list of analyses and shared by the pages that ask. */
 const viewCache = new WeakMap<CreatorAnalysis[], CreatorView[]>();
+/** One view per analysis, so a list where one creator changed only rebuilds that one. */
+const oneView = new WeakMap<CreatorAnalysis, CreatorView>();
 export function viewsOf(analyses: CreatorAnalysis[], now: number): CreatorView[] {
   let v = viewCache.get(analyses);
-  if (!v) viewCache.set(analyses, (v = analyses.map((a) => creatorView(a, now))));
+  if (!v)
+    viewCache.set(
+      analyses,
+      (v = analyses.map((a) => {
+        let x = oneView.get(a);
+        if (!x) oneView.set(a, (x = creatorView(a, now)));
+        return x;
+      })),
+    );
   return v;
 }
 
 export function creatorView(a: CreatorAnalysis, now: number): CreatorView {
   const c = a.creator;
   const m = a.metrics;
-  const recent = [...c.posts].sort((x, y) => y.postedAt.localeCompare(x.postedAt));
+  const recent = [...c.posts].sort((x, y) => Date.parse(y.postedAt) - Date.parse(x.postedAt));
   const counted = recent.filter((p) => !p.excluded);
   const best = [...counted].sort((x, y) => (y.views ?? (y.likes ?? 0) * 10) - (x.views ?? (x.likes ?? 0) * 10));
   const last12 = recent.slice(0, 12);
@@ -126,7 +136,10 @@ export function creatorView(a: CreatorAnalysis, now: number): CreatorView {
     recent,
     best,
     viewSeries: last12.reverse().map((p) => p.views),
-    growth: [...c.snapshots].sort((x, y) => x.capturedAt.localeCompare(y.capturedAt)).map((x) => ({ at: x.capturedAt, followers: x.followers })),
+    growth: c.snapshots
+      .map((x) => ({ at: x.capturedAt, followers: x.followers, t: Date.parse(x.capturedAt) }))
+      .sort((x, y) => x.t - y.t)
+      .map(({ at, followers }) => ({ at, followers })),
     mentions,
     verdict,
     why: why.slice(0, 3),
