@@ -96,6 +96,25 @@ export function FilterColumn({ all, f, set, onReset }: { all: CreatorView[]; f: 
           unit="engagement"
         />
       </Group>
+      <Group title="Watch time">
+        <p className="px-1.5 pb-1 text-xs text-muted">Expected seconds watched per view (an estimate)</p>
+        <div className="flex flex-wrap gap-1.5 px-1.5 pt-1" role="radiogroup" aria-label="Least watch time">
+          {[null, 5, 10, 20, 30, 60].map((s) => (
+            <button
+              key={s ?? "any"}
+              role="radio"
+              aria-checked={f.minWatch === s}
+              onClick={() => set({ ...f, minWatch: s })}
+              className={cx(
+                "rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors",
+                f.minWatch === s ? "bg-brand text-white ring-brand" : "text-ink-2 ring-line-strong hover:bg-surface-2",
+              )}
+            >
+              {s === null ? "Any" : `${s}s+`}
+            </button>
+          ))}
+        </div>
+      </Group>
       <Group title="Size">
         {SIZE_BANDS.map((b) => (
           <Check

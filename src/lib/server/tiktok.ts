@@ -70,7 +70,7 @@ export interface ApifyTikTokItem {
   createTime?: number;
   createTimeISO?: string;
   webVideoUrl?: string;
-  videoMeta?: { coverUrl?: string; originalCoverUrl?: string };
+  videoMeta?: { coverUrl?: string; originalCoverUrl?: string; duration?: number };
   isAd?: boolean;
   isSlideshow?: boolean;
   isPinned?: boolean;
@@ -136,6 +136,7 @@ export async function fetchTikTokCreator(handle: string, token: string, fetcher:
         url: v.webVideoUrl ?? `https://www.tiktok.com/@${input}`,
         caption: (v.text ?? "").slice(0, 2200),
         thumbnailUrl: v.videoMeta?.coverUrl ?? v.videoMeta?.originalCoverUrl ?? null,
+        durationSeconds: !v.isSlideshow && typeof v.videoMeta?.duration === "number" && v.videoMeta.duration > 0 ? Math.round(v.videoMeta.duration) : null,
       })),
   };
 }

@@ -30,6 +30,7 @@ describe("database migration", () => {
       "0019_post_thumbnails.sql",
       "0020_audience.sql",
       "0021_dialect_purposes.sql",
+      "0022_post_duration.sql",
     ];
     const sql = files.map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8")).join("\n");
     await db.exec(sql);

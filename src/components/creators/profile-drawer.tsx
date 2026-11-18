@@ -10,6 +10,8 @@ import { Icon } from "../icons";
 import { cx } from "../ui";
 import { Avatar, PostCover, ScoreRing } from "./media";
 import { VBubble } from "../voice";
+import { WatchPanel } from "./watch";
+import { formatWatch } from "@/lib/watch-time";
 
 export interface ProfileNav {
   index: number;
@@ -132,11 +134,12 @@ export function ProfileDrawer({
             <span className="block text-[17px] font-semibold leading-snug tracking-tight text-white">{v.verdict}</span>
             {v.watchOut[0] && <span className="mt-1 block text-[13px] text-[#c9c3b8]">Watch out: {v.watchOut[0].replace(/^./, (x) => x.toLowerCase())}</span>}
           </VBubble>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+          <div className={cx("mt-4 grid gap-3 text-center", v.watch ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
             {[
               [formatNumber(v.followers), "followers"],
               [v.er === null ? "—" : formatPercent(v.er), "engagement"],
               [v.views === null ? "—" : formatNumber(v.views), "expected views"],
+              ...(v.watch ? [[`≈ ${formatWatch(v.watch.perView)}`, "watched per view"]] : []),
             ].map(([n, k]) => (
               <div key={k} className="rounded-xl bg-white/5 py-3">
                 <p className="text-xl font-semibold tabular-nums">{n}</p>
@@ -145,6 +148,12 @@ export function ProfileDrawer({
             ))}
           </div>
           <ViewBars v={v} />
+          {v.watch && (
+            <div className="mt-5 rounded-xl bg-white/5 p-4">
+              <p className="mb-2 text-xs font-medium text-white/60">Expected watch time</p>
+              <WatchPanel v={v} dark />
+            </div>
+          )}
         </Block>
 
         <div className="grid gap-5 sm:grid-cols-2">

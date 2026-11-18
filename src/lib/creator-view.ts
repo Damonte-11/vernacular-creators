@@ -5,6 +5,7 @@
  */
 import { SIZE_BANDS, type SizeBandId } from "@config/size-bands";
 import type { CreatorAnalysis, Platform, Post } from "./types";
+import { expectedWatch, type WatchEstimate } from "./watch-time";
 
 const DAY = 86_400_000;
 
@@ -45,6 +46,8 @@ export interface CreatorView {
   verdict: string;
   why: string[];
   watchOut: string[];
+  /** Expected watch time per view (an estimate); null for creators who don't post videos. */
+  watch: WatchEstimate | null;
 }
 
 const PAID = /#ad\b|#sponsored|#partner|paid partnership|#collab|in partnership with/i;
@@ -144,6 +147,7 @@ export function creatorView(a: CreatorAnalysis, now: number): CreatorView {
     verdict,
     why: why.slice(0, 3),
     watchOut: watchOut.slice(0, 4),
+    watch: expectedWatch(c, s, m.avgViews),
   };
 }
 
@@ -160,6 +164,8 @@ export interface ViewFilters {
   minEr: number | null;
   maxEr: number | null;
   minScore: number | null;
+  /** Least expected watch time per view, in seconds. */
+  minWatch: number | null;
   noFlags: boolean;
   emailOnly: boolean;
   activeOnly: boolean;
@@ -177,6 +183,7 @@ export const NO_FILTERS: ViewFilters = {
   minEr: null,
   maxEr: null,
   minScore: null,
+  minWatch: null,
   noFlags: false,
   emailOnly: false,
   activeOnly: false,
@@ -199,6 +206,7 @@ export function filterViews(list: CreatorView[], f: ViewFilters): CreatorView[] 
     if (f.minEr !== null && (x.er ?? -1) < f.minEr) return false;
     if (f.maxEr !== null && (x.er === null || x.er >= f.maxEr)) return false;
     if (f.minScore !== null && (x.score ?? -1) < f.minScore) return false;
+    if (f.minWatch !== null && (x.watch?.perView ?? -1) < f.minWatch) return false;
     if (f.noFlags && x.a.flags.length) return false;
     if (f.emailOnly && !x.email) return false;
     if (f.activeOnly && (x.lastPostDays === null || x.lastPostDays > 14)) return false;
@@ -207,10 +215,11 @@ export function filterViews(list: CreatorView[], f: ViewFilters): CreatorView[] 
   });
 }
 
-export type ViewSort = "score" | "views" | "er" | "followers" | "trend" | "name";
+export type ViewSort = "score" | "views" | "er" | "followers" | "trend" | "watch" | "name";
 export function sortViews(list: CreatorView[], k: ViewSort): CreatorView[] {
   if (k === "name") return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const v = (x: CreatorView) => ({ score: x.score, views: x.views, er: x.er, followers: x.followers, trend: x.trend })[k] ?? -Infinity;
+  const v = (x: CreatorView) =>
+    ({ score: x.score, views: x.views, er: x.er, followers: x.followers, trend: x.trend, watch: x.watch?.perView ?? null })[k] ?? -Infinity;
   return [...list].sort((a, b) => v(b) - v(a));
 }
 

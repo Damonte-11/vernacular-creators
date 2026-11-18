@@ -21,6 +21,8 @@ export interface Post {
   excluded?: boolean;
   /** Cover image from the platform (Instagram and TikTok links expire after a while; refreshed with each read). */
   thumbnailUrl?: string | null;
+  /** Video length in seconds (TikTok and YouTube; Instagram's API doesn't give it). */
+  durationSeconds?: number | null;
 }
 
 export interface Snapshot {

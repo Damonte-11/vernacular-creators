@@ -122,12 +122,19 @@ export async function saveFetchedCreator(db: SupabaseClient, f: FetchedCreator, 
       url: p.url,
       caption: p.caption,
       thumbnail_url: p.thumbnailUrl ?? null,
+      duration_seconds: p.durationSeconds ?? null,
     }));
     let { error } = await db.from("posts").upsert(rows, { onConflict: "creator_id,platform_post_id" });
-    // Before database update 0019 there's no thumbnail column: save the rest rather than fail the refresh.
+    // Before database updates 0019 (thumbnails) and 0022 (video length) those columns don't exist: save the rest rather than fail the refresh.
+    if (error && /duration_seconds/.test(error.message)) {
+      ({ error } = await db.from("posts").upsert(
+        rows.map((r) => ({ ...r, duration_seconds: undefined })),
+        { onConflict: "creator_id,platform_post_id" },
+      ));
+    }
     if (error && /thumbnail_url/.test(error.message)) {
       ({ error } = await db.from("posts").upsert(
-        rows.map((r) => ({ ...r, thumbnail_url: undefined })),
+        rows.map((r) => ({ ...r, thumbnail_url: undefined, duration_seconds: undefined })),
         { onConflict: "creator_id,platform_post_id" },
       ));
     }

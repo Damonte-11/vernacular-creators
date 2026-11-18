@@ -164,6 +164,7 @@ export default function CreatorsPage() {
                   <option value="er">Engagement</option>
                   <option value="followers">Followers</option>
                   <option value="trend">Rising</option>
+                  <option value="watch">Watch time</option>
                   <option value="name">Name (A–Z)</option>
                 </select>
               </label>
@@ -410,6 +411,7 @@ function ActiveChips({ f, set, onClear }: { f: ViewFilters; set: (f: ViewFilters
       ? [{ label: `Engagement ${pct(f.minEr ?? 0)}–${f.maxEr !== null ? pct(f.maxEr) : "any"}`, off: { minEr: null, maxEr: null } }]
       : []),
     ...(f.minScore ? [{ label: `Score ${f.minScore}+`, off: { minScore: null } }] : []),
+    ...(f.minWatch ? [{ label: `Watch ${f.minWatch}s+`, off: { minWatch: null } }] : []),
     ...(f.noFlags ? [{ label: "No warning flags", off: { noFlags: false } }] : []),
     ...(f.emailOnly ? [{ label: "Has email", off: { emailOnly: false } }] : []),
     ...(f.activeOnly ? [{ label: "Posted this fortnight", off: { activeOnly: false } }] : []),

@@ -36,6 +36,7 @@ export interface PostRow {
   caption: string;
   excluded?: boolean;
   thumbnail_url?: string | null;
+  duration_seconds?: number | null;
 }
 
 export interface SnapshotRow {
@@ -111,6 +112,7 @@ export function creatorFromRow(r: CreatorRow): Creator {
       caption: p.caption,
       excluded: p.excluded === true,
       thumbnailUrl: p.thumbnail_url ?? null,
+      durationSeconds: p.duration_seconds ?? null,
     })),
     snapshots: (r.creator_snapshots ?? []).map((s): Snapshot => ({ followers: s.followers, capturedAt: s.captured_at })),
     isSample: false,

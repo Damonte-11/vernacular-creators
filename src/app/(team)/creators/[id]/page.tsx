@@ -26,6 +26,7 @@ import { sizeBandLabel } from "@/lib/size-bands";
 import type { Creator, CreatorAnalysis, Metrics, Post } from "@/lib/types";
 import { BandShapes } from "@/components/creators/band";
 import { VBubble } from "@/components/voice";
+import { WatchPanel } from "@/components/creators/watch";
 import { ProfileSkeleton } from "@/components/skeletons";
 
 export default function CreatorProfilePage() {
@@ -203,6 +204,13 @@ function Profile({ analysis }: { analysis: CreatorAnalysis }) {
           <Panel title="Followers over time" note="Saved at every refresh">
             <FollowerGrowth v={v} />
           </Panel>
+          {v.watch && (
+            <div className="lg:col-span-2">
+              <Panel title="Expected watch time" note="Seconds watched per view, from video length and public studies">
+                <WatchPanel v={v} />
+              </Panel>
+            </div>
+          )}
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4">
